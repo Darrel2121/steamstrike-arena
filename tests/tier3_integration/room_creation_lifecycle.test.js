@@ -208,6 +208,87 @@ export const tests = [
       assert.strictEqual(snapshot.classId, 'sharpshooter');
       assert.ok(snapshot.weaponName, 'weaponName must be present');
     }
+  },
+
+  {
+    id: 'T3.RC6',
+    name: 'Password Protected Chamber: Rejects Missing/Incorrect Passwords, Admits Correct Code & Does Not Leak Secret',
+    fn: async () => {
+      const server = new GameServer();
+      const hostPair = new MockWebSocketPair();
+      server.handleConnection(hostPair.serverSide, { id: 'host_secret', playerName: 'LocksmithHost' });
+
+      // 1. Host creates password protected room
+      const waitHostState = hostPair.clientSide.waitFor(PROTOCOL_MSG_TYPES.S2C_LOBBY_STATE);
+      hostPair.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOBBY_CREATE, {
+        roomId: 'Sector_Vault_77',
+        playerName: 'LocksmithHost',
+        password: 'SteamSecret42'
+      }));
+
+      const hostState = await waitHostState;
+      assert.ok(hostState, 'Host must receive S2C_LOBBY_STATE');
+      assert.strictEqual(hostState.payload.isLocked, true, 'isLocked must be true');
+      assert.strictEqual(hostState.payload.hasPassword, true, 'hasPassword must be true');
+      assert.strictEqual(hostState.payload.password, undefined, 'Plaintext password must NEVER leak in lobby state payload');
+
+      // 2. Active rooms browser must mark room as locked without leaking plaintext
+      const activeRooms = server.getActiveRooms();
+      const vaultRoomInfo = activeRooms.find(r => r.id === 'Sector_Vault_77');
+      assert.ok(vaultRoomInfo, 'Vault room must appear in active rooms list');
+      assert.strictEqual(vaultRoomInfo.isLocked, true);
+      assert.strictEqual(vaultRoomInfo.hasPassword, true);
+      assert.strictEqual(vaultRoomInfo.password, undefined, 'Plaintext password must NEVER leak in room list');
+
+      // 3. Intruder joins without password -> Rejected with PASSWORD_REQUIRED
+      const intruderPair1 = new MockWebSocketPair();
+      server.handleConnection(intruderPair1.serverSide, { id: 'intruder_1', playerName: 'NoPassIntruder' });
+
+      const waitError1 = intruderPair1.clientSide.waitFor(PROTOCOL_MSG_TYPES.S2C_ERROR);
+      intruderPair1.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, {
+        roomId: 'Sector_Vault_77',
+        playerName: 'NoPassIntruder'
+      }));
+
+      const err1 = await waitError1;
+      assert.ok(err1, 'Should reject joining protected room without password');
+      assert.strictEqual(err1.payload.code, 'PASSWORD_REQUIRED');
+
+      // 4. Intruder joins with incorrect password -> Rejected with INVALID_PASSWORD
+      const intruderPair2 = new MockWebSocketPair();
+      server.handleConnection(intruderPair2.serverSide, { id: 'intruder_2', playerName: 'WrongPassIntruder' });
+
+      const waitError2 = intruderPair2.clientSide.waitFor(PROTOCOL_MSG_TYPES.S2C_ERROR);
+      intruderPair2.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, {
+        roomId: 'Sector_Vault_77',
+        playerName: 'WrongPassIntruder',
+        password: 'WrongPassword123'
+      }));
+
+      const err2 = await waitError2;
+      assert.ok(err2, 'Should reject joining protected room with invalid password');
+      assert.strictEqual(err2.payload.code, 'INVALID_PASSWORD');
+
+      // Verify no intruder was added
+      const vaultRoom = server.rooms.get('Sector_Vault_77');
+      assert.strictEqual(vaultRoom.players.size, 1, 'Only host should remain in chamber');
+
+      // 5. Friend joins with exact matching password -> Admitted!
+      const friendPair = new MockWebSocketPair();
+      server.handleConnection(friendPair.serverSide, { id: 'friend_client', playerName: 'SteamFriend' });
+
+      const waitFriendState = friendPair.clientSide.waitFor(PROTOCOL_MSG_TYPES.S2C_LOBBY_STATE);
+      friendPair.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, {
+        roomId: 'Sector_Vault_77',
+        playerName: 'SteamFriend',
+        password: 'SteamSecret42'
+      }));
+
+      const friendState = await waitFriendState;
+      assert.ok(friendState, 'Friend must receive S2C_LOBBY_STATE upon entering with correct password');
+      assert.strictEqual(friendState.payload.players.length, 2, 'Room must now contain both host and friend');
+      assert.strictEqual(vaultRoom.players.size, 2);
+    }
   }
 ];
 

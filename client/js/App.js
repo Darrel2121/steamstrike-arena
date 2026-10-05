@@ -291,9 +291,11 @@ export class App {
           this.launchSoloTraining(selectedMap);
         } else {
           const room = (this.homeRoomInput?.value || 'Sector_Omega').trim();
+          const pwd = (document.getElementById('homeRoomPasswordInput')?.value || '').trim();
           if (this.lobbyUI?.dom?.roomInput) this.lobbyUI.dom.roomInput.value = room;
+          if (this.lobbyUI?.dom?.roomPasswordInput) this.lobbyUI.dom.roomPasswordInput.value = pwd;
           this.switchView('lobby');
-          this.lobbyUI.handleCreateRoom(room);
+          this.lobbyUI.handleCreateRoom(room, pwd || null);
         }
       });
     }
@@ -908,10 +910,17 @@ export class App {
       }
 
       const room = params.get('room');
+      const pwd = params.get('pwd') || params.get('password');
       if (room && room.trim()) {
         const cleanRoom = room.trim();
+        const cleanPwd = pwd ? pwd.trim() : null;
         if (this.homeRoomInput) this.homeRoomInput.value = cleanRoom;
         if (this.lobbyUI?.dom?.roomInput) this.lobbyUI.dom.roomInput.value = cleanRoom;
+        if (cleanPwd) {
+          if (this.lobbyUI?.dom?.roomPasswordInput) this.lobbyUI.dom.roomPasswordInput.value = cleanPwd;
+          const homePwdInput = document.getElementById('homeRoomPasswordInput');
+          if (homePwdInput) homePwdInput.value = cleanPwd;
+        }
 
         this.heroMode = 'online';
         if (this.btnModeOnline) this.btnModeOnline.classList.add('active');
@@ -920,7 +929,7 @@ export class App {
 
         this.switchView('lobby');
         if (this.lobbyUI) {
-          this.lobbyUI.handleJoinRoom(cleanRoom);
+          this.lobbyUI.handleJoinRoom(cleanRoom, cleanPwd);
           this.lobbyUI.showCopyToast(`Знайдено запрошення в кімнату "${cleanRoom}"!`);
         }
       }

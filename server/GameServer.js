@@ -35,7 +35,9 @@ export class GameServer {
         maxPlayers: room.maxPlayers || 4,
         gameMode: room.gameMode || 'solo_elim',
         targetKills: room.targetKills || 0,
-        state: room.state || 'LOBBY'
+        state: room.state || 'LOBBY',
+        isLocked: Boolean(room.hasPassword && room.hasPassword()),
+        hasPassword: Boolean(room.hasPassword && room.hasPassword())
       });
     }
     return list;
@@ -58,6 +60,9 @@ export class GameServer {
       if (options.gameMode && existing.state === 'LOBBY') {
         existing.setGameMode(options.gameMode, options.targetKills);
       }
+      if (options.password !== undefined && existing.state === 'LOBBY') {
+        existing.setPassword(options.password);
+      }
       return existing;
     }
     const room = new Room({
@@ -67,7 +72,8 @@ export class GameServer {
       tickRate: options.tickRate || 30,
       autoTick: options.autoTick ?? false,
       gameMode: options.gameMode,
-      targetKills: options.targetKills
+      targetKills: options.targetKills,
+      password: options.password
     });
     this.rooms.set(roomId, room);
     return room;
@@ -125,7 +131,7 @@ export class GameServer {
 
           let room = this.rooms.get(roomId);
           if (!room) {
-            room = this.createRoom(roomId, { autoTick: true });
+            room = this.createRoom(roomId, { autoTick: true, password: payload?.password || null });
           }
 
           // Capacity check
@@ -148,6 +154,25 @@ export class GameServer {
               }));
             }
             return;
+          }
+
+          // Password protection check
+          if (room.hasPassword && room.hasPassword()) {
+            const isClientHost = room.players.get(clientId)?.isHost;
+            if (!isClientHost && !room.verifyPassword(payload?.password)) {
+              if (socket.readyState === 1) {
+                const code = !payload?.password ? 'PASSWORD_REQUIRED' : 'INVALID_PASSWORD';
+                const message = !payload?.password
+                  ? 'Ця парова кімната захищена шифром доступу.'
+                  : 'Невірний паровий шифр доступу до кімнати.';
+                socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_ERROR, {
+                  code,
+                  message,
+                  roomId
+                }));
+              }
+              return;
+            }
           }
 
           // Leave existing room if switching
@@ -228,6 +253,9 @@ export class GameServer {
             if (payload?.maxPlayers) {
               room.maxPlayers = payload.maxPlayers;
             }
+            if (payload?.password !== undefined) {
+              room.setPassword(payload.password);
+            }
           } else {
             room = this.createRoom(roomId, {
               map: payload?.map,
@@ -236,7 +264,8 @@ export class GameServer {
               gameMode: payload?.gameMode,
               targetKills: payload?.targetKills,
               autoFillBots: payload?.autoFillBots ?? false,
-              autoTick: true
+              autoTick: true,
+              password: payload?.password || null
             });
           }
 

@@ -46,6 +46,7 @@ export class Room {
     this.gameMode = options.gameMode || GAME_MODES.SOLO_ELIM;
     this.targetKills = options.targetKills ?? (this.gameMode === GAME_MODES.TEAM_DM ? 15 : (this.gameMode === GAME_MODES.FFA_DM ? 10 : 0));
     this.teamScores = { team1: 0, team2: 0 };
+    this.password = options.password ? String(options.password).trim() : null;
 
     this.state = 'LOBBY'; // 'LOBBY', 'IN_PROGRESS', 'GAME_OVER'
     this.players = new Map();
@@ -1396,6 +1397,37 @@ export class Room {
   }
 
   /**
+   * Returns true if room is protected by a password code.
+   * @returns {boolean}
+   */
+  hasPassword() {
+    return Boolean(this.password && this.password.length > 0);
+  }
+
+  /**
+   * Verifies candidate password against room password.
+   * If room has no password, always returns true.
+   * @param {string} [candidate]
+   * @returns {boolean}
+   */
+  verifyPassword(candidate) {
+    if (!this.hasPassword()) return true;
+    if (!candidate) return false;
+    return String(candidate).trim() === this.password;
+  }
+
+  /**
+   * Sets or clears room password.
+   * @param {string|null} newPassword
+   */
+  setPassword(newPassword) {
+    this.password = newPassword ? String(newPassword).trim() : null;
+    if (this.state === 'LOBBY') {
+      this.broadcastLobbyState();
+    }
+  }
+
+  /**
    * Constructs the S2C_LOBBY_STATE payload, optionally personalized for a specific player.
    * @param {string} [forPlayerId]
    * @returns {Object}
@@ -1405,6 +1437,8 @@ export class Room {
     const payload = {
       roomId: this.id,
       hostId: hostPlayer ? hostPlayer.id : null,
+      isLocked: this.hasPassword(),
+      hasPassword: this.hasPassword(),
       gameMode: this.gameMode,
       targetKills: this.targetKills,
       gameModeConfig: GAME_MODE_CONFIGS[this.gameMode] || null,

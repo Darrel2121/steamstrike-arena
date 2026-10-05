@@ -121,6 +121,12 @@
                 <button type="button" id="btnHomeCreateRoom" class="btn-steampunk btn-copper" style="white-space: nowrap;">⚙ Створити</button>
               </div>
 
+              <!-- Password Protection Field -->
+              <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 2px;">
+                <label for="homeRoomPasswordInput" style="font-size: 12px; color: var(--color-brass-bright);">🔒 Паровий шифр / Пароль (опціонально для гри з друзями):</label>
+                <input type="password" id="homeRoomPasswordInput" class="steampunk-input" placeholder="Шифр доступу (порожньо — відкрита)" maxlength="24">
+              </div>
+
               <!-- Quick Helper Instruction -->
               <div class="lobby-guide-banner" style="margin-top: 4px;">
                 <div class="guide-title">💡 Як грати разом з другом:</div>
@@ -293,6 +299,11 @@
           </div>
 
           <div class="lobby-input-group">
+            <label for="roomPasswordInput">🔒 Паровий шифр / Пароль (опціонально для друзів):</label>
+            <input type="password" id="roomPasswordInput" class="steampunk-input" placeholder="Шифр доступу (порожньо — відкрита)" maxlength="24">
+          </div>
+
+          <div class="lobby-input-group">
             <label for="lobbyMapSelect">Арена бою:</label>
             <select id="lobbyMapSelect" class="steampunk-input" style="cursor: pointer;">
               <option value="foundry" selected>The Clockwork Foundry (20x20 Стандарт)</option>
@@ -332,9 +343,10 @@
           <!-- Active Room State Card (Players Roster & Pinned Start Buttons) -->
           <div id="lobbyStatusCard" style="display: none; margin-top: 8px; padding: 12px; background: rgba(17, 20, 26, 0.9); border: 1px solid var(--color-brass-dark); border-radius: 4px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-              <div>
+              <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <span style="font-weight: bold; color: var(--color-brass-glow);" id="lobbyRoomTitle">Chamber</span>
-                <span style="font-size: 12px; color: var(--color-text-dim); margin-left: 6px;" id="lobbyMapTitle">Foundry</span>
+                <span style="font-size: 12px; color: var(--color-text-dim);" id="lobbyMapTitle">Foundry</span>
+                <span id="lobbyLockBadge" style="display: none; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(255, 71, 87, 0.2); color: #ff6b81; border: 1px solid #ff4757;">🔒 Захищено шифром</span>
               </div>
               <span id="lobbyModeBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 3px; background: #2b230f; color: #ffcf48; border: 1px solid #c59b27;">ВИЖИВАННЯ</span>
             </div>

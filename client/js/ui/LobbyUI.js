@@ -81,7 +81,10 @@ export class LobbyUI {
       homeRoomsList: document.getElementById('homeRoomsList'),
       btnHomeRefreshRooms: document.getElementById('btnHomeRefreshRooms'),
       btnHomeJoinRoom: document.getElementById('btnHomeJoinRoom'),
-      btnHomeCreateRoom: document.getElementById('btnHomeCreateRoom')
+      btnHomeCreateRoom: document.getElementById('btnHomeCreateRoom'),
+      roomPasswordInput: document.getElementById('roomPasswordInput'),
+      homeRoomPasswordInput: document.getElementById('homeRoomPasswordInput'),
+      lobbyLockBadge: document.getElementById('lobbyLockBadge')
     };
   }
 
@@ -160,8 +163,10 @@ export class LobbyUI {
     if (this.dom.btnHomeJoinRoom) {
       this.dom.btnHomeJoinRoom.addEventListener('click', () => {
         const homeInput = document.getElementById('homeRoomInput');
+        const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
         const room = homeInput?.value?.trim() || 'Sector_Omega';
-        this.handleJoinRoom(room);
+        const password = homePwdInput?.value?.trim() || null;
+        this.handleJoinRoom(room, password);
         if (typeof this.options.onSwitchToLobby === 'function') {
           this.options.onSwitchToLobby();
         }
@@ -171,8 +176,10 @@ export class LobbyUI {
     if (this.dom.btnHomeCreateRoom) {
       this.dom.btnHomeCreateRoom.addEventListener('click', () => {
         const homeInput = document.getElementById('homeRoomInput');
+        const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
         const room = homeInput?.value?.trim() || 'Sector_Omega';
-        this.handleCreateRoom(room);
+        const password = homePwdInput?.value?.trim() || null;
+        this.handleCreateRoom(room, password);
         if (typeof this.options.onSwitchToLobby === 'function') {
           this.options.onSwitchToLobby();
         }
@@ -226,6 +233,21 @@ export class LobbyUI {
     this.networkClient.on('errorPacket', (errorPayload) => {
       this.resetAllActionButtons();
       this.showError(`${errorPayload.code || 'ПОМИЛКА'}: ${errorPayload.message || 'Дію відхилено сервером'}`);
+      if (errorPayload.code === 'PASSWORD_REQUIRED' || errorPayload.code === 'INVALID_PASSWORD') {
+        if (this.dom.roomPasswordInput) {
+          this.dom.roomPasswordInput.style.borderColor = '#ff4757';
+          this.dom.roomPasswordInput.focus();
+          setTimeout(() => {
+            if (this.dom.roomPasswordInput) this.dom.roomPasswordInput.style.borderColor = '';
+          }, 3500);
+        }
+        if (this.dom.homeRoomPasswordInput) {
+          this.dom.homeRoomPasswordInput.style.borderColor = '#ff4757';
+          setTimeout(() => {
+            if (this.dom.homeRoomPasswordInput) this.dom.homeRoomPasswordInput.style.borderColor = '';
+          }, 3500);
+        }
+      }
     });
   }
 
@@ -348,7 +370,7 @@ export class LobbyUI {
 
   renderRooms(rooms = []) {
     const list = Array.isArray(rooms) ? rooms : [];
-    const sig = JSON.stringify(list.map(r => `${r.id}:${r.playerCount}:${r.maxPlayers}:${r.state}:${r.mapName}`));
+    const sig = JSON.stringify(list.map(r => `${r.id}:${r.playerCount}:${r.maxPlayers}:${r.state}:${r.mapName}:${r.isLocked}`));
     if (this._lastRoomsSig === sig) return;
     this._lastRoomsSig = sig;
 
@@ -383,13 +405,19 @@ export class LobbyUI {
     const info = document.createElement('div');
     info.className = 'room-card-info';
 
+    const isLocked = Boolean(room.isLocked || room.hasPassword);
     const name = document.createElement('div');
     name.className = 'room-card-name';
-    name.textContent = `⚙ ${room.id}`;
+    if (isLocked) {
+      name.innerHTML = `⚙ ${room.id} <span title="Захищено кодовим шифром" style="color: #ff6b81; font-size: 13px; margin-left: 4px;">🔒</span>`;
+    } else {
+      name.textContent = `⚙ ${room.id}`;
+    }
 
     const sub = document.createElement('div');
     sub.className = 'room-card-sub';
-    sub.innerHTML = `<span>🗺️ ${room.mapName || 'Стандартна арена'}</span><span>👥 ${room.playerCount}/${room.maxPlayers}</span>`;
+    const lockNote = isLocked ? '<span style="color: #ff6b81; font-size: 11px;">🔒 Пароль</span>' : '';
+    sub.innerHTML = `<span>🗺️ ${room.mapName || 'Стандартна арена'}</span><span>👥 ${room.playerCount}/${room.maxPlayers}</span>${lockNote}`;
 
     info.appendChild(name);
     info.appendChild(sub);
@@ -437,10 +465,18 @@ export class LobbyUI {
     } else {
       btn.className = 'btn-steampunk btn-brass';
       btn.style.cssText = 'font-size: 11px; padding: 4px 10px; cursor: pointer;';
-      btn.textContent = '⚡ Приєднатися';
+      btn.textContent = isLocked ? '🔒 Приєднатися' : '⚡ Приєднатися';
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.handleJoinRoom(room.id);
+        let pass = (this.dom.roomPasswordInput?.value || this.dom.homeRoomPasswordInput?.value || '').trim();
+        if (isLocked && !pass) {
+          const promptVal = window.prompt(`Введіть шифр доступу для парової кімнати "${room.id}":`);
+          if (promptVal === null) return;
+          pass = promptVal.trim();
+          if (this.dom.roomPasswordInput) this.dom.roomPasswordInput.value = pass;
+          if (this.dom.homeRoomPasswordInput) this.dom.homeRoomPasswordInput.value = pass;
+        }
+        this.handleJoinRoom(room.id, pass);
         if (typeof this.options.onSwitchToLobby === 'function') {
           this.options.onSwitchToLobby();
         }
@@ -471,7 +507,12 @@ export class LobbyUI {
     const roomId = this.currentLobbyState?.roomId || this.dom.roomInput?.value || 'Sector_Omega';
     let url = roomId;
     if (typeof window !== 'undefined' && window.location) {
-      url = `${window.location.origin}/?room=${encodeURIComponent(roomId)}`;
+      let pwdParam = '';
+      const pwd = (this.dom.roomPasswordInput?.value || this.dom.homeRoomPasswordInput?.value || document.getElementById('homeRoomPasswordInput')?.value || '').trim();
+      if (pwd) {
+        pwdParam = `&pwd=${encodeURIComponent(pwd)}`;
+      }
+      url = `${window.location.origin}/?room=${encodeURIComponent(roomId)}${pwdParam}`;
     }
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(url).then(() => {
@@ -497,18 +538,23 @@ export class LobbyUI {
     }
   }
 
-  handleJoinRoom(targetRoomId = null) {
+  handleJoinRoom(targetRoomId = null, candidatePassword = null) {
     if (typeof this.options.onSwitchToLobby === 'function') {
       this.options.onSwitchToLobby();
     }
 
     const homeInput = document.getElementById('homeRoomInput');
     const homePlayerInput = document.getElementById('homePlayerNameInput');
+    const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
 
     let roomId = (targetRoomId || this.dom.roomInput?.value || homeInput?.value || 'Sector_Omega').trim();
     if (!roomId) roomId = 'Sector_Omega';
     if (this.dom.roomInput) this.dom.roomInput.value = roomId;
     if (homeInput) homeInput.value = roomId;
+
+    let password = (candidatePassword !== null ? candidatePassword : (this.dom.roomPasswordInput?.value || homePwdInput?.value || '')).trim();
+    if (this.dom.roomPasswordInput && candidatePassword !== null) this.dom.roomPasswordInput.value = password;
+    if (homePwdInput && candidatePassword !== null) homePwdInput.value = password;
 
     const playerName = (this.dom.playerNameInput?.value || homePlayerInput?.value || 'FoundryRanger_1').trim();
     if (this.dom.playerNameInput) this.dom.playerNameInput.value = playerName;
@@ -530,7 +576,8 @@ export class LobbyUI {
       this.networkClient.joinLobby(roomId, playerName, {
         equippedWeapon: prof?.equippedWeapon || 'revolver',
         equippedClass: prof?.equippedClass || 'vanguard',
-        profile: prof
+        profile: prof,
+        password: password || null
       });
     };
 
@@ -563,7 +610,7 @@ export class LobbyUI {
     return Boolean(this.currentLobbyState?.hostId && (this.currentLobbyState.hostId === myId || this.currentLobbyState.players?.find(p => p.id === myId)?.isHost));
   }
 
-  handleCreateRoom(targetRoomId = null) {
+  handleCreateRoom(targetRoomId = null, candidatePassword = null) {
     if (typeof this.options.onSwitchToLobby === 'function') {
       this.options.onSwitchToLobby();
     }
@@ -571,6 +618,7 @@ export class LobbyUI {
     const homeInput = document.getElementById('homeRoomInput');
     const homePlayerInput = document.getElementById('homePlayerNameInput');
     const homeModeSelect = document.getElementById('homeGameModeSelect');
+    const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
 
     let roomId = (targetRoomId || this.dom.roomInput?.value || homeInput?.value || '').trim();
     if (!roomId) {
@@ -578,6 +626,10 @@ export class LobbyUI {
     }
     if (this.dom.roomInput) this.dom.roomInput.value = roomId;
     if (homeInput) homeInput.value = roomId;
+
+    let password = (candidatePassword !== null ? candidatePassword : (this.dom.roomPasswordInput?.value || homePwdInput?.value || '')).trim();
+    if (this.dom.roomPasswordInput && candidatePassword !== null) this.dom.roomPasswordInput.value = password;
+    if (homePwdInput && candidatePassword !== null) homePwdInput.value = password;
 
     const playerName = (this.dom.playerNameInput?.value || homePlayerInput?.value || 'HostEngineer').trim();
     if (this.dom.playerNameInput) this.dom.playerNameInput.value = playerName;
@@ -615,7 +667,8 @@ export class LobbyUI {
         targetKills,
         equippedWeapon: prof?.equippedWeapon || 'revolver',
         equippedClass: prof?.equippedClass || 'vanguard',
-        profile: prof
+        profile: prof,
+        password: password || null
       });
     };
 
@@ -669,6 +722,10 @@ export class LobbyUI {
 
     if (this.dom.lobbyMapTitle) {
       this.dom.lobbyMapTitle.textContent = state.mapName || 'The Clockwork Foundry';
+    }
+
+    if (this.dom.lobbyLockBadge) {
+      this.dom.lobbyLockBadge.style.display = (state.isLocked || state.hasPassword) ? 'inline-block' : 'none';
     }
 
     // Update Mode Badge

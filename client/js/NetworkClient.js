@@ -573,6 +573,7 @@ export class NetworkClient {
       equippedWeapon: options.equippedWeapon || this.equippedWeapon || 'revolver',
       equippedClass: options.equippedClass || this.equippedClass || 'vanguard',
       profile: options.profile || this.cachedProfile || null,
+      password: options.password || null,
       ...options
     };
     this.send(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, payload);
@@ -589,8 +590,9 @@ export class NetworkClient {
    * @param {boolean} [autoFillBots]
    * @param {string} [gameMode]
    * @param {number} [targetKills]
+   * @param {string|null} [password]
    */
-  createLobby(roomIdOrOptions = 'default', playerName = 'HostEngineer', mapName = 'The Clockwork Foundry', maxPlayers = 4, map = null, autoFillBots = false, gameMode = 'solo_elim', targetKills = 10) {
+  createLobby(roomIdOrOptions = 'default', playerName = 'HostEngineer', mapName = 'The Clockwork Foundry', maxPlayers = 4, map = null, autoFillBots = false, gameMode = 'solo_elim', targetKills = 10, password = null) {
     let payload;
     if (typeof roomIdOrOptions === 'object' && roomIdOrOptions !== null) {
       payload = {
@@ -604,7 +606,8 @@ export class NetworkClient {
         targetKills: roomIdOrOptions.targetKills || 10,
         equippedWeapon: roomIdOrOptions.equippedWeapon || this.equippedWeapon || 'revolver',
         equippedClass: roomIdOrOptions.equippedClass || this.equippedClass || 'vanguard',
-        profile: roomIdOrOptions.profile || this.cachedProfile || null
+        profile: roomIdOrOptions.profile || this.cachedProfile || null,
+        password: roomIdOrOptions.password || null
       };
     } else {
       payload = {
@@ -618,7 +621,8 @@ export class NetworkClient {
         targetKills: targetKills || 10,
         equippedWeapon: this.equippedWeapon || 'revolver',
         equippedClass: this.equippedClass || 'vanguard',
-        profile: this.cachedProfile || null
+        profile: this.cachedProfile || null,
+        password: password || null
       };
     }
     this.roomId = payload.roomId;
