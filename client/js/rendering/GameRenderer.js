@@ -368,6 +368,16 @@ export class GameRenderer {
   }
 
   /**
+   * Forwards elimination entry directly to top-right Kill Feed list.
+   * @param {Object} entry
+   */
+  addKillFeed(entry) {
+    if (this.hud && typeof this.hud.addKillFeed === 'function') {
+      this.hud.addKillFeed(entry);
+    }
+  }
+
+  /**
    * Executes the full 6-Layer Steampunk Tactical Rendering Pipeline.
    * Supports both unified state object: render({ localPlayer, players, projectiles, pickups, soundEvents })
    * and legacy positional arguments: render(players, projectiles, soundEvents, localPlayer).

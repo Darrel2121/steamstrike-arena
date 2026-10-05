@@ -377,6 +377,111 @@ export const tests = [
         globalThis.document = originalDoc;
       }
     }
+  },
+
+  {
+    id: 'T2.16.10',
+    name: 'HUD Tactical Presentation: Top-Right Kill Feed, Top-Left FFA Leaderboard & Top-Center Team Scoreboard',
+    fn: async () => {
+      const hud = new HUD();
+
+      // 1. Kill feed management & time decay
+      assert.strictEqual(hud.killFeed.length, 0);
+      hud.addKillFeed({
+        killerName: 'Детектив',
+        victimName: 'Розвідник',
+        isKillerLocal: true,
+        duration: 4.0
+      });
+      assert.strictEqual(hud.killFeed.length, 1);
+      assert.strictEqual(hud.killFeed[0].killerName, 'Детектив');
+      assert.strictEqual(hud.killFeed[0].victimName, 'Розвідник');
+      assert.strictEqual(hud.killFeed[0].isKillerLocal, true);
+      assert.strictEqual(hud.killFeed[0].type, 'kill');
+
+      // Update simulation time: verify fade-in
+      hud.update(0.1, { id: 'p1' });
+      assert.ok(hud.killFeed[0].alpha > 0.3 && hud.killFeed[0].alpha <= 1.0);
+
+      // Verify expiration after duration
+      hud.update(4.5, { id: 'p1' });
+      assert.strictEqual(hud.killFeed.length, 0, 'Expired kill feed entry must be pruned');
+
+      // 2. Mock Canvas Context for HUD rendering checks
+      const drawCalls = [];
+      const mockCtx = {
+        save: () => {},
+        restore: () => {},
+        beginPath: () => {},
+        closePath: () => {},
+        fill: () => {},
+        stroke: () => {},
+        fillRect: (x, y, w, h) => drawCalls.push({ type: 'fillRect', x, y, w, h }),
+        strokeRect: () => {},
+        roundRect: (x, y, w, h, r) => drawCalls.push({ type: 'roundRect', x, y, w, h, r }),
+        arc: () => {},
+        moveTo: () => {},
+        lineTo: () => {},
+        fillText: (text, x, y) => drawCalls.push({ type: 'fillText', text, x, y }),
+        strokeText: (text, x, y) => drawCalls.push({ type: 'strokeText', text, x, y }),
+        createRadialGradient: () => ({ addColorStop: () => {} }),
+        createLinearGradient: () => ({ addColorStop: () => {} }),
+        setTransform: () => {},
+        resetTransform: () => {},
+        measureText: (text) => ({ width: text.length * 7 }),
+        canvas: { width: 800, height: 600 }
+      };
+
+      // 3. FFA Leaderboard in top-left
+      const mockPlayer = { id: 'p_local', name: 'Рейнджер', kills: 4, isAlive: true, weaponId: 'revolver' };
+      const ffaContext = {
+        gameMode: 'ffa_dm',
+        targetKills: 10,
+        players: [
+          { id: 'p_bot1', name: 'Автоматон A', kills: 6, isAlive: true },
+          { id: 'p_local', name: 'Рейнджер', kills: 4, isAlive: true },
+          { id: 'p_bot2', name: 'Автоматон B', kills: 2, isAlive: false }
+        ]
+      };
+
+      const boardH = hud.renderFFALeaderboard(mockCtx, 16, 16, mockPlayer, ffaContext);
+      assert.ok(boardH > 50, 'Leaderboard must return computed height');
+      const textCalls = drawCalls.filter(d => d.type === 'fillText').map(d => d.text);
+      assert.ok(textCalls.some(t => t.includes('ЛІДЕРИ')), 'Leaderboard must render title');
+      assert.ok(textCalls.some(t => t.includes('Рейнджер (Ви)')), 'Local player must have (Ви) tag');
+      assert.ok(textCalls.some(t => t.includes('6 ⚔️')), 'Top killer score must be rendered');
+
+      // 4. Team Deathmatch Top-Center Scoreboard
+      drawCalls.length = 0;
+      const teamContext = {
+        gameMode: 'team_dm',
+        targetKills: 15,
+        teamScores: { team1: 7, team2: 5 },
+        players: []
+      };
+      hud.renderGameModeScoreboard(mockCtx, 800, 600, mockPlayer, teamContext);
+      const teamTextCalls = drawCalls.filter(d => d.type === 'fillText').map(d => d.text);
+      assert.ok(teamTextCalls.some(t => t.includes('Парові Вовки')), 'Scoreboard must render Team 1');
+      assert.ok(teamTextCalls.some(t => t.includes('Мідні Лиси')), 'Scoreboard must render Team 2');
+      assert.ok(teamTextCalls.some(t => t.includes('ЦІЛЬ: 15')), 'Scoreboard must render Target Kills');
+      assert.ok(teamTextCalls.some(t => t.includes('КОМАНДНИЙ РАХУНОК')), 'Scoreboard must render team mode title');
+
+      // 5. Render Kill Feed in Top-Right
+      drawCalls.length = 0;
+      hud.addKillFeed({
+        killerName: 'Мисливець',
+        victimName: 'Розвідник',
+        isKillerLocal: false,
+        isVictimLocal: true,
+        type: 'death'
+      });
+      hud.killFeed[0].alpha = 1.0;
+      hud.renderKillFeed(mockCtx, 800, 600);
+      const kfTextCalls = drawCalls.filter(d => d.type === 'fillText').map(d => d.text);
+      assert.ok(kfTextCalls.some(t => t.includes('Мисливець')), 'Kill feed must render killer name');
+      assert.ok(kfTextCalls.some(t => t.includes('Розвідник (Ви)')), 'Kill feed must highlight local victim');
+      assert.ok(kfTextCalls.some(t => t.includes('☠️')), 'Kill feed must render death icon');
+    }
   }
 ];
 

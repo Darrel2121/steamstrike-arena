@@ -1204,19 +1204,28 @@ export class App {
       this.gameRenderer.registerWreckById(victimId, state?.players || []);
     }
 
-    const vName = victimName || (isVictimLocal ? 'Вас' : 'Бійця');
+    const vName = victimName || (isVictimLocal ? 'Ви' : 'Боєць');
     const kName = killerName || (isKillerLocal ? 'Ви' : 'Супротивник');
 
-    if (isVictimLocal) {
-      const isRespawn = typeof respawnTimer === 'number' && respawnTimer > 0;
-      const text = isRespawn
-        ? `☠ Вас ліквідував ${kName}! Відродження через 3с...`
-        : `☠ Вас ліквідував ${kName}! (Ви вибули з бою)`;
-      this.gameRenderer?.addNotification(text, { type: 'death', color: '#ff4d4d', duration: 4.5 });
-    } else if (isKillerLocal) {
-      this.gameRenderer?.addNotification(`⚡ Ви ліквідували ${vName}! (+XP, +Scrap)`, { type: 'kill', color: '#ffcf48', duration: 3.5 });
+    // Route elimination directly to top-right Kill Feed list
+    if (this.gameRenderer && typeof this.gameRenderer.addKillFeed === 'function') {
+      this.gameRenderer.addKillFeed({
+        killerName: kName,
+        victimName: vName,
+        isKillerLocal,
+        isVictimLocal,
+        type: isVictimLocal ? 'death' : (isKillerLocal ? 'kill' : 'elimination'),
+        duration: 5.0
+      });
     } else {
-      this.gameRenderer?.addNotification(`☠ ${kName} ліквідував ${vName}`, { type: 'info', color: '#cbd5e1', duration: 3.0 });
+      this.gameRenderer?.addNotification(`☠ ${kName} ліквідував ${vName}`, {
+        type: isVictimLocal ? 'death' : (isKillerLocal ? 'kill' : 'info'),
+        killerName: kName,
+        victimName: vName,
+        isKillerLocal,
+        isVictimLocal,
+        duration: 5.0
+      });
     }
   }
 

@@ -23,23 +23,98 @@ export class HUD {
     this.lastReloadTime = 0;
     this.pulseTimer = 0;
     this.notifications = [];
+    this.killFeed = [];
     this.matchOutcome = null;
     this.buttonBounds = {};
     this.hoveredButton = null;
   }
 
   /**
+   * Adds an elimination event to the top-right Kill Feed list.
+   * @param {Object} data
+   * @param {string} data.killerName
+   * @param {string} data.victimName
+   * @param {boolean} [data.isKillerLocal=false]
+   * @param {boolean} [data.isVictimLocal=false]
+   * @param {string} [data.type='elimination'] - 'kill' | 'death' | 'elimination'
+   * @param {number} [data.duration=5.0]
+   */
+  addKillFeed(data = {}) {
+    const killerName = data.killerName || 'Супротивник';
+    const victimName = data.victimName || 'Боєць';
+    const isKillerLocal = Boolean(data.isKillerLocal);
+    const isVictimLocal = Boolean(data.isVictimLocal);
+    const type = data.type || (isVictimLocal ? 'death' : (isKillerLocal ? 'kill' : 'elimination'));
+    const duration = data.duration || 5.0;
+
+    this.killFeed.push({
+      id: Date.now() + Math.random(),
+      killerName,
+      victimName,
+      isKillerLocal,
+      isVictimLocal,
+      type,
+      duration,
+      elapsed: 0,
+      alpha: 0
+    });
+
+    if (this.killFeed.length > 6) {
+      this.killFeed.shift();
+    }
+  }
+
+  /**
    * Adds an in-canvas message notification (e.g. elimination, pickup, status).
+   * Elimination messages are routed to the top-right Kill Feed list.
+   * Other tactical messages are rendered as central alert toasts.
    * @param {string} text - Message text
    * @param {Object} [options]
    */
   addMessage(text, options = {}) {
     if (!text) return;
     const type = options.type || 'info';
+
+    // Route elimination messages to top-right Kill Feed list
+    if (type === 'kill' || type === 'death' || type === 'elimination' || text.includes('ліквідував')) {
+      let killerName = options.killerName;
+      let victimName = options.victimName;
+      let isKillerLocal = Boolean(options.isKillerLocal);
+      let isVictimLocal = Boolean(options.isVictimLocal);
+
+      if (!killerName || !victimName) {
+        if (type === 'death' || text.includes('Вас ліквідував')) {
+          victimName = 'Ви';
+          isVictimLocal = true;
+          const match = text.match(/ліквідував\s+([^!]+)/);
+          killerName = match ? match[1].trim() : 'Супротивник';
+        } else if (type === 'kill' || text.includes('Ви ліквідували')) {
+          killerName = 'Ви';
+          isKillerLocal = true;
+          const match = text.match(/ліквідували\s+([^!]+)/);
+          victimName = match ? match[1].trim() : 'Супротивник';
+        } else {
+          // General "X ліквідував Y"
+          const clean = text.replace(/^[☠⚡⚠️\s]+/, '');
+          const parts = clean.split(' ліквідував ');
+          killerName = parts[0] ? parts[0].trim() : 'Боєць';
+          victimName = parts[1] ? parts[1].trim() : 'Супротивник';
+        }
+      }
+
+      this.addKillFeed({
+        killerName,
+        victimName,
+        isKillerLocal,
+        isVictimLocal,
+        type,
+        duration: options.duration || 5.0
+      });
+      return;
+    }
+
     let defaultColor = '#ffcf48';
-    if (type === 'kill') defaultColor = '#ffcf48';
-    else if (type === 'death') defaultColor = '#e71d36';
-    else if (type === 'pickup') defaultColor = '#2ec4b6';
+    if (type === 'pickup') defaultColor = '#2ec4b6';
     else if (type === 'warn') defaultColor = '#ff9f1c';
 
     this.notifications.push({
@@ -66,12 +141,14 @@ export class HUD {
   }
 
   /**
-   * Clears the match outcome overlay.
+   * Clears the match outcome overlay and clears match-specific HUD state.
    */
   clearMatchOutcome() {
     this.matchOutcome = null;
     this.buttonBounds = {};
     this.hoveredButton = null;
+    this.killFeed = [];
+    this.notifications = [];
   }
 
   /**
@@ -85,7 +162,7 @@ export class HUD {
       this.reloadRotation += dt * Math.PI * 4; // Fast cylinder revolution during reload
     }
 
-    // Update notifications alpha and lifespans
+    // Update general notifications alpha and lifespans
     for (let i = this.notifications.length - 1; i >= 0; i--) {
       const n = this.notifications[i];
       n.elapsed += dt;
@@ -101,6 +178,26 @@ export class HUD {
         n.alpha = Math.max(0, (n.duration - n.elapsed) / 0.4);
       } else {
         n.alpha = 1.0;
+      }
+    }
+
+    // Update top-right killfeed alpha and lifespans
+    if (this.killFeed) {
+      for (let i = this.killFeed.length - 1; i >= 0; i--) {
+        const k = this.killFeed[i];
+        k.elapsed += dt;
+        if (k.elapsed >= k.duration) {
+          this.killFeed.splice(i, 1);
+          continue;
+        }
+
+        if (k.elapsed < 0.2) {
+          k.alpha = k.elapsed / 0.2;
+        } else if (k.elapsed > (k.duration - 0.5)) {
+          k.alpha = Math.max(0, (k.duration - k.elapsed) / 0.5);
+        } else {
+          k.alpha = 1.0;
+        }
       }
     }
   }
@@ -180,10 +277,19 @@ export class HUD {
       this.renderAmmoCylinder(ctx, width - 85, height - 65, ammo, maxAmmo, isReloading);
     }
 
-    // 4. Top-Left: Tactical Compass & Weapon Label
-    this.renderWeaponCard(ctx, 20, 20, player);
+    const isTeam = matchContext && (matchContext.gameMode === 'team_dm' || matchContext.gameMode === 'team_elim');
 
-    // 5. Top-Center: Game Mode & Match Scoreboard
+    if (!isTeam) {
+      // 4. Top-Left: FFA / Solo Leaderboard with Kill Counts
+      const lbH = this.renderFFALeaderboard(ctx, 16, 16, player, matchContext);
+      // Tactical Compass & Weapon Label sits neatly below the Leaderboard
+      this.renderWeaponCard(ctx, 16, 16 + lbH + 8, player);
+    } else {
+      // 4. Top-Left: Tactical Compass & Weapon Label (Standard position in Team mode)
+      this.renderWeaponCard(ctx, 16, 16, player);
+    }
+
+    // 5. Top-Center: Game Mode & Match Scoreboard (Global score in Team mode, compact target in FFA)
     this.renderGameModeScoreboard(ctx, width, height, player, matchContext);
 
     const isRespawnMode = matchContext && (matchContext.gameMode === 'ffa_dm' || matchContext.gameMode === 'team_dm');
@@ -193,7 +299,10 @@ export class HUD {
       this.renderSpectatorBanner(ctx, width, height);
     }
 
-    // 6. In-Canvas Toast Notifications
+    // 6. Top-Right: Elimination Kill Feed List (Who killed whom)
+    this.renderKillFeed(ctx, width, height);
+
+    // 6.5 In-Canvas System Toast Notifications (e.g. Warnings, Pickups)
     this.renderNotifications(ctx, width, height, player);
 
     // 7. Respawn Countdown Overlay (when local player is waiting to respawn in deathmatch)
@@ -653,6 +762,191 @@ export class HUD {
   }
 
   /**
+   * Renders the top-left FFA / Solo Leaderboard with player kill counts.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x
+   * @param {number} y
+   * @param {Object} player - Local player entity
+   * @param {Object} matchContext - State snapshot
+   * @returns {number} - Rendered height in pixels
+   */
+  renderFFALeaderboard(ctx, x, y, player = {}, matchContext = {}) {
+    ctx.save();
+
+    const targetKills = matchContext.targetKills || player.targetKills || 0;
+
+    // 1. Gather all combatants from snapshot
+    const combatantsMap = new Map();
+    if (Array.isArray(matchContext.players)) {
+      for (const p of matchContext.players) {
+        if (!p || !p.id) continue;
+        combatantsMap.set(p.id, {
+          id: p.id,
+          name: p.name || (p.isBot ? 'Бот-боєць' : 'Боєць'),
+          kills: p.kills || 0,
+          isAlive: p.isAlive !== false && (p.hp === undefined || p.hp > 0),
+          emblem: p.emblem,
+          isBot: Boolean(p.isBot),
+          isLocal: p.id === player.id
+        });
+      }
+    }
+
+    // Ensure local player is accurately represented
+    if (player && player.id) {
+      const existing = combatantsMap.get(player.id);
+      combatantsMap.set(player.id, {
+        id: player.id,
+        name: player.name || existing?.name || 'Ви',
+        kills: player.kills !== undefined ? player.kills : (existing?.kills || 0),
+        isAlive: player.isAlive !== false && (player.hp === undefined || player.hp > 0),
+        emblem: player.emblem || existing?.emblem,
+        isBot: false,
+        isLocal: true
+      });
+    }
+
+    const combatants = Array.from(combatantsMap.values());
+    if (combatants.length === 0) {
+      combatants.push({
+        id: player.id || 'local',
+        name: player.name || 'Ви',
+        kills: player.kills || 0,
+        isAlive: player.isAlive !== false,
+        emblem: player.emblem,
+        isBot: false,
+        isLocal: true
+      });
+    }
+
+    // Sort descending by kills
+    combatants.sort((a, b) => {
+      if ((b.kills || 0) !== (a.kills || 0)) return (b.kills || 0) - (a.kills || 0);
+      if (a.isAlive !== b.isAlive) return a.isAlive ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    // Select entries to show (max 5 rows)
+    const maxRows = 5;
+    let displayList = combatants.slice(0, maxRows);
+
+    // If local player is ranked beyond maxRows, guarantee local player visibility as row 5
+    const localIndex = combatants.findIndex(c => c.isLocal);
+    if (localIndex >= maxRows) {
+      displayList = [
+        ...combatants.slice(0, maxRows - 1),
+        { ...combatants[localIndex], customRank: localIndex + 1 }
+      ];
+    }
+
+    const boardW = 205;
+    const headerH = 26;
+    const rowH = 20;
+    const boardH = headerH + displayList.length * rowH + 6;
+
+    // 1. Drop shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetY = 3;
+
+    // 2. Chassis (100% Solid Opaque Steampunk Chassis)
+    ctx.fillStyle = '#0a0d13';
+    ctx.strokeStyle = '#c59b27';
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.roundRect(x, y, boardW, boardH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Header background bar
+    ctx.fillStyle = '#161b24';
+    ctx.beginPath();
+    ctx.roundRect(x + 1, y + 1, boardW - 2, headerH - 1, [5, 5, 0, 0]);
+    ctx.fill();
+
+    // Rivets on header
+    ctx.fillStyle = '#ffcf48';
+    ctx.beginPath();
+    ctx.arc(x + 7, y + 7, 1.5, 0, Math.PI * 2);
+    ctx.arc(x + boardW - 7, y + 7, 1.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    // Header title
+    ctx.fillStyle = '#ffcf48';
+    ctx.font = `bold 11px ${sansFont}`;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🏆 ЛІДЕРИ (КІЛИ)', x + 12, y + headerH / 2);
+
+    // Header target kills
+    if (targetKills > 0) {
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `bold 10px ${sansFont}`;
+      ctx.textAlign = 'right';
+      ctx.fillText(`Ціль: ${targetKills}`, x + boardW - 10, y + headerH / 2);
+    }
+
+    // Divider line below header
+    ctx.strokeStyle = 'rgba(197, 155, 39, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x + 2, y + headerH);
+    ctx.lineTo(x + boardW - 2, y + headerH);
+    ctx.stroke();
+
+    // Rows
+    let rowY = y + headerH + 3;
+    displayList.forEach((c, idx) => {
+      const rank = c.customRank || (idx + 1);
+      const isLocal = c.isLocal;
+
+      if (isLocal) {
+        ctx.fillStyle = 'rgba(197, 155, 39, 0.18)';
+        ctx.fillRect(x + 2, rowY, boardW - 4, rowH);
+      }
+
+      ctx.textBaseline = 'middle';
+      const centerY = rowY + rowH / 2;
+
+      // Rank number
+      ctx.textAlign = 'left';
+      ctx.font = `bold 11px ${sansFont}`;
+      ctx.fillStyle = rank === 1 ? '#ffcf48' : (rank === 2 ? '#cbd5e1' : (rank === 3 ? '#cd7f32' : '#64748b'));
+      ctx.fillText(`${rank}.`, x + 8, centerY);
+
+      // Emblem or icon
+      const emblemDef = getEmblemDefinition(c.emblem);
+      const icon = emblemDef ? emblemDef.icon : (c.isBot ? '🤖' : '⚙️');
+      ctx.font = '10px sans-serif';
+      ctx.fillText(icon, x + 24, centerY);
+
+      // Name
+      ctx.font = isLocal ? `bold 11px ${sansFont}` : `11px ${sansFont}`;
+      ctx.fillStyle = isLocal ? '#ffcf48' : (c.isAlive ? '#e2e8f0' : '#64748b');
+      const displayName = isLocal ? `${c.name} (Ви)` : c.name;
+      const maxLen = isLocal ? 13 : 12;
+      const truncName = displayName.length > maxLen ? displayName.slice(0, maxLen - 1) + '…' : displayName;
+      ctx.fillText(truncName, x + 40, centerY);
+
+      // Kills badge on right
+      ctx.textAlign = 'right';
+      ctx.font = `bold 11px ${sansFont}`;
+      ctx.fillStyle = isLocal ? '#ffe082' : '#ffffff';
+      ctx.fillText(`${c.kills || 0} ⚔️`, x + boardW - 8, centerY);
+
+      rowY += rowH;
+    });
+
+    ctx.restore();
+    return boardH;
+  }
+
+  /**
    * Renders Weapon Info & Callsign Badge in top-left corner.
    */
   renderWeaponCard(ctx, x, y, player) {
@@ -673,7 +967,7 @@ export class HUD {
     ctx.strokeStyle = '#c59b27';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(x, y, 180, 46, 5);
+    ctx.roundRect(x, y, 205, 46, 5);
     ctx.fill();
     ctx.stroke();
 
@@ -731,7 +1025,114 @@ export class HUD {
   }
 
   /**
-   * Renders active in-canvas notifications at top-center.
+   * Renders the top-right Kill Feed list (who eliminated whom).
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} width
+   * @param {number} height
+   */
+  renderKillFeed(ctx, width, height) {
+    if (!this.killFeed || this.killFeed.length === 0) return;
+
+    ctx.save();
+    const isTouchActive = typeof document !== 'undefined' &&
+      (document.getElementById('mobileTouchControls')?.classList.contains('touch-active') ||
+       (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+       (typeof window !== 'undefined' && 'ontouchstart' in window && window.innerWidth <= 1024));
+
+    const feedW = Math.min(250, Math.round(width * 0.35));
+    const feedX = width - feedW - 16;
+    let currentY = isTouchActive ? 56 : 16;
+
+    const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+
+    for (const item of this.killFeed) {
+      if (item.alpha <= 0.01) continue;
+
+      ctx.save();
+      ctx.globalAlpha = Math.min(1.0, item.alpha);
+
+      const cardH = 26;
+
+      // 1. Drop shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 2;
+
+      // 2. Chassis (100% Solid Opaque Steampunk Chassis)
+      const isDeath = item.isVictimLocal || item.type === 'death';
+      const isKill = item.isKillerLocal || item.type === 'kill';
+
+      ctx.fillStyle = isDeath ? '#1c0f12' : (isKill ? '#1f190e' : '#0e1219');
+      ctx.strokeStyle = isDeath ? '#ef4444' : (isKill ? '#ffcf48' : '#475569');
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.roundRect(feedX, currentY, feedW, cardH, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // 3. Colored accent strip on left
+      const accent = isDeath ? '#ef4444' : (isKill ? '#ffcf48' : '#3b82f6');
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.roundRect(feedX + 2, currentY + 3, 4, cardH - 6, 2);
+      ctx.fill();
+
+      // 4. Rivets on right
+      ctx.fillStyle = isKill ? '#ffcf48' : '#94a3b8';
+      ctx.beginPath();
+      ctx.arc(feedX + feedW - 6, currentY + 6, 1.2, 0, Math.PI * 2);
+      ctx.arc(feedX + feedW - 6, currentY + cardH - 6, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Content text: Killer ⚔️ Victim
+      ctx.textBaseline = 'middle';
+      const textY = currentY + cardH / 2;
+
+      const killer = item.killerName || 'Супротивник';
+      const victim = item.victimName || 'Боєць';
+      const icon = isDeath ? '☠️' : (isKill ? '⚡' : '⚔️');
+
+      // Killer on the left
+      ctx.textAlign = 'left';
+      ctx.font = `bold 11px ${sansFont}`;
+      ctx.fillStyle = item.isKillerLocal ? '#ffcf48' : '#ffffff';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2.2;
+      const baseKiller = killer;
+      const kTrunc = item.isKillerLocal
+        ? (baseKiller.length > 11 ? baseKiller.slice(0, 10) + '… (Ви)' : `${baseKiller} (Ви)`)
+        : (baseKiller.length > 15 ? baseKiller.slice(0, 14) + '…' : baseKiller);
+      ctx.strokeText(kTrunc, feedX + 11, textY);
+      ctx.fillText(kTrunc, feedX + 11, textY);
+
+      // Icon in the center
+      ctx.textAlign = 'center';
+      ctx.font = '10px sans-serif';
+      ctx.fillText(icon, feedX + feedW / 2 + 10, textY);
+
+      // Victim on the right
+      ctx.textAlign = 'right';
+      ctx.font = `bold 11px ${sansFont}`;
+      ctx.fillStyle = item.isVictimLocal ? '#ef4444' : '#cbd5e1';
+      const baseVictim = victim;
+      const vTrunc = item.isVictimLocal
+        ? (baseVictim.length > 11 ? baseVictim.slice(0, 10) + '… (Ви)' : `${baseVictim} (Ви)`)
+        : (baseVictim.length > 15 ? baseVictim.slice(0, 14) + '…' : baseVictim);
+      ctx.strokeText(vTrunc, feedX + feedW - 12, textY);
+      ctx.fillText(vTrunc, feedX + feedW - 12, textY);
+
+      ctx.restore();
+      currentY += cardH + 5;
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders active in-canvas system notifications at top-center (warnings, pickups, announcements).
    * @param {CanvasRenderingContext2D} ctx
    * @param {number} width
    * @param {number} height
@@ -1091,76 +1492,83 @@ export class HUD {
     const teamScores = matchContext.teamScores || { team1: 0, team2: 0 };
     const players = matchContext.players || [];
 
-    const boardW = 340;
-    const boardH = 50;
-    const bx = Math.round(width / 2 - boardW / 2);
-    const by = 14;
-
-    // 1. Heavy drop shadow to physically detach UI from 3D game arena
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.90)';
-    ctx.shadowBlur = 12;
-    ctx.shadowOffsetY = 4;
-
-    // 2. 100% Solid Opaque Steampunk Chassis (Pure dark obsidian steel: NO light bleed!)
-    ctx.fillStyle = '#0b0e14';
-    ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 2.0;
-    ctx.beginPath();
-    ctx.roundRect(bx, by, boardW, boardH, 7);
-    ctx.fill();
-    ctx.stroke();
-
-    // Reset shadow for crisp inner elements
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    // Subtle inner golden bevel border
-    ctx.strokeStyle = 'rgba(255, 207, 72, 0.25)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(bx + 2, by + 2, boardW - 4, boardH - 4, 5);
-    ctx.stroke();
-
-    // Corner rivets
-    ctx.fillStyle = '#ffcf48';
-    ctx.beginPath();
-    ctx.arc(bx + 7, by + 7, 2, 0, Math.PI * 2);
-    ctx.arc(bx + boardW - 7, by + 7, 2, 0, Math.PI * 2);
-    ctx.arc(bx + 7, by + boardH - 7, 2, 0, Math.PI * 2);
-    ctx.arc(bx + boardW - 7, by + boardH - 7, 2, 0, Math.PI * 2);
-    ctx.fill();
-
     const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
     if (mode === 'team_dm') {
-      // TEAM DEATHMATCH: Blue Team (Парові Вовки) vs Red Team (Мідні Лиси)
+      // TEAM DEATHMATCH: Prominent Global Scoreboard at Top-Center
+      const boardW = Math.min(380, width - 32);
+      const boardH = 54;
+      const bx = Math.round((width - boardW) / 2);
+      const by = 12;
+
+      // 1. Drop shadow
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)';
+      ctx.shadowBlur = 12;
+      ctx.shadowOffsetY = 4;
+
+      // 2. Chassis (100% Solid Opaque Steampunk Chassis)
+      ctx.fillStyle = '#0b0e14';
+      ctx.strokeStyle = '#c59b27';
+      ctx.lineWidth = 2.0;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, boardW, boardH, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // Subtle inner golden bevel border
+      ctx.strokeStyle = 'rgba(255, 207, 72, 0.25)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(bx + 2, by + 2, boardW - 4, boardH - 4, 6);
+      ctx.stroke();
+
+      // Corner rivets
+      ctx.fillStyle = '#ffcf48';
+      ctx.beginPath();
+      ctx.arc(bx + 7, by + 7, 2, 0, Math.PI * 2);
+      ctx.arc(bx + boardW - 7, by + 7, 2, 0, Math.PI * 2);
+      ctx.arc(bx + 7, by + boardH - 7, 2, 0, Math.PI * 2);
+      ctx.arc(bx + boardW - 7, by + boardH - 7, 2, 0, Math.PI * 2);
+      ctx.fill();
+
       const t1 = teamScores.team1 || 0;
       const t2 = teamScores.team2 || 0;
 
-      // Blue Team (Left)
+      // Team 1: Blue Team (Парові Вовки)
       ctx.fillStyle = '#3b82f6';
-      ctx.font = `bold 16px ${sansFont}`;
+      ctx.font = `bold 20px ${sansFont}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`🐺 ${t1}`, bx + 16, by + 27);
+      ctx.fillText(`🐺 ${t1}`, bx + 16, by + 26);
 
-      // Score divider & target
+      ctx.font = `bold 10px ${sansFont}`;
+      ctx.fillStyle = '#93c5fd';
+      ctx.fillText('Парові Вовки', bx + 16, by + 40);
+
+      // Center: Global Target & Match Label
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'center';
-      ctx.fillText(`ЦІЛЬ: ${targetKills}`, width / 2, by + 20);
+      ctx.fillText(`ЦІЛЬ: ${targetKills}`, width / 2, by + 21);
 
       ctx.fillStyle = '#94a3b8';
       ctx.font = `bold 10px ${sansFont}`;
-      ctx.fillText('КОМАНДНИЙ DEATHMATCH', width / 2, by + 35);
+      ctx.fillText('КОМАНДНИЙ РАХУНОК', width / 2, by + 37);
 
-      // Red Team (Right)
+      // Team 2: Red Team (Мідні Лиси)
       ctx.fillStyle = '#ef4444';
-      ctx.font = `bold 16px ${sansFont}`;
+      ctx.font = `bold 20px ${sansFont}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${t2} 🦊`, bx + boardW - 16, by + 27);
+      ctx.fillText(`${t2} 🦊`, bx + boardW - 16, by + 26);
+
+      ctx.font = `bold 10px ${sansFont}`;
+      ctx.fillStyle = '#fca5a5';
+      ctx.fillText('Мідні Лиси', bx + boardW - 16, by + 40);
 
       // Progress bars at bottom of board
-      const barW = 100;
+      const barW = Math.min(105, (boardW - 160) / 2);
       const barH = 3;
       const ratio1 = Math.min(1.0, t1 / Math.max(1, targetKills));
       const ratio2 = Math.min(1.0, t2 / Math.max(1, targetKills));
@@ -1177,6 +1585,19 @@ export class HUD {
 
     } else if (mode === 'team_elim') {
       // TEAM ELIMINATION: Team 1 living vs Team 2 living
+      const boardW = Math.min(380, width - 32);
+      const boardH = 50;
+      const bx = Math.round((width - boardW) / 2);
+      const by = 14;
+
+      ctx.fillStyle = '#0b0e14';
+      ctx.strokeStyle = '#c59b27';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.roundRect(bx, by, boardW, boardH, 7);
+      ctx.fill();
+      ctx.stroke();
+
       let t1Alive = 0;
       let t2Alive = 0;
       for (const p of players) {
@@ -1187,69 +1608,75 @@ export class HUD {
       }
 
       ctx.fillStyle = '#3b82f6';
-      ctx.font = `bold 13px ${sansFont}`;
+      ctx.font = `bold 14px ${sansFont}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`🐺 Живих: ${t1Alive}`, bx + 16, by + 27);
+      ctx.fillText(`🐺 Живих: ${t1Alive}`, bx + 16, by + 26);
 
       ctx.fillStyle = '#ffffff';
       ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'center';
-      ctx.fillText('ОСТАННЯ КОМАНДА', width / 2, by + 20);
+      ctx.fillText('КОМАНДНИЙ БІЙ', width / 2, by + 20);
 
       ctx.fillStyle = '#94a3b8';
       ctx.font = `bold 10px ${sansFont}`;
-      ctx.fillText('БЕЗ ВІДРОДЖЕННЯ', width / 2, by + 35);
+      ctx.fillText('ОСТАННЯ КОМАНДА', width / 2, by + 35);
 
       ctx.fillStyle = '#ef4444';
-      ctx.font = `bold 13px ${sansFont}`;
+      ctx.font = `bold 14px ${sansFont}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`Живих: ${t2Alive} 🦊`, bx + boardW - 16, by + 27);
+      ctx.fillText(`Живих: ${t2Alive} 🦊`, bx + boardW - 16, by + 26);
 
     } else if (mode === 'ffa_dm') {
-      // FREE FOR ALL DEATHMATCH: Player kills vs target
-      const myKills = player.kills || 0;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold 14px ${sansFont}`;
-      ctx.textAlign = 'center';
-      ctx.fillText(`⚔️ ВАШІ КІЛИ: `, width / 2 - 25, by + 22);
+      // FFA DEATHMATCH: Sleek compact top banner (leaderboard is in top-left!)
+      if (width >= 768) {
+        const boardW = 230;
+        const boardH = 32;
+        const bx = Math.round((width - boardW) / 2);
+        const by = 14;
 
-      ctx.fillStyle = '#ffcf48';
-      ctx.fillText(`${myKills} / ${targetKills}`, width / 2 + 35, by + 22);
+        ctx.fillStyle = '#0b0e14';
+        ctx.strokeStyle = '#c59b27';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, boardW, boardH, 6);
+        ctx.fill();
+        ctx.stroke();
 
-      ctx.fillStyle = '#2ec4b6';
-      ctx.font = `bold 10px ${sansFont}`;
-      ctx.textAlign = 'center';
-      ctx.fillText('ВІЛЬНА БИТВА (ВІДРОДЖЕННЯ)', width / 2, by + 37);
-
-    } else {
-      // SOLO ELIMINATION: Last Man Standing (High-contrast, crisp readable typography)
-      let aliveCount = 0;
-      for (const p of players) {
-        if (p.isAlive && (p.hp === undefined || p.hp > 0)) aliveCount++;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold 12px ${sansFont}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`⚔️ ВІЛЬНА БИТВА • ЦІЛЬ: ${targetKills}`, width / 2, by + boardH / 2);
       }
-      if (aliveCount === 0 && matchContext.aliveCount) aliveCount = matchContext.aliveCount;
-      if (aliveCount === 0) aliveCount = 1;
+    } else {
+      // SOLO ELIMINATION: Last Man Standing
+      if (width >= 768) {
+        const boardW = 210;
+        const boardH = 32;
+        const bx = Math.round((width - boardW) / 2);
+        const by = 14;
 
-      // Top Header: Pure white crisp text
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold 14px ${sansFont}`;
-      ctx.textAlign = 'center';
-      ctx.fillText(`💀 ЖИВИХ БІЙЦІВ: ${aliveCount}`, width / 2, by + 21);
+        ctx.fillStyle = '#0b0e14';
+        ctx.strokeStyle = '#c59b27';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, boardW, boardH, 6);
+        ctx.fill();
+        ctx.stroke();
 
-      // Bottom Row: Clean sub-metrics
-      ctx.font = `bold 11px ${sansFont}`;
+        let aliveCount = 0;
+        for (const p of players) {
+          if (p.isAlive && (p.hp === undefined || p.hp > 0)) aliveCount++;
+        }
+        if (aliveCount === 0 && matchContext.aliveCount) aliveCount = matchContext.aliveCount;
+        if (aliveCount === 0) aliveCount = 1;
 
-      ctx.fillStyle = '#ffcf48';
-      ctx.textAlign = 'right';
-      ctx.fillText(`⚔️ Кіли: ${player.kills || 0}`, width / 2 - 8, by + 38);
-
-      ctx.fillStyle = '#475569';
-      ctx.textAlign = 'center';
-      ctx.fillText('•', width / 2, by + 38);
-
-      ctx.fillStyle = '#2ec4b6';
-      ctx.textAlign = 'left';
-      ctx.fillText('⏱️ Виживання', width / 2 + 8, by + 38);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold 12px ${sansFont}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`💀 ЖИВИХ БІЙЦІВ: ${aliveCount}`, width / 2, by + boardH / 2);
+      }
     }
 
     ctx.restore();
