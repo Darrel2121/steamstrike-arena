@@ -205,6 +205,41 @@ export const tests = [
         globalThis.document = originalDoc;
       }
     }
+  },
+
+  {
+    id: 'T2.16.7',
+    name: 'Mobile Website Architecture: Hamburger Menu, Single Column Responsive Rules & Non-Blocking Overlay',
+    fn: async () => {
+      const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
+      const cssPath = path.join(ROOT_DIR, 'client/css/steampunk.css');
+      const css = fs.readFileSync(cssPath, 'utf8');
+
+      // 1. Verify Hamburger Button & Drawer in HTML
+      assert.ok(html.includes('id="btnHamburgerToggle"'), 'index.html must include #btnHamburgerToggle');
+      assert.ok(html.includes('id="mobileNavDrawer"'), 'index.html must include #mobileNavDrawer');
+      assert.ok(html.includes('id="btnCloseMobileNav"'), 'index.html must include #btnCloseMobileNav');
+      assert.ok(html.includes('id="mobileNavBackdrop"'), 'index.html must include #mobileNavBackdrop');
+      assert.ok(html.includes('id="mNavBtnHome"'), 'index.html must include #mNavBtnHome');
+      assert.ok(html.includes('id="mNavBtnLobby"'), 'index.html must include #mNavBtnLobby');
+      assert.ok(html.includes('id="mNavBtnEditor"'), 'index.html must include #mNavBtnEditor');
+      assert.ok(html.includes('id="mNavBtnWorkshop"'), 'index.html must include #mNavBtnWorkshop');
+      assert.ok(html.includes('id="mNavBtnGame"'), 'index.html must include #mNavBtnGame');
+      assert.ok(html.includes('id="mNavBtnAuth"'), 'index.html must include #mNavBtnAuth');
+
+      // 2. Verify Game Loading Overlay in HTML
+      assert.ok(html.includes('id="gameLoadingOverlay"'), 'index.html must include #gameLoadingOverlay');
+      assert.ok(html.includes('id="gameLoadingTitle"'), 'index.html must include #gameLoadingTitle');
+      assert.ok(html.includes('id="gameLoadingDesc"'), 'index.html must include #gameLoadingDesc');
+
+      // 3. Verify CSS styling for hamburger, drawer, and single column layout
+      assert.ok(css.includes('.btn-hamburger'), 'steampunk.css must style .btn-hamburger');
+      assert.ok(css.includes('.mobile-nav-drawer'), 'steampunk.css must style .mobile-nav-drawer');
+      assert.ok(css.includes('.mobile-nav-backdrop'), 'steampunk.css must style .mobile-nav-backdrop');
+      assert.ok(css.includes('.game-loading-overlay'), 'steampunk.css must style .game-loading-overlay');
+      assert.ok(css.includes('overflow-x: hidden !important'), 'steampunk.css must enforce zero horizontal scroll');
+      assert.ok(css.includes('.mode-selector-grid'), 'steampunk.css must responsive format mode selector');
+    }
   }
 ];
 

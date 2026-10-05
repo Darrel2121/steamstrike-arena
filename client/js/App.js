@@ -25,6 +25,10 @@ export class App {
     this.gameLoopActive = false;
     this.animationFrameId = null;
     this.isMatchOver = false;
+    this.soloWarmupTimer = null;
+    this.landscapePromptDismissed = Boolean(
+      typeof sessionStorage !== 'undefined' && sessionStorage.getItem('steamstrike_dismiss_rotate')
+    );
 
     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
@@ -63,6 +67,22 @@ export class App {
       auth: document.getElementById('navBtnAuth')
     };
 
+    // Mobile Navigation ("Бутерброд")
+    this.btnHamburgerToggle = document.getElementById('btnHamburgerToggle');
+    this.mobileNavDrawer = document.getElementById('mobileNavDrawer');
+    this.btnCloseMobileNav = document.getElementById('btnCloseMobileNav');
+    this.mobileNavBackdrop = document.getElementById('mobileNavBackdrop');
+    this.mHeaderUserBadge = document.getElementById('mHeaderUserBadge');
+    this.mNavButtons = {
+      home: document.getElementById('mNavBtnHome'),
+      lobby: document.getElementById('mNavBtnLobby'),
+      editor: document.getElementById('mNavBtnEditor'),
+      game: document.getElementById('mNavBtnGame'),
+      workshop: document.getElementById('mNavBtnWorkshop'),
+      auth: document.getElementById('mNavBtnAuth'),
+      fullscreen: document.getElementById('mBtnGlobalFullscreen')
+    };
+
     this.headerBrand = document.getElementById('headerBrand');
     this.headerUserBadge = document.getElementById('headerUserBadge');
 
@@ -99,6 +119,11 @@ export class App {
     this.btnIdleSoloPlay = document.getElementById('btnIdleSoloPlay');
     this.btnIdleGoLobby = document.getElementById('btnIdleGoLobby');
     this.btnIdleGoHome = document.getElementById('btnIdleGoHome');
+
+    // Arena Loading Overlay
+    this.gameLoadingOverlay = document.getElementById('gameLoadingOverlay');
+    this.gameLoadingTitle = document.getElementById('gameLoadingTitle');
+    this.gameLoadingDesc = document.getElementById('gameLoadingDesc');
 
     // Landscape Orientation Prompt elements for mobile
     this.landscapeRotatePrompt = document.getElementById('landscapeRotatePrompt');
@@ -253,6 +278,85 @@ export class App {
       this.navButtons.auth.addEventListener('click', () => this.authModal.open());
     }
 
+    // Mobile Navigation ("Бутерброд") Drawer Controls
+    const openMobileDrawer = () => {
+      if (this.mobileNavDrawer) {
+        this.mobileNavDrawer.classList.add('open');
+        this.btnHamburgerToggle?.classList.add('open');
+        this.btnHamburgerToggle?.setAttribute('aria-expanded', 'true');
+      }
+    };
+    const closeMobileDrawer = () => {
+      if (this.mobileNavDrawer) {
+        this.mobileNavDrawer.classList.remove('open');
+        this.btnHamburgerToggle?.classList.remove('open');
+        this.btnHamburgerToggle?.setAttribute('aria-expanded', 'false');
+      }
+    };
+
+    if (this.btnHamburgerToggle) {
+      this.btnHamburgerToggle.addEventListener('click', () => {
+        const isOpen = this.mobileNavDrawer?.classList.contains('open');
+        if (isOpen) {
+          closeMobileDrawer();
+        } else {
+          openMobileDrawer();
+        }
+      });
+    }
+
+    if (this.btnCloseMobileNav) {
+      this.btnCloseMobileNav.addEventListener('click', closeMobileDrawer);
+    }
+    if (this.mobileNavBackdrop) {
+      this.mobileNavBackdrop.addEventListener('click', closeMobileDrawer);
+    }
+
+    if (this.mNavButtons) {
+      if (this.mNavButtons.home) {
+        this.mNavButtons.home.addEventListener('click', () => {
+          this.switchView('home');
+          closeMobileDrawer();
+        });
+      }
+      if (this.mNavButtons.lobby) {
+        this.mNavButtons.lobby.addEventListener('click', () => {
+          this.switchView('lobby');
+          closeMobileDrawer();
+        });
+      }
+      if (this.mNavButtons.editor) {
+        this.mNavButtons.editor.addEventListener('click', () => {
+          this.switchView('editor');
+          closeMobileDrawer();
+        });
+      }
+      if (this.mNavButtons.game) {
+        this.mNavButtons.game.addEventListener('click', () => {
+          this.switchView('game');
+          closeMobileDrawer();
+        });
+      }
+      if (this.mNavButtons.workshop) {
+        this.mNavButtons.workshop.addEventListener('click', () => {
+          this.switchView('workshop');
+          closeMobileDrawer();
+        });
+      }
+      if (this.mNavButtons.auth) {
+        this.mNavButtons.auth.addEventListener('click', () => {
+          this.authModal.open();
+          closeMobileDrawer();
+        });
+      }
+      if (this.mNavButtons.fullscreen) {
+        this.mNavButtons.fullscreen.addEventListener('click', () => {
+          this.toggleFullscreen();
+          closeMobileDrawer();
+        });
+      }
+    }
+
     // Home / Landing Page Interactive Controls
     if (this.btnModeSolo && this.btnModeOnline) {
       this.btnModeSolo.addEventListener('click', () => {
@@ -271,11 +375,6 @@ export class App {
     }
 
     if (this.btnRandomCallsign) {
-      const callsigns = [
-        'FoundryRanger', 'BrassFalcon', 'SteamHunter', 'IronSentry',
-        'ClockworkFox', 'AetherScout', 'CopperPhantom', 'BoilerKnight',
-        'GearStriker', 'ShadowVanguard'
-      ];
       this.btnRandomCallsign.addEventListener('click', () => {
         const rand = generateSteampunkCallsign();
         if (this.homePlayerNameInput) this.homePlayerNameInput.value = rand;
@@ -293,7 +392,15 @@ export class App {
     }
 
     if (this.btnHeroQuickPlay) {
-      this.btnHeroQuickPlay.addEventListener('click', () => {
+      const handleHeroQuickPlay = (e) => {
+        if (e && e.type === 'touchend') {
+          e.preventDefault();
+        }
+        if (this.btnHeroQuickPlay.disabled) return;
+
+        this.btnHeroQuickPlay.disabled = true;
+        this.btnHeroQuickPlay.innerHTML = '<span class="spin-gear">⚙</span> ЗАПУСК БОЮ...';
+
         const name = (this.homePlayerNameInput?.value || 'FoundryRanger_1').trim();
         if (this.lobbyUI?.dom?.playerNameInput) this.lobbyUI.dom.playerNameInput.value = name;
         if (this.progressionManager?.profile && this.progressionManager.profile.username !== name) {
@@ -314,8 +421,12 @@ export class App {
           if (this.lobbyUI?.dom?.roomPasswordInput) this.lobbyUI.dom.roomPasswordInput.value = pwd;
           this.switchView('lobby');
           this.lobbyUI.handleCreateRoom(room, pwd || null);
+          this.resetHeroPlayButton();
         }
-      });
+      };
+
+      this.btnHeroQuickPlay.addEventListener('click', handleHeroQuickPlay);
+      this.btnHeroQuickPlay.addEventListener('touchend', handleHeroQuickPlay, { passive: false });
     }
 
     if (this.btnPortalEditor) {
@@ -335,6 +446,9 @@ export class App {
 
         if (this.headerUserBadge && p) {
           this.headerUserBadge.textContent = `${icon} ${p.username || 'Механік'}`;
+        }
+        if (this.mHeaderUserBadge && p) {
+          this.mHeaderUserBadge.textContent = `${icon} ${p.username || 'Механік'}`;
         }
         if (this.homeUserCallsign && p) {
           this.homeUserCallsign.textContent = `${icon} ${p.username || 'FoundryRanger_1'}`;
@@ -418,6 +532,10 @@ export class App {
     // Mobile Landscape Orientation Prompt Actions
     if (this.btnRotateFullscreen) {
       this.btnRotateFullscreen.addEventListener('click', async () => {
+        this.landscapePromptDismissed = true;
+        try {
+          sessionStorage.setItem('steamstrike_dismiss_rotate', '1');
+        } catch (_) {}
         await this.toggleFullscreen();
         await this.requestLandscapeOrientation();
         if (this.landscapeRotatePrompt) {
@@ -428,6 +546,10 @@ export class App {
 
     if (this.btnDismissRotatePrompt) {
       this.btnDismissRotatePrompt.addEventListener('click', () => {
+        this.landscapePromptDismissed = true;
+        try {
+          sessionStorage.setItem('steamstrike_dismiss_rotate', '1');
+        } catch (_) {}
         if (this.landscapeRotatePrompt) {
           this.landscapeRotatePrompt.style.display = 'none';
         }
@@ -473,6 +595,13 @@ export class App {
     });
   }
 
+  resetHeroPlayButton() {
+    if (this.btnHeroQuickPlay) {
+      this.btnHeroQuickPlay.disabled = false;
+      this.btnHeroQuickPlay.innerHTML = '⚔ В БІЙ! (СТАРТ ГРИ)';
+    }
+  }
+
   async toggleFullscreen() {
     if (!document.fullscreenElement) {
       try {
@@ -509,6 +638,10 @@ export class App {
    */
   checkLandscapeOrientationPrompt() {
     if (!this.landscapeRotatePrompt) return;
+    if (this.landscapePromptDismissed) {
+      this.landscapeRotatePrompt.style.display = 'none';
+      return;
+    }
     if (typeof window === 'undefined') return;
 
     const isPortrait = window.innerHeight > window.innerWidth;
@@ -621,6 +754,18 @@ export class App {
       }
     });
 
+    if (this.mNavButtons) {
+      Object.keys(this.mNavButtons).forEach(key => {
+        if (this.mNavButtons[key]) {
+          if (key === viewName) {
+            this.mNavButtons[key].classList.add('active');
+          } else {
+            this.mNavButtons[key].classList.remove('active');
+          }
+        }
+      });
+    }
+
     if (viewName === 'home') {
       this.populateHeroMapList();
       if (this.heroMode === 'online') {
@@ -664,6 +809,15 @@ export class App {
    * @param {Object} matchData - S2C_MATCH_INIT payload
    */
   startLiveMatch(matchData) {
+    if (this.soloWarmupTimer) {
+      clearTimeout(this.soloWarmupTimer);
+      this.soloWarmupTimer = null;
+    }
+    if (this.gameLoadingOverlay) {
+      this.gameLoadingOverlay.style.display = 'none';
+    }
+    this.resetHeroPlayButton();
+
     if (this.gameIdleOverlay) {
       this.gameIdleOverlay.style.display = 'none';
     }
@@ -765,6 +919,21 @@ export class App {
     }
     const targetMap = map || this.editor?.map || createDefaultMap();
     this.activeMatchMap = targetMap;
+
+    // Immediately switch to game view with loading overlay so players see immediate progress
+    this.switchView('game');
+    if (this.gameLoadingOverlay) {
+      this.gameLoadingOverlay.style.display = 'flex';
+      if (this.gameLoadingTitle) this.gameLoadingTitle.textContent = 'ПІДКЛЮЧЕННЯ ДО АРЕНИ...';
+      if (this.gameLoadingDesc) this.gameLoadingDesc.textContent = 'Зв\'язок із сервером та генерація ботів...';
+    }
+
+    if (this.soloWarmupTimer) clearTimeout(this.soloWarmupTimer);
+    this.soloWarmupTimer = setTimeout(() => {
+      if (this.gameLoadingDesc && !this.gameLoopActive) {
+        this.gameLoadingDesc.textContent = 'Сервер прокидається з режиму сну... Зачекайте декілька секунд (холодний старт Render)';
+      }
+    }, 3500);
 
     if (this.progressionManager) {
       const stats = this.progressionManager.getCalculatedStats();
@@ -954,6 +1123,14 @@ export class App {
   }
 
   returnToLobbyFromMatch() {
+    if (this.soloWarmupTimer) {
+      clearTimeout(this.soloWarmupTimer);
+      this.soloWarmupTimer = null;
+    }
+    if (this.gameLoadingOverlay) {
+      this.gameLoadingOverlay.style.display = 'none';
+    }
+    this.resetHeroPlayButton();
     this.isMatchOver = false;
     this.activeMatchMap = null;
     if (this.gameRenderer) {

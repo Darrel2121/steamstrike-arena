@@ -14,9 +14,10 @@
   <header class="steampunk-header">
     <div class="header-title-wrap" id="headerBrand" title="На головну сторінку" style="cursor: pointer;">
       <div class="gear-icon"></div>
-      <div class="header-title">Steamstrike: Tactical Arena</div>
+      <div class="header-title">Steamstrike</div>
     </div>
-    <nav class="header-nav">
+    <!-- Desktop Navigation Bar -->
+    <nav class="header-nav" id="desktopNav">
       <button id="navBtnHome" class="btn-steampunk active">🏠 Сайт (Home)</button>
       <button id="navBtnLobby" class="btn-steampunk btn-iron">⚔ Лобі (Lobby)</button>
       <button id="navBtnEditor" class="btn-steampunk btn-iron">🗺 Редактор карт</button>
@@ -25,7 +26,36 @@
       <button id="btnGlobalFullscreen" class="btn-steampunk btn-iron" title="Повний екран (F / F11)">⛶ Повний екран</button>
       <button id="navBtnAuth" class="btn-steampunk btn-iron"><span id="headerUserBadge">👤 Профіль / Вхід</span></button>
     </nav>
+    <!-- Mobile Hamburger Button ("Бутерброд") -->
+    <button type="button" id="btnHamburgerToggle" class="btn-hamburger" aria-label="Меню сайту" title="Меню сайту">
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+      <span class="hamburger-bar"></span>
+    </button>
   </header>
+
+  <!-- Mobile Navigation Drawer / Dropdown Panel -->
+  <div id="mobileNavDrawer" class="mobile-nav-drawer" style="display: none;">
+    <div class="mobile-nav-backdrop" id="mobileNavBackdrop"></div>
+    <div class="mobile-nav-content steampunk-panel">
+      <div class="mobile-nav-header">
+        <div class="mobile-nav-brand">
+          <div class="gear-icon" style="width: 20px; height: 20px;"></div>
+          <span>МЕНЮ САЙТУ</span>
+        </div>
+        <button type="button" id="btnCloseMobileNav" class="mobile-nav-close" title="Закрити меню">✕</button>
+      </div>
+      <div class="mobile-nav-links">
+        <button id="mNavBtnHome" class="mobile-nav-btn active">🏠 Головна сторінка</button>
+        <button id="mNavBtnLobby" class="mobile-nav-btn">⚔ Мережеве лобі</button>
+        <button id="mNavBtnEditor" class="mobile-nav-btn">🗺 Редактор карт</button>
+        <button id="mNavBtnWorkshop" class="mobile-nav-btn">⚙ Майстерня та прокачка</button>
+        <button id="mNavBtnGame" class="mobile-nav-btn">🎮 Бойова арена (Гра)</button>
+        <button id="mBtnGlobalFullscreen" class="mobile-nav-btn">⛶ На весь екран</button>
+        <button id="mNavBtnAuth" class="mobile-nav-btn auth-pill"><span id="mHeaderUserBadge">👤 Профіль / Вхід</span></button>
+      </div>
+    </div>
+  </div>
 
   <!-- ======================================================================
        VIEW 0: Steampunk Game Portal & Landing Website (Home)
@@ -115,10 +145,12 @@
             <!-- Online Room Name & Actions (multiplayer mode) -->
             <div class="console-field" id="homeRoomField" style="display: none; flex-direction: column; gap: 8px;">
               <label for="homeRoomInput">Код або назва кімнати (Chamber ID):</label>
-              <div style="display: flex; gap: 8px;">
-                <input type="text" id="homeRoomInput" class="steampunk-input" value="Sector_Omega" maxlength="24" style="flex: 1;">
-                <button type="button" id="btnHomeJoinRoom" class="btn-steampunk btn-brass" style="white-space: nowrap;">⚡ Приєднатися</button>
-                <button type="button" id="btnHomeCreateRoom" class="btn-steampunk btn-copper" style="white-space: nowrap;">⚙ Створити</button>
+              <div class="room-input-action-wrap">
+                <input type="text" id="homeRoomInput" class="steampunk-input" value="Sector_Omega" maxlength="24" style="flex: 1; min-width: 140px;">
+                <div class="room-action-btns-wrap">
+                  <button type="button" id="btnHomeJoinRoom" class="btn-steampunk btn-brass" style="white-space: nowrap; flex: 1;">⚡ Приєднатися</button>
+                  <button type="button" id="btnHomeCreateRoom" class="btn-steampunk btn-copper" style="white-space: nowrap; flex: 1;">⚙ Створити</button>
+                </div>
               </div>
 
               <!-- Password Protection Field -->
@@ -709,17 +741,26 @@
           </div>
         </div>
 
-        <!-- Landscape Orientation Lock Prompt for Mobile -->
+        <!-- Landscape Orientation Banner (Non-blocking notification) -->
         <div id="landscapeRotatePrompt" class="landscape-rotate-prompt" style="display: none;">
           <div class="rotate-prompt-card steampunk-panel">
-            <div class="rotate-phone-anim">📱 ➔ 📲</div>
-            <div class="rotate-title">ПОВЕРНІТЬ ПРИСТРІЙ ГОРИЗОНТАЛЬНО</div>
-            <div class="rotate-desc">Для тактичного огляду арени, керування ліхтарем та зручного доступу до віртуального джойстика і кнопок бою.</div>
+            <div class="rotate-prompt-header">
+              <span class="rotate-phone-anim">📱➔📲</span>
+              <span class="rotate-title">Поверніть горизонтально</span>
+              <button type="button" id="btnDismissRotatePrompt" class="rotate-close-btn" title="Закрити підказку">✕</button>
+            </div>
+            <div class="rotate-desc">Для ширшого огляду арени та тактичного керування.</div>
             <div class="rotate-prompt-buttons">
-              <button type="button" id="btnRotateFullscreen" class="btn-steampunk btn-launch">⛶ На весь екран та розгорнути</button>
-              <button type="button" id="btnDismissRotatePrompt" class="btn-steampunk btn-iron">Продовжити так ✕</button>
+              <button type="button" id="btnRotateFullscreen" class="btn-steampunk btn-launch" style="padding: 6px 14px; font-size: 12px;">⛶ На весь екран</button>
             </div>
           </div>
+        </div>
+
+        <!-- Arena Loading Overlay (Visible during connection / server warmup) -->
+        <div id="gameLoadingOverlay" class="game-loading-overlay" style="display: none;">
+          <div class="loading-gear-spin"></div>
+          <div id="gameLoadingTitle" class="loading-title">⚙ ПІДГОТОВКА АРЕНИ...</div>
+          <div id="gameLoadingDesc" class="loading-desc">З'єднання з сервером та запуск бойових автоматонів...</div>
         </div>
       </div>
 
