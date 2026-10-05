@@ -64,6 +64,10 @@ export class NetworkClient {
     this.lastErrorDecayTime = 0;
     this.isPredictionInitialized = false;
 
+    // Elimination and authoritative respawn countdown tracking
+    this.isLocallyDead = false;
+    this.clientRespawnTimer = 0;
+
     // Kinematic configuration matching server Room.js
     this.playerSpeed = 180; // pixels per second
     this.sprintMultiplier = 1.5;
@@ -268,12 +272,20 @@ export class NetworkClient {
       }
 
       case PROTOCOL_MSG_TYPES.S2C_ELIMINATION_EVENT: {
+        if (payload?.victimId === this.playerId) {
+          this.isLocallyDead = true;
+          this.clientRespawnTimer = (typeof payload?.respawnTimer === 'number' && payload.respawnTimer > 0)
+            ? payload.respawnTimer
+            : 0;
+        }
         this.emit('elimination', payload);
         break;
       }
 
       case PROTOCOL_MSG_TYPES.S2C_RESPAWN_EVENT: {
         if (payload?.entityId === this.playerId) {
+          this.isLocallyDead = false;
+          this.clientRespawnTimer = 0;
           this.predictedX = payload.x;
           this.predictedY = payload.y;
           this.predictedAngle = payload.angle || 0;
@@ -322,10 +334,16 @@ export class NetworkClient {
       this.snapshotBuffer.shift();
     }
 
-    // Reconcile local player position if present in snapshot
+    // Reconcile local player position and status if present in snapshot
     if (this.playerId && Array.isArray(snapshot.players)) {
       const serverPlayer = snapshot.players.find(p => p.id === this.playerId);
       if (serverPlayer) {
+        if (serverPlayer.isAlive && (serverPlayer.hp === undefined || serverPlayer.hp > 0)) {
+          this.isLocallyDead = false;
+          this.clientRespawnTimer = 0;
+        } else if (typeof serverPlayer.respawnTimer === 'number' && serverPlayer.respawnTimer > 0) {
+          this.clientRespawnTimer = serverPlayer.respawnTimer;
+        }
         this.reconcile(serverPlayer, snapshot.tick, snapshot.timestamp);
       }
     }
@@ -737,6 +755,10 @@ export class NetworkClient {
       if (Math.abs(this.visualErrorX) < 0.02) this.visualErrorX = 0;
       if (Math.abs(this.visualErrorY) < 0.02) this.visualErrorY = 0;
     }
+
+    if (this.clientRespawnTimer > 0) {
+      this.clientRespawnTimer = Math.max(0, this.clientRespawnTimer - dt);
+    }
   }
 
   /**
@@ -755,6 +777,12 @@ export class NetworkClient {
       return null;
     }
 
+    const isAlive = !this.isLocallyDead && (serverPlayer ? serverPlayer.isAlive : true);
+    const hp = this.isLocallyDead ? 0 : (serverPlayer?.hp ?? 100);
+    const respawnTimer = this.isLocallyDead
+      ? (this.clientRespawnTimer > 0 ? this.clientRespawnTimer : (serverPlayer?.respawnTimer || 0))
+      : (serverPlayer?.respawnTimer || 0);
+
     return {
       id: this.playerId || 'local_player',
       name: serverPlayer?.name || 'LocalPlayer',
@@ -763,19 +791,19 @@ export class NetworkClient {
       renderX: this.predictedX + (this.visualErrorX || 0),
       renderY: this.predictedY + (this.visualErrorY || 0),
       angle: this.predictedAngle,
-      hp: serverPlayer?.hp ?? 100,
+      hp,
       maxHp: serverPlayer?.maxHp ?? 100,
       stamina: Math.round(this.predictedStamina ?? serverPlayer?.stamina ?? 100),
       maxStamina: serverPlayer?.maxStamina ?? 100,
       team: serverPlayer?.team || this.team || null,
       kills: serverPlayer?.kills || 0,
       deaths: serverPlayer?.deaths || 0,
-      respawnTimer: serverPlayer?.respawnTimer || 0,
+      respawnTimer,
       ammo: serverPlayer?.ammo ?? 6,
       maxAmmo: serverPlayer?.maxAmmo ?? 6,
       weaponId: serverPlayer?.weaponId || this.equippedWeapon || 'revolver',
       weaponName: serverPlayer?.weaponName || WEAPON_DEFINITIONS[serverPlayer?.weaponId || this.equippedWeapon]?.name || 'Годинниковий револьвер',
-      isAlive: serverPlayer?.isAlive ?? true,
+      isAlive,
       isReloading: serverPlayer?.isReloading ?? false,
       isInvulnerable: serverPlayer?.isInvulnerable ?? false,
       isHost: serverPlayer?.isHost ?? false,

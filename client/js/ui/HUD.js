@@ -186,17 +186,20 @@ export class HUD {
     // 5. Top-Center: Game Mode & Match Scoreboard
     this.renderGameModeScoreboard(ctx, width, height, player, matchContext);
 
+    const isRespawnMode = matchContext && (matchContext.gameMode === 'ffa_dm' || matchContext.gameMode === 'team_dm');
+
     // 5.5 Spectator Banner when eliminated in permadeath mode
-    if (!player.isAlive && (!player.respawnTimer || player.respawnTimer <= 0) && !this.matchOutcome) {
+    if (!player.isAlive && !isRespawnMode && !this.matchOutcome) {
       this.renderSpectatorBanner(ctx, width, height);
     }
 
     // 6. In-Canvas Toast Notifications
     this.renderNotifications(ctx, width, height, player);
 
-    // 7. Respawn Countdown Overlay (when local player is waiting to respawn)
-    if (!player.isAlive && player.respawnTimer > 0) {
-      this.renderRespawnOverlay(ctx, width, height, player.respawnTimer);
+    // 7. Respawn Countdown Overlay (when local player is waiting to respawn in deathmatch)
+    if (!player.isAlive && isRespawnMode && !this.matchOutcome) {
+      const displayTimer = Math.max(0, player.respawnTimer || 0);
+      this.renderRespawnOverlay(ctx, width, height, displayTimer);
     }
 
     // 8. Authoritative Canvas Match Over Overlay (When match concludes)
@@ -1289,11 +1292,11 @@ export class HUD {
     }
 
     // Countdown seconds text
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 36px monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 38px monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`${respawnTimer.toFixed(1)}`, cx, cy);
+    ctx.fillText(`${respawnTimer.toFixed(1)}с`, cx, cy);
 
     // Banner message
     ctx.fillStyle = '#ffcf48';

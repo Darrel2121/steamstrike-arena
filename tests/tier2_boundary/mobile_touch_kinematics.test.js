@@ -225,7 +225,7 @@ export const tests = [
       assert.ok(html.includes('id="mNavBtnLobby"'), 'index.html must include #mNavBtnLobby');
       assert.ok(html.includes('id="mNavBtnEditor"'), 'index.html must include #mNavBtnEditor');
       assert.ok(html.includes('id="mNavBtnWorkshop"'), 'index.html must include #mNavBtnWorkshop');
-      assert.ok(html.includes('id="mNavBtnGame"'), 'index.html must include #mNavBtnGame');
+      assert.ok(!html.includes('id="mNavBtnGame"'), 'index.html must remove redundant #mNavBtnGame');
       assert.ok(html.includes('id="mNavBtnAuth"'), 'index.html must include #mNavBtnAuth');
 
       // 2. Verify Game Loading Overlay in HTML

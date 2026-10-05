@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { runSuiteHelper } from '../harnesses/assert_helpers.js';
 import { canonicalFoundryMap } from '../fixtures/maps.fixture.js';
 import { GAME_MODES } from '../../shared/Constants.js';
+import { PROTOCOL_MSG_TYPES } from '../../shared/Protocol.js';
 import { Room } from '../../server/Room.js';
 import { Player } from '../../server/entities/Player.js';
 
@@ -230,6 +231,52 @@ export const tests = [
       assert.ok(snapP1, 'Player 1 snapshot must exist');
       assert.strictEqual(snapP1.team, 'team1');
       assert.strictEqual(snapP1.stamina, 43, 'Stamina should be rounded in snapshot');
+    }
+  },
+  {
+    id: 'T3.GM7',
+    name: 'Long Bot Match Duration & Steampunk UI Navigation Integrity',
+    fn: async () => {
+      // 1. Verify Room handles high target kills for long bot battles (50, 100, 999)
+      const room = new Room({
+        id: 'long_match_room',
+        map: canonicalFoundryMap,
+        gameMode: GAME_MODES.FFA_DM,
+        targetKills: 100
+      });
+      assert.strictEqual(room.targetKills, 100, 'Must support 100 kills target');
+      assert.strictEqual(room.isRespawnMode(), true, 'FFA_DM must be respawn mode');
+
+      room.setGameMode(GAME_MODES.FFA_DM, 999);
+      assert.strictEqual(room.targetKills, 999, 'Must support 999 endless bot training target');
+
+      // 2. Verify elimination in respawn mode sets 3.0s timer and broadcasts
+      const p1 = room.addPlayer('p1', 'PlayerOne');
+      room.fillWithBots();
+      room.startMatch();
+
+      let lastEliminationPacket = null;
+      let lastRespawnPacket = null;
+      room.broadcast = (type, payload) => {
+        if (type === PROTOCOL_MSG_TYPES.S2C_ELIMINATION_EVENT) lastEliminationPacket = payload;
+        if (type === PROTOCOL_MSG_TYPES.S2C_RESPAWN_EVENT) lastRespawnPacket = payload;
+      };
+
+      room.applyDamage(p1.id, 'bot_0', 200);
+      assert.strictEqual(p1.isAlive, false, 'Player must be dead');
+      assert.strictEqual(p1.respawnTimer, 3.0, 'Player respawnTimer must be 3.0');
+      assert.ok(lastEliminationPacket, 'Elimination packet must be sent');
+      assert.strictEqual(lastEliminationPacket.victimId, p1.id);
+      assert.strictEqual(lastEliminationPacket.respawnTimer, 3.0);
+
+      // Advance 95 ticks (~3.1s at 30Hz) to trigger respawn
+      for (let i = 0; i < 95; i++) {
+        room.tick();
+      }
+      assert.strictEqual(p1.isAlive, true, 'Player must be respawned alive');
+      assert.strictEqual(p1.hp, p1.maxHp, 'Player must have full HP upon respawn');
+      assert.ok(lastRespawnPacket, 'Respawn packet must be sent');
+      assert.strictEqual(lastRespawnPacket.entityId, p1.id);
     }
   }
 ];

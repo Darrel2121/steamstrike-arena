@@ -62,7 +62,6 @@ export class App {
       home: document.getElementById('navBtnHome'),
       lobby: document.getElementById('navBtnLobby'),
       editor: document.getElementById('navBtnEditor'),
-      game: document.getElementById('navBtnGame'),
       workshop: document.getElementById('navBtnWorkshop'),
       auth: document.getElementById('navBtnAuth')
     };
@@ -77,7 +76,6 @@ export class App {
       home: document.getElementById('mNavBtnHome'),
       lobby: document.getElementById('mNavBtnLobby'),
       editor: document.getElementById('mNavBtnEditor'),
-      game: document.getElementById('mNavBtnGame'),
       workshop: document.getElementById('mNavBtnWorkshop'),
       auth: document.getElementById('mNavBtnAuth'),
       fullscreen: document.getElementById('mBtnGlobalFullscreen')
@@ -164,6 +162,16 @@ export class App {
 
     this.networkClient.on('elimination', (payload) => {
       this.handleElimination(payload);
+    });
+
+    this.networkClient.on('respawn', (payload) => {
+      if (this.gameRenderer && payload?.entityId) {
+        this.gameRenderer.removeWreckById(payload.entityId);
+        if (payload.entityId === this.localPlayerId) {
+          this.gameRenderer.centerCameraOn(payload.x, payload.y);
+          this.gameRenderer.addNotification('⚙ Автоматон відновлено! Повернення у бій!', { type: 'info', color: '#5ffbf1', duration: 2.5 });
+        }
+      }
     });
 
     this.networkClient.on('damage', (payload) => {
@@ -409,7 +417,7 @@ export class App {
         if (this.lobbyUI?.dom?.lobbyMapSelect && this.homeMapSelect) {
           this.lobbyUI.dom.lobbyMapSelect.value = this.homeMapSelect.value;
         }
-        const selectedMode = document.getElementById('homeGameModeSelect')?.value || 'solo_elim';
+        const selectedMode = document.getElementById('homeGameModeSelect')?.value || 'ffa_dm';
         if (this.lobbyUI?.dom?.lobbyGameModeSelect) {
           this.lobbyUI.dom.lobbyGameModeSelect.value = selectedMode;
         }
@@ -977,9 +985,11 @@ export class App {
 
     const soloRoomId = `solo_${Date.now().toString(36)}`;
     const playerName = (this.lobbyUI?.dom?.playerNameInput?.value || 'SoloCadet').trim();
-    const gameMode = document.getElementById('homeGameModeSelect')?.value || document.getElementById('lobbyGameModeSelect')?.value || 'solo_elim';
+    const gameMode = document.getElementById('homeGameModeSelect')?.value || document.getElementById('lobbyGameModeSelect')?.value || 'ffa_dm';
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
-    const targetKills = isDm ? (gameMode === 'team_dm' ? 15 : 10) : 0;
+    const rawTarget = document.getElementById('homeTargetKillsSelect')?.value || document.getElementById('lobbyTargetKillsInput')?.value;
+    const selectedTarget = parseInt(rawTarget, 10);
+    const targetKills = isDm ? (Number.isFinite(selectedTarget) && selectedTarget > 0 ? selectedTarget : (gameMode === 'team_dm' ? 15 : 30)) : 0;
 
     const doLaunch = () => {
       const prof = this.progressionManager?.getProfile();

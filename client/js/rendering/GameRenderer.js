@@ -315,6 +315,29 @@ export class GameRenderer {
   }
 
   /**
+   * Immediately removes a wreck by entity ID upon respawn.
+   * @param {string} id
+   */
+  removeWreckById(id) {
+    if (!id) return;
+    this.wreckedEntities.delete(id);
+  }
+
+  /**
+   * Centers the viewport camera immediately on a world coordinate (e.g. on respawn).
+   * @param {number} x
+   * @param {number} y
+   */
+  centerCameraOn(x, y) {
+    if (typeof x !== 'number' || typeof y !== 'number') return;
+    const zoom = this.camera.zoom || 1.0;
+    const viewWorldW = this.camera.width / zoom;
+    const viewWorldH = this.camera.height / zoom;
+    this.camera.x = x - viewWorldW / 2;
+    this.camera.y = y - viewWorldH / 2;
+  }
+
+  /**
    * Forwards match outcome to HUD for in-canvas presentation.
    * @param {Object} outcome
    */

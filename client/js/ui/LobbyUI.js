@@ -74,6 +74,8 @@ export class LobbyUI {
       btnSelectTeam1: document.getElementById('btnSelectTeam1'),
       btnSelectTeam2: document.getElementById('btnSelectTeam2'),
       homeGameModeSelect: document.getElementById('homeGameModeSelect'),
+      homeTargetKillsGroup: document.getElementById('homeTargetKillsGroup'),
+      homeTargetKillsSelect: document.getElementById('homeTargetKillsSelect'),
       btnCopyRoomCode: document.getElementById('btnCopyRoomCode'),
       btnCopyRoomLink: document.getElementById('btnCopyRoomLink'),
       lobbyCopyToast: document.getElementById('lobbyCopyToast'),
@@ -114,15 +116,26 @@ export class LobbyUI {
     if (this.dom.homeGameModeSelect) {
       this.dom.homeGameModeSelect.addEventListener('change', () => {
         const mode = this.dom.homeGameModeSelect.value;
+        const isDm = mode === 'ffa_dm' || mode === 'team_dm';
+        if (this.dom.homeTargetKillsGroup) {
+          this.dom.homeTargetKillsGroup.style.display = isDm ? 'flex' : 'none';
+        }
         if (this.dom.lobbyGameModeSelect) {
           this.dom.lobbyGameModeSelect.value = mode;
-          const isDm = mode === 'ffa_dm' || mode === 'team_dm';
           if (this.dom.lobbyTargetKillsGroup) {
             this.dom.lobbyTargetKillsGroup.style.display = isDm ? 'block' : 'none';
           }
-          if (this.dom.lobbyTargetKillsInput) {
-            this.dom.lobbyTargetKillsInput.value = mode === 'team_dm' ? '15' : '10';
+          if (this.dom.lobbyTargetKillsInput && this.dom.homeTargetKillsSelect) {
+            this.dom.lobbyTargetKillsInput.value = this.dom.homeTargetKillsSelect.value;
           }
+        }
+      });
+    }
+
+    if (this.dom.homeTargetKillsSelect) {
+      this.dom.homeTargetKillsSelect.addEventListener('change', () => {
+        if (this.dom.lobbyTargetKillsInput) {
+          this.dom.lobbyTargetKillsInput.value = this.dom.homeTargetKillsSelect.value;
         }
       });
     }
@@ -130,18 +143,18 @@ export class LobbyUI {
     if (this.dom.lobbyGameModeSelect) {
       this.dom.lobbyGameModeSelect.addEventListener('change', () => {
         const mode = this.dom.lobbyGameModeSelect.value;
+        const isDm = mode === 'ffa_dm' || mode === 'team_dm';
         if (this.dom.homeGameModeSelect) {
           this.dom.homeGameModeSelect.value = mode;
         }
-        const isDm = mode === 'ffa_dm' || mode === 'team_dm';
+        if (this.dom.homeTargetKillsGroup) {
+          this.dom.homeTargetKillsGroup.style.display = isDm ? 'flex' : 'none';
+        }
         if (this.dom.lobbyTargetKillsGroup) {
           this.dom.lobbyTargetKillsGroup.style.display = isDm ? 'block' : 'none';
         }
-        if (this.dom.lobbyTargetKillsInput) {
-          this.dom.lobbyTargetKillsInput.value = mode === 'team_dm' ? '15' : '10';
-        }
         if (this.currentLobbyState && this.isHost()) {
-          const targetKills = isDm ? parseInt(this.dom.lobbyTargetKillsInput?.value || 10, 10) : 0;
+          const targetKills = isDm ? parseInt(this.dom.lobbyTargetKillsInput?.value || 30, 10) : 0;
           this.networkClient.changeGameMode(mode, targetKills);
         }
       });
@@ -641,13 +654,14 @@ export class LobbyUI {
 
     const isHomeContext = (typeof window !== 'undefined' && window.app && window.app.currentView === 'home');
     const gameMode = isHomeContext
-      ? (homeModeSelect?.value || this.dom.lobbyGameModeSelect?.value || 'solo_elim')
-      : (this.dom.lobbyGameModeSelect?.value || homeModeSelect?.value || 'solo_elim');
+      ? (homeModeSelect?.value || this.dom.lobbyGameModeSelect?.value || 'ffa_dm')
+      : (this.dom.lobbyGameModeSelect?.value || homeModeSelect?.value || 'ffa_dm');
     if (this.dom.lobbyGameModeSelect) this.dom.lobbyGameModeSelect.value = gameMode;
     if (homeModeSelect) homeModeSelect.value = gameMode;
 
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
-    const targetKills = isDm ? parseInt(this.dom.lobbyTargetKillsInput?.value || (gameMode === 'team_dm' ? 15 : 10), 10) : 0;
+    const rawTarget = this.dom.homeTargetKillsSelect?.value || this.dom.lobbyTargetKillsInput?.value;
+    const targetKills = isDm ? parseInt(rawTarget || (gameMode === 'team_dm' ? 15 : 30), 10) : 0;
 
     this.showError('');
     this.setButtonBusy(this.dom.btnCreateRoom, '⚙ Створення...');

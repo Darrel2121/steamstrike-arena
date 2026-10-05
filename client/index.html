@@ -18,13 +18,12 @@
     </div>
     <!-- Desktop Navigation Bar -->
     <nav class="header-nav" id="desktopNav">
-      <button id="navBtnHome" class="btn-steampunk active">🏠 Сайт (Home)</button>
-      <button id="navBtnLobby" class="btn-steampunk btn-iron">⚔ Лобі (Lobby)</button>
-      <button id="navBtnEditor" class="btn-steampunk btn-iron">🗺 Редактор карт</button>
-      <button id="navBtnWorkshop" class="btn-steampunk btn-iron">⚙ Майстерня</button>
-      <button id="navBtnGame" class="btn-steampunk btn-iron">🎮 Арена</button>
+      <button id="navBtnHome" class="btn-steampunk active">⚙ Головна</button>
+      <button id="navBtnLobby" class="btn-steampunk btn-iron">⚔ Лобі</button>
+      <button id="navBtnEditor" class="btn-steampunk btn-iron">⚒ Редактор карт</button>
+      <button id="navBtnWorkshop" class="btn-steampunk btn-iron">🛠 Майстерня</button>
       <button id="btnGlobalFullscreen" class="btn-steampunk btn-iron" title="Повний екран (F / F11)">⛶ Повний екран</button>
-      <button id="navBtnAuth" class="btn-steampunk btn-iron"><span id="headerUserBadge">👤 Профіль / Вхід</span></button>
+      <button id="navBtnAuth" class="btn-steampunk btn-iron"><span id="headerUserBadge">🎖 Профіль / Вхід</span></button>
     </nav>
     <!-- Mobile Hamburger Button ("Бутерброд") -->
     <button type="button" id="btnHamburgerToggle" class="btn-hamburger" aria-label="Меню сайту" title="Меню сайту">
@@ -46,13 +45,12 @@
         <button type="button" id="btnCloseMobileNav" class="mobile-nav-close" title="Закрити меню">✕</button>
       </div>
       <div class="mobile-nav-links">
-        <button id="mNavBtnHome" class="mobile-nav-btn active">🏠 Головна сторінка</button>
+        <button id="mNavBtnHome" class="mobile-nav-btn active">⚙ Головна</button>
         <button id="mNavBtnLobby" class="mobile-nav-btn">⚔ Мережеве лобі</button>
-        <button id="mNavBtnEditor" class="mobile-nav-btn">🗺 Редактор карт</button>
-        <button id="mNavBtnWorkshop" class="mobile-nav-btn">⚙ Майстерня та прокачка</button>
-        <button id="mNavBtnGame" class="mobile-nav-btn">🎮 Бойова арена (Гра)</button>
+        <button id="mNavBtnEditor" class="mobile-nav-btn">⚒ Редактор карт</button>
+        <button id="mNavBtnWorkshop" class="mobile-nav-btn">🛠 Майстерня та прокачка</button>
         <button id="mBtnGlobalFullscreen" class="mobile-nav-btn">⛶ На весь екран</button>
-        <button id="mNavBtnAuth" class="mobile-nav-btn auth-pill"><span id="mHeaderUserBadge">👤 Профіль / Вхід</span></button>
+        <button id="mNavBtnAuth" class="mobile-nav-btn auth-pill"><span id="mHeaderUserBadge">🎖 Профіль / Вхід</span></button>
       </div>
     </div>
   </div>
@@ -65,16 +63,16 @@
       
       <!-- Hero Section -->
       <section class="home-hero-section">
-        <div class="hero-steam-badge">⚡ ВЕРСІЯ 1.0 &bull; STEAMSTRIKE TACTICAL ARENA ⚡</div>
+        <div class="hero-steam-badge">⚙ ВЕРСІЯ 1.0 &bull; STEAMSTRIKE TACTICAL ARENA ⚙</div>
         <div class="hero-brand">
           <h1 class="hero-title">STEAMSTRIKE</h1>
           <p class="hero-subtitle">Tactical Arena &bull; Тактичний мультиплеєрний 2D-шутер у світі вікторіанського стімпанку</p>
           <div class="hero-feature-tags">
-            <span class="feature-tag">🔦 Паровий ліхтар FOV</span>
-            <span class="feature-tag">🔊 Акустичний туман війни</span>
-            <span class="feature-tag">🌐 Мережеві бої 30 Hz</span>
-            <span class="feature-tag">🗺 Вбудований редактор карт</span>
-            <span class="feature-tag">⚙ Прокачка арсеналу</span>
+            <span class="feature-tag">⌖ Паровий ліхтар FOV</span>
+            <span class="feature-tag">⚡ Акустичний туман війни</span>
+            <span class="feature-tag">⚔ Мережеві бої 30 Hz</span>
+            <span class="feature-tag">⚒ Вбудований редактор карт</span>
+            <span class="feature-tag">🛠 Прокачка арсеналу</span>
           </div>
         </div>
 
@@ -103,10 +101,10 @@
               <label>Оберіть режим гри:</label>
               <div class="mode-selector-grid">
                 <button type="button" id="btnModeSolo" class="mode-select-btn active" data-mode="solo">
-                  <span class="mode-icon">🤖</span>
+                  <span class="mode-icon">⚔</span>
                   <div class="mode-text">
                     <strong>Одиночний бій</strong>
-                    <small>Миттєвий старт з ботами</small>
+                    <small>Сутичка з бойовими автоматонами</small>
                   </div>
                 </button>
                 <button type="button" id="btnModeOnline" class="mode-select-btn" data-mode="online">
@@ -135,10 +133,22 @@
             <div class="console-field">
               <label for="homeGameModeSelect">Режим бою:</label>
               <select id="homeGameModeSelect" class="steampunk-input" style="cursor: pointer;">
-                <option value="solo_elim">⚔️ Кожен за себе (Остаточна смерть / Battle Royale)</option>
-                <option value="team_elim">👥 Командний бій (Остаточна смерть / Last Team)</option>
-                <option value="ffa_dm">⚡ Кожен сам за себе (З відродженням / 10 кілів)</option>
-                <option value="team_dm">🐺 vs 🦊 Командний бій (З відродженням / 15 кілів)</option>
+                <option value="ffa_dm" selected>⚡ Бій на смерть із відродженням (FFA Deathmatch — Рекомендовано)</option>
+                <option value="team_dm">👥 Командний бій із відродженням (Team Deathmatch)</option>
+                <option value="solo_elim">💀 Виживання: 1 життя (Остаточна смерть / Battle Royale)</option>
+                <option value="team_elim">🛡️ Командне виживання (1 життя / Last Team Standing)</option>
+              </select>
+            </div>
+
+            <!-- Target Kills / Match Length -->
+            <div class="console-field" id="homeTargetKillsGroup">
+              <label for="homeTargetKillsSelect">Ціль матчу (Тривалість гри):</label>
+              <select id="homeTargetKillsSelect" class="steampunk-input" style="cursor: pointer;">
+                <option value="15">15 ліквідацій (Швидка сутичка ~2-3 хв)</option>
+                <option value="30" selected>30 ліквідацій (Стандартний бій ~5-7 хв)</option>
+                <option value="50">50 ліквідацій (Затяжна битва ~10-12 хв)</option>
+                <option value="100">100 ліквідацій (Марафон ~20 хв)</option>
+                <option value="999">999 ліквідацій (Нескінченна практика з ботами)</option>
               </select>
             </div>
 
@@ -193,7 +203,7 @@
         <div class="portals-grid">
           <!-- Portal 1: Map Editor -->
           <div class="portal-card steampunk-panel">
-            <div class="portal-icon">🗺️</div>
+            <div class="portal-icon">⚒️</div>
             <h3>Вбудований редактор карт</h3>
             <p>Малюйте власні поля бою на сітці, розставляйте укриття, точки спавну та ящики з боєприпасами. Грайте на них з друзями!</p>
             <button id="btnPortalEditor" class="btn-steampunk btn-copper">Відкрити редактор ➔</button>
@@ -201,7 +211,7 @@
 
           <!-- Portal 2: Workshop & Progression -->
           <div class="portal-card steampunk-panel">
-            <div class="portal-icon">⚙️</div>
+            <div class="portal-icon">🛠️</div>
             <h3>Майстерня та прокачка</h3>
             <p>Заробляйте XP та шестерні в боях! Покращуйте характеристики персонажа (здоров'я, швидкість, ліхтар) та модернізуйте весь арсенал з 8 видів зброї.</p>
             <button id="btnPortalWorkshop" class="btn-steampunk btn-brass">Увійти до майстерні ➔</button>
@@ -209,7 +219,7 @@
 
           <!-- Portal 3: Multiplayer Rooms -->
           <div class="portal-card steampunk-panel">
-            <div class="portal-icon">🌐</div>
+            <div class="portal-icon">⚔️</div>
             <h3>Мережеве лобі</h3>
             <p>Створюйте кімнати, діліться кодом з друзями та проводьте спільні тактичні битви у реальному часі на сервері 30 Hz.</p>
             <button id="btnPortalLobby" class="btn-steampunk btn-iron">Відкрити лобі ➔</button>
@@ -219,11 +229,11 @@
 
       <!-- Key Features Showcase -->
       <section class="home-features-section">
-        <h2 class="section-heading"><span>🔦</span> КЛЮЧОВІ МЕХАНІКИ ГРИ <span>🔦</span></h2>
+        <h2 class="section-heading"><span>⌖</span> КЛЮЧОВІ МЕХАНІКИ ГРИ <span>⌖</span></h2>
         <div class="features-grid">
           <div class="feature-box">
             <div class="feature-header">
-              <span class="feature-icon">🔦</span>
+              <span class="feature-icon">⌖</span>
               <h4>Паровий ліхтар огляду (FOV)</h4>
             </div>
             <p>Ви бачите лише те, куди спрямований ваш ліхтар. Стіни та колони відкидають глибокі динамічні тіні. Вороги за укриттями приховані туманом війни.</p>
@@ -231,7 +241,7 @@
 
           <div class="feature-box">
             <div class="feature-header">
-              <span class="feature-icon">🔊</span>
+              <span class="feature-icon">⚡</span>
               <h4>Акустичні хвилі звуку</h4>
             </div>
             <p>Швидкий біг та постріли випромінюють розбіжні візуальні кільця звуку. Вони пробивають темряву і вказують напрямок до ворога, навіть коли він невидимий.</p>
@@ -239,16 +249,16 @@
 
           <div class="feature-box">
             <div class="feature-header">
-              <span class="feature-icon">🔫</span>
-              <h4>8 унікальних видів зброї</h4>
+              <span class="feature-icon">⚔</span>
+              <h4>Арсенал 8 видів зброї</h4>
             </div>
             <p>Револьвер, паровий карабін, мушкетон, голкостріл, тесла-карабін "Зевс", паровий гранатомет "Молох", вогнемет "Дракон" та роторна картечниця Гатлінга.</p>
           </div>
 
           <div class="feature-box">
             <div class="feature-header">
-              <span class="feature-icon">🤖</span>
-              <h4>Адаптивні нейромережеві боти</h4>
+              <span class="feature-icon">⚙</span>
+              <h4>Автономні бойові автоматони</h4>
             </div>
             <p>AI-автоматоні використовують тактичну нейромережу онлайн-навчання: стріляють на випередження, виконують бічні стрейфи та ховаються під час перезаряджання.</p>
           </div>
@@ -257,7 +267,7 @@
 
       <!-- Controls Guide -->
       <section class="home-controls-section">
-        <h2 class="section-heading"><span>🕹</span> КЕРУВАННЯ В БОЮ <span>🕹</span></h2>
+        <h2 class="section-heading"><span>⚙</span> КЕРУВАННЯ В БОЮ <span>⚙</span></h2>
         <div class="controls-card steampunk-panel">
           <div class="control-row">
             <div class="keys-badge"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
@@ -349,16 +359,16 @@
           <div class="lobby-input-group">
             <label for="lobbyGameModeSelect">Режим гри:</label>
             <select id="lobbyGameModeSelect" class="steampunk-input" style="cursor: pointer;">
-              <option value="solo_elim">⚔️ Кожен за себе (Остаточна смерть)</option>
-              <option value="team_elim">👥 Командний бій (Остаточна смерть)</option>
-              <option value="ffa_dm">⚡ Кожен сам за себе (Відродження / 10 кілів)</option>
-              <option value="team_dm">🐺 vs 🦊 Командний бій (Відродження / 15 кілів)</option>
+              <option value="ffa_dm" selected>⚡ Бій на смерть із відродженням (FFA Deathmatch — Рекомендовано)</option>
+              <option value="team_dm">👥 Командний бій із відродженням (Team Deathmatch)</option>
+              <option value="solo_elim">💀 Виживання: 1 життя (Остаточна смерть / Battle Royale)</option>
+              <option value="team_elim">🛡️ Командне виживання (1 життя / Last Team Standing)</option>
             </select>
           </div>
 
-          <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: none;">
+          <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: block;">
             <label for="lobbyTargetKillsInput">Ціль кілів для перемоги:</label>
-            <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="5" max="50" value="15">
+            <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="5" max="999" value="30">
           </div>
 
           <div style="display: flex; gap: 8px;">
@@ -460,7 +470,7 @@
     <!-- Top Action Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">
-        <button id="btnEditorReturnHome" class="btn-steampunk btn-iron" title="Повернутися на сайт">🏠 На сайт</button>
+        <button id="btnEditorReturnHome" class="btn-steampunk btn-iron" title="Повернутися на головну">⚙ На головну</button>
         <input type="text" id="mapNameInput" class="map-name-input" value="The Clockwork Foundry" title="Map Name">
         <select id="editorTemplateSelect" class="editor-size-select" title="Завантажити готовий шаблон арени" style="background: rgba(44, 28, 14, 0.9); border-color: var(--color-brass-primary); color: var(--color-brass-light);">
           <option value="" disabled selected>📋 Шаблони арен...</option>
@@ -494,7 +504,7 @@
 
       <div class="editor-topbar-right">
         <button id="btnEditorPlaySolo" class="btn-steampunk btn-launch" title="Миттєво запустити бій з ботами на цій карті">
-          🤖 Грати з ботами
+          ⚔ Грати з ботами
         </button>
         <button id="btnEditorPlayOnline" class="btn-steampunk btn-copper" title="Створити онлайн-кімнату з цією картою для гри з друзями">
           🌐 Онлайн-матч
@@ -779,7 +789,7 @@
               🌐 Мультиплеєр (Знайти або створити кімнату в Лобі)
             </button>
             <button type="button" id="btnIdleGoHome" class="btn-steampunk btn-iron" style="padding: 10px 18px; font-size: 13px;">
-              🏠 Повернутися на головну сторінку
+              ⚙ Повернутися на головну сторінку
             </button>
           </div>
         </div>
