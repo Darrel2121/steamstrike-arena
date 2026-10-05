@@ -56,7 +56,16 @@ export class AuthModal {
   }
 
   attachEvents() {
-    this.dom.btnClose?.addEventListener('click', () => this.close());
+    const addTap = (el, handler) => {
+      if (!el) return;
+      el.addEventListener('click', handler);
+      el.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handler(e);
+      }, { passive: false });
+    };
+
+    addTap(this.dom.btnClose, () => this.close());
     this.dom.overlay?.addEventListener('click', (e) => {
       if (e.target === this.dom.overlay) this.close();
     });
@@ -64,20 +73,24 @@ export class AuthModal {
     const saveCallsignHandler = async () => {
       const val = (this.dom.authCallsignInput?.value || '').trim();
       if (!val) return;
+      const currentProfile = this.prog?.getProfile();
+      if (currentProfile && currentProfile.username === val) return;
       if (this.prog) {
         await this.prog.updateIdentity({ username: val });
         this.showCallsignNotice('Позивний збережено!');
       }
     };
 
-    this.dom.btnSaveCallsign?.addEventListener('click', saveCallsignHandler);
+    addTap(this.dom.btnSaveCallsign, saveCallsignHandler);
     this.dom.authCallsignInput?.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         saveCallsignHandler();
       }
     });
+    this.dom.authCallsignInput?.addEventListener('change', saveCallsignHandler);
+    this.dom.authCallsignInput?.addEventListener('blur', saveCallsignHandler);
 
-    this.dom.btnAuthRandomCallsign?.addEventListener('click', async () => {
+    addTap(this.dom.btnAuthRandomCallsign, async () => {
       const rand = generateSteampunkCallsign();
       if (this.dom.authCallsignInput) {
         this.dom.authCallsignInput.value = rand;
@@ -89,7 +102,7 @@ export class AuthModal {
     });
 
     // Mock Google Sign-In button for offline / testing
-    this.dom.btnMockGoogleSignIn?.addEventListener('click', () => {
+    addTap(this.dom.btnMockGoogleSignIn, () => {
       this.handleGoogleCredentialResponse({
         credential: 'mock_jwt_' + Date.now(),
         isMock: true
@@ -106,15 +119,15 @@ export class AuthModal {
       };
     }
 
-    this.dom.btnConfirmLinkMerge?.addEventListener('click', () => {
+    addTap(this.dom.btnConfirmLinkMerge, () => {
       this.executeLink('merge');
     });
 
-    this.dom.btnConfirmLinkCloud?.addEventListener('click', () => {
+    addTap(this.dom.btnConfirmLinkCloud, () => {
       this.executeLink('keep_cloud');
     });
 
-    this.dom.btnSignOut?.addEventListener('click', () => {
+    addTap(this.dom.btnSignOut, () => {
       this.prog.saveToken(null);
       this.prog.profile = this.prog.createDefaultGuestProfile();
       this.prog.saveLocalProfile();
@@ -234,12 +247,16 @@ export class AuthModal {
       card.appendChild(icon);
       card.appendChild(name);
 
-      card.addEventListener('click', async () => {
+      const selectEmblem = async (e) => {
+        if (e && e.type === 'touchend') e.preventDefault();
         if (this.prog) {
           await this.prog.updateIdentity({ emblem: emblem.id });
           this.showCallsignNotice(`Герб обрано: ${emblem.name}`);
         }
-      });
+      };
+
+      card.addEventListener('click', selectEmblem);
+      card.addEventListener('touchend', selectEmblem, { passive: false });
 
       this.dom.authEmblemsGrid.appendChild(card);
     }
