@@ -1042,50 +1042,74 @@ kbd {
   display: block !important;
 }
 
+.touch-joystick-zone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 48%;
+  height: 100%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
 .touch-joystick-base {
   position: absolute;
-  width: 120px;
-  height: 120px;
-  margin-left: -60px;
-  margin-top: -60px;
+  width: 124px;
+  height: 124px;
+  margin-left: -62px;
+  margin-top: -62px;
   border-radius: 50%;
-  border: 2px solid rgba(197, 155, 39, 0.45);
-  background: radial-gradient(circle, rgba(197, 155, 39, 0.1) 0%, rgba(20, 24, 30, 0.6) 70%);
-  box-shadow: 0 0 15px rgba(0, 0, 0, 0.6), inset 0 0 10px rgba(197, 155, 39, 0.2);
+  border: 2px solid rgba(197, 155, 39, 0.55);
+  background: radial-gradient(circle, rgba(197, 155, 39, 0.12) 0%, rgba(20, 24, 30, 0.75) 70%);
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.75), inset 0 0 12px rgba(197, 155, 39, 0.2);
   pointer-events: none;
   transform: translate3d(0, 0, 0);
   transition: opacity 0.15s ease-out;
 }
 
+.joystick-arrow {
+  position: absolute;
+  font-size: 10px;
+  color: rgba(255, 207, 72, 0.65);
+  user-select: none;
+  pointer-events: none;
+  line-height: 1;
+}
+.joystick-arrow.arrow-up { top: 6px; left: 50%; transform: translateX(-50%); }
+.joystick-arrow.arrow-down { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.joystick-arrow.arrow-left { left: 6px; top: 50%; transform: translateY(-50%); }
+.joystick-arrow.arrow-right { right: 6px; top: 50%; transform: translateY(-50%); }
+
 .touch-joystick-thumb {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 50px;
-  height: 50px;
-  margin-left: -25px;
-  margin-top: -25px;
+  width: 52px;
+  height: 52px;
+  margin-left: -26px;
+  margin-top: -26px;
   border-radius: 50%;
   background: radial-gradient(circle, #ffe685 0%, #c59b27 60%, #703816 100%);
   border: 2px solid #ffcf48;
-  box-shadow: 0 0 12px rgba(255, 207, 72, 0.6);
+  box-shadow: 0 0 14px rgba(255, 207, 72, 0.7);
   pointer-events: none;
   transform: translate3d(0, 0, 0);
 }
 
-.touch-action-buttons {
+/* Touch Action Buttons Cluster */
+.touch-action-cluster {
   position: absolute;
-  right: 20px;
-  bottom: 25px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  right: 18px;
+  bottom: 18px;
+  width: 200px;
+  height: 200px;
   pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .touch-btn {
-  width: 62px;
-  height: 62px;
+  position: absolute;
   border-radius: 50%;
   border: 2px solid var(--color-brass-primary);
   background: radial-gradient(circle, #2c323b 0%, #161920 100%);
@@ -1095,30 +1119,253 @@ kbd {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6), inset 0 0 6px rgba(197, 155, 39, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7), inset 0 0 8px rgba(197, 155, 39, 0.3);
   user-select: none;
   -webkit-user-select: none;
-  touch-action: manipulation;
-  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  touch-action: none;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
 }
 
 .touch-btn:active, .touch-btn.active {
   transform: scale(0.92);
   background: radial-gradient(circle, #703816 0%, #30180a 100%);
   border-color: var(--color-brass-glow);
-  box-shadow: 0 0 16px rgba(255, 207, 72, 0.8);
+  box-shadow: 0 0 16px rgba(255, 207, 72, 0.85);
 }
 
-.touch-btn span {
-  font-size: 19px;
+/* Primary FIRE BUTTON - Large, glowing crimson trigger */
+.touch-btn-fire {
+  right: 6px;
+  bottom: 6px;
+  width: 82px;
+  height: 82px;
+  border: 3px solid #ff4d4d;
+  background: radial-gradient(circle, #9a2215 0%, #540e06 70%, #200502 100%);
+  box-shadow: 0 0 20px rgba(255, 77, 77, 0.6), inset 0 0 14px rgba(255, 200, 77, 0.4);
+  color: #fff;
+  z-index: 10;
+}
+.touch-btn-fire:active, .touch-btn-fire.active {
+  transform: scale(0.93);
+  background: radial-gradient(circle, #ff4757 0%, #b32214 70%, #3d0702 100%);
+  border-color: #ff9999;
+  box-shadow: 0 0 26px rgba(255, 71, 87, 0.95), inset 0 0 16px rgba(255, 255, 255, 0.6);
+}
+.touch-btn-fire .btn-icon-fire {
+  font-size: 28px;
   line-height: 1;
 }
+.touch-btn-fire .btn-label-fire {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  color: #ffcf48;
+  margin-top: 2px;
+}
 
-.touch-btn small {
+/* Reload Button with Ammo Count */
+.touch-btn-reload {
+  right: 106px;
+  bottom: 10px;
+  width: 58px;
+  height: 58px;
+}
+.touch-btn-reload.reloading {
+  animation: reloadSpin 1s infinite linear;
+  border-color: #ffcf48;
+}
+@keyframes reloadSpin {
+  100% { transform: rotate(360deg); }
+}
+.ammo-count-badge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffcf48;
+  margin-top: 2px;
+}
+
+/* Ability Button [E] */
+.touch-btn-ability {
+  right: 96px;
+  bottom: 86px;
+  width: 58px;
+  height: 58px;
+  border-color: #2ec4b6;
+  background: radial-gradient(circle, rgba(46, 196, 182, 0.25) 0%, #152226 100%);
+  position: relative;
+  overflow: hidden;
+}
+.touch-btn-ability.ability-active {
+  box-shadow: 0 0 20px rgba(46, 196, 182, 0.9), inset 0 0 10px rgba(46, 196, 182, 0.5);
+  border-color: #6ee7dc;
+}
+.touch-btn-ability.on-cooldown {
+  opacity: 0.65;
+  filter: grayscale(40%);
+}
+.touch-cooldown-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(14, 18, 24, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  color: #cbd5e1;
+  border-radius: 50%;
+}
+
+/* Sprint Button (Shift) */
+.touch-btn-sprint {
+  right: 12px;
+  bottom: 108px;
+  width: 54px;
+  height: 54px;
+}
+.touch-btn-sprint.active {
+  background: radial-gradient(circle, #703816 0%, #30180a 100%);
+  border-color: #ffcf48;
+  box-shadow: 0 0 14px rgba(255, 207, 72, 0.8);
+}
+
+.touch-btn .btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+.touch-btn .btn-label {
   font-size: 9px;
   font-weight: bold;
   letter-spacing: 0.5px;
   color: var(--color-brass-light);
   margin-top: 2px;
+}
+
+/* Top Utility Bar */
+.touch-top-bar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  pointer-events: auto;
+  z-index: 55;
+}
+.touch-util-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(22, 26, 34, 0.88);
+  border: 1.5px solid #846313;
+  color: #ffcf48;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  touch-action: none;
+}
+.touch-util-btn:active {
+  transform: scale(0.92);
+  border-color: #ffcf48;
+}
+
+/* Landscape Prompt */
+.landscape-rotate-prompt {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(10, 13, 18, 0.94);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  backdrop-filter: blur(8px);
+}
+.rotate-prompt-card {
+  max-width: 380px;
+  text-align: center;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  border: 2px solid #846313;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9), 0 0 20px rgba(255, 207, 72, 0.25);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1f2430 0%, #11141c 100%);
+}
+.rotate-phone-anim {
+  font-size: 40px;
+  animation: rotatePhone 2.2s infinite ease-in-out;
+}
+@keyframes rotatePhone {
+  0% { transform: rotate(0deg); }
+  40% { transform: rotate(-90deg); }
+  60% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+.rotate-title {
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffcf48;
+}
+.rotate-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+.rotate-prompt-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Compact adaptation for short mobile landscape displays (<= 480px height) */
+@media (max-height: 480px) and (orientation: landscape) {
+  .touch-action-cluster {
+    width: 170px;
+    height: 170px;
+    right: 10px;
+    bottom: 10px;
+  }
+  .touch-btn-fire {
+    width: 70px;
+    height: 70px;
+    right: 4px;
+    bottom: 4px;
+  }
+  .touch-btn-fire .btn-icon-fire {
+    font-size: 22px;
+  }
+  .touch-btn-fire .btn-label-fire {
+    font-size: 9px;
+  }
+  .touch-btn-reload {
+    right: 88px;
+    bottom: 6px;
+    width: 50px;
+    height: 50px;
+  }
+  .touch-btn-ability {
+    right: 80px;
+    bottom: 70px;
+    width: 50px;
+    height: 50px;
+  }
+  .touch-btn-sprint {
+    right: 8px;
+    bottom: 88px;
+    width: 48px;
+    height: 48px;
+  }
 }
 

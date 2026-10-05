@@ -150,6 +150,9 @@ export class HUD {
     const maxAmmo = player.maxAmmo ?? 6;
     const isReloading = Boolean(player.isReloading || player.state === 'reloading');
 
+    // Update DOM-based mobile touch controls (ammo badge, ability cooldown)
+    this.updateMobileTouchUI(player);
+
     // 1. Bottom-Left: Alchemical Health Vial
     this.renderHealthVial(ctx, 30, height - 120, hp, maxHp);
 
@@ -1272,5 +1275,47 @@ export class HUD {
     ctx.textAlign = 'center';
     ctx.fillText(text, x + 65, y + 15);
     ctx.restore();
+  }
+
+  /**
+   * Synchronizes mobile touch action cluster UI with local player state.
+   * Updates ammo count badge on reload button and ability cooldown overlay.
+   * @param {Object} player
+   */
+  updateMobileTouchUI(player = {}) {
+    if (typeof document === 'undefined') return;
+
+    // Update Reload Button Ammo Count Badge
+    const ammoEl = document.getElementById('touchReloadAmmoCount');
+    if (ammoEl) {
+      const ammo = player.ammo ?? 6;
+      const maxAmmo = player.maxAmmo ?? 6;
+      const isReloading = Boolean(player.isReloading || player.state === 'reloading');
+      if (isReloading) {
+        ammoEl.textContent = '...';
+        ammoEl.style.color = '#ff9f1c';
+      } else {
+        ammoEl.textContent = `${ammo}/${maxAmmo}`;
+        ammoEl.style.color = ammo === 0 ? '#e71d36' : (ammo <= 2 ? '#ff9f1c' : '#ffcf48');
+      }
+    }
+
+    // Update Ability Button Cooldown Overlay
+    const cdEl = document.getElementById('touchAbilityCooldownOverlay');
+    if (cdEl) {
+      const cd = player.abilityCooldownRemaining || 0;
+      if (cd > 0) {
+        cdEl.style.display = 'flex';
+        cdEl.textContent = `${Math.ceil(cd)}s`;
+      } else {
+        cdEl.style.display = 'none';
+      }
+    }
+
+    // Update Sprint Button visual toggle if active
+    const sprintBtn = document.getElementById('btnTouchSprint');
+    if (sprintBtn && player.isSprinting !== undefined) {
+      sprintBtn.classList.toggle('active', Boolean(player.isSprinting));
+    }
   }
 }

@@ -664,19 +664,61 @@
         <!-- Steampunk tactical HUD injected dynamically -->
         <!-- Mobile Touch Action Controls (Visible on touch devices / mobile viewports) -->
         <div id="mobileTouchControls" class="mobile-touch-controls">
-          <div id="touchJoystickBase" class="touch-joystick-base" style="display: none;">
-            <div id="touchJoystickThumb" class="touch-joystick-thumb"></div>
+          <!-- Left Virtual Movement Joystick Zone -->
+          <div id="touchJoystickZone" class="touch-joystick-zone">
+            <div id="touchJoystickBase" class="touch-joystick-base" style="display: none;">
+              <div class="joystick-arrow arrow-up">▲</div>
+              <div class="joystick-arrow arrow-down">▼</div>
+              <div class="joystick-arrow arrow-left">◀</div>
+              <div class="joystick-arrow arrow-right">▶</div>
+              <div id="touchJoystickThumb" class="touch-joystick-thumb"></div>
+            </div>
           </div>
-          <div class="touch-action-buttons">
-            <button type="button" id="btnTouchAbility" class="touch-btn touch-btn-ability" title="Бойове вміння (E)" style="background: rgba(46, 196, 182, 0.25); border-color: #2ec4b6;">
-              <span>⚡</span><small>ВМІННЯ</small>
-            </button>
-            <button type="button" id="btnTouchReload" class="touch-btn touch-btn-reload" title="Перезарядка (R)">
-              <span>🔄</span><small>ЗАРЯД</small>
-            </button>
+
+          <!-- Right Combat Action Cluster (Bullet Echo Style) -->
+          <div class="touch-action-cluster">
+            <!-- Sprint Button (Top-Right) -->
             <button type="button" id="btnTouchSprint" class="touch-btn touch-btn-sprint" title="Прискорення (Shift)">
-              <span>💨</span><small>СПРИНТ</small>
+              <span class="btn-icon">💨</span>
+              <small class="btn-label">СПРИНТ</small>
             </button>
+
+            <!-- Ability Button (Top-Left) -->
+            <button type="button" id="btnTouchAbility" class="touch-btn touch-btn-ability" title="Бойове вміння (E)">
+              <span class="btn-icon">⚡</span>
+              <small class="btn-label">ВМІННЯ</small>
+              <div id="touchAbilityCooldownOverlay" class="touch-cooldown-overlay" style="display: none;"></div>
+            </button>
+
+            <!-- Reload Button (Middle-Left) with Ammo Count -->
+            <button type="button" id="btnTouchReload" class="touch-btn touch-btn-reload" title="Перезарядка (R)">
+              <span class="btn-icon">🔄</span>
+              <small id="touchReloadAmmoCount" class="ammo-count-badge">6/6</small>
+            </button>
+
+            <!-- Primary Fire Button (Bottom-Right, Large & Prominent) -->
+            <button type="button" id="btnTouchFire" class="touch-btn touch-btn-fire" title="Постріл (Вогонь)">
+              <span class="btn-icon-fire">🎯</span>
+              <small class="btn-label-fire">ВОГОНЬ</small>
+            </button>
+          </div>
+
+          <!-- Top-Right Mobile Utility Bar -->
+          <div class="touch-top-bar">
+            <button type="button" id="btnTouchFullscreen" class="touch-util-btn" title="На весь екран / Горизонтально">⛶</button>
+          </div>
+        </div>
+
+        <!-- Landscape Orientation Lock Prompt for Mobile -->
+        <div id="landscapeRotatePrompt" class="landscape-rotate-prompt" style="display: none;">
+          <div class="rotate-prompt-card steampunk-panel">
+            <div class="rotate-phone-anim">📱 ➔ 📲</div>
+            <div class="rotate-title">ПОВЕРНІТЬ ПРИСТРІЙ ГОРИЗОНТАЛЬНО</div>
+            <div class="rotate-desc">Для тактичного огляду арени, керування ліхтарем та зручного доступу до віртуального джойстика і кнопок бою.</div>
+            <div class="rotate-prompt-buttons">
+              <button type="button" id="btnRotateFullscreen" class="btn-steampunk btn-launch">⛶ На весь екран та розгорнути</button>
+              <button type="button" id="btnDismissRotatePrompt" class="btn-steampunk btn-iron">Продовжити так ✕</button>
+            </div>
           </div>
         </div>
       </div>

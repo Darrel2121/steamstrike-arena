@@ -26,6 +26,10 @@ export class InputManager {
     this.touchAimId = null;
     this.isTouchSprint = false;
     this.isTouchDevice = false;
+    this.isTouchFiring = false;
+    this.lastFacingAngle = 0;
+    this.lastPlayerScreenX = 400;
+    this.lastPlayerScreenY = 400;
 
     this.joystickBase = typeof document !== 'undefined' ? document.getElementById('touchJoystickBase') : null;
     this.joystickThumb = typeof document !== 'undefined' ? document.getElementById('touchJoystickThumb') : null;
@@ -47,36 +51,84 @@ export class InputManager {
 
   attachTouchActionButtons() {
     if (typeof document === 'undefined') return;
-    const btnReload = document.getElementById('btnTouchReload');
-    const btnSprint = document.getElementById('btnTouchSprint');
-    const btnAbility = document.getElementById('btnTouchAbility');
 
-    if (btnReload) {
-      const handleReload = (e) => {
+    // Primary FIRE Button
+    const btnFire = document.getElementById('btnTouchFire');
+    if (btnFire) {
+      const startFire = (e) => {
+        if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
-        this.triggerReload();
+        this.isTouchFiring = true;
+        btnFire.classList.add('active');
       };
-      btnReload.addEventListener('pointerdown', handleReload);
-      btnReload.addEventListener('click', handleReload);
+      const stopFire = (e) => {
+        if (e.stopPropagation) e.stopPropagation();
+        this.isTouchFiring = false;
+        btnFire.classList.remove('active');
+      };
+
+      btnFire.addEventListener('pointerdown', startFire);
+      btnFire.addEventListener('pointerup', stopFire);
+      btnFire.addEventListener('pointercancel', stopFire);
+      btnFire.addEventListener('touchstart', startFire, { passive: false });
+      btnFire.addEventListener('touchend', stopFire);
+      btnFire.addEventListener('touchcancel', stopFire);
     }
 
+    // RELOAD Button
+    const btnReload = document.getElementById('btnTouchReload');
+    if (btnReload) {
+      const handleReload = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        this.triggerReload();
+        btnReload.classList.add('active');
+        setTimeout(() => btnReload.classList.remove('active'), 250);
+      };
+      btnReload.addEventListener('pointerdown', handleReload);
+      btnReload.addEventListener('touchstart', handleReload, { passive: false });
+    }
+
+    // SPRINT Button (Shift)
+    const btnSprint = document.getElementById('btnTouchSprint');
     if (btnSprint) {
       const handleSprint = (e) => {
+        if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
         const active = this.toggleSprint();
         btnSprint.classList.toggle('active', active);
       };
       btnSprint.addEventListener('pointerdown', handleSprint);
-      btnSprint.addEventListener('click', handleSprint);
+      btnSprint.addEventListener('touchstart', handleSprint, { passive: false });
     }
 
+    // ABILITY Button [E]
+    const btnAbility = document.getElementById('btnTouchAbility');
     if (btnAbility) {
       const handleAbility = (e) => {
+        if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
         this.triggerAbility();
+        btnAbility.classList.add('active');
+        setTimeout(() => btnAbility.classList.remove('active'), 250);
       };
       btnAbility.addEventListener('pointerdown', handleAbility);
-      btnAbility.addEventListener('click', handleAbility);
+      btnAbility.addEventListener('touchstart', handleAbility, { passive: false });
+    }
+
+    // FULLSCREEN / LANDSCAPE Utility Button
+    const btnFs = document.getElementById('btnTouchFullscreen');
+    if (btnFs) {
+      const handleFs = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        if (typeof window !== 'undefined' && window.app) {
+          window.app.toggleFullscreen();
+          window.app.requestLandscapeOrientation();
+        }
+      };
+      btnFs.addEventListener('pointerdown', handleFs);
+      btnFs.addEventListener('touchstart', handleFs, { passive: false });
     }
   }
 
@@ -187,6 +239,12 @@ export class InputManager {
 
     for (let i = 0; i < e.touches.length; i++) {
       const t = e.touches[i];
+
+      // If the touch started on dedicated buttons or modals, don't hijack as joystick/aim
+      if (t.target && t.target.closest && t.target.closest('#touchActionCluster, .touch-top-bar, .touch-btn, .landscape-rotate-prompt, .modal-card')) {
+        continue;
+      }
+
       const relX = t.clientX - rect.left;
 
       // Left 48% of screen -> Movement Joystick
@@ -203,11 +261,12 @@ export class InputManager {
             this.joystickThumb.style.transform = 'translate3d(0, 0, 0)';
           }
         }
-      } else if (relX >= rect.width * 0.48) {
-        // Right side of screen -> Aiming & Primary Weapon Fire
+      } else if (relX >= rect.width * 0.48 && this.touchAimId === null) {
+        // Right side of screen -> Aiming & Weapon Fire
         this.touchAimId = t.identifier;
         this.updateMouseFromClient(t.clientX, t.clientY);
         this.isMouseDown = true;
+        this.lastFacingAngle = Math.atan2(this.mouseY - this.lastPlayerScreenY, this.mouseX - this.lastPlayerScreenX);
       }
     }
   }
@@ -236,11 +295,17 @@ export class InputManager {
             const thumbY = (dy / dist) * clamped;
             this.joystickThumb.style.transform = `translate3d(${thumbX}px, ${thumbY}px, 0)`;
           }
+
+          // In mobile version: character turns together with movement
+          if (dist > 5) {
+            this.lastFacingAngle = Math.atan2(dy, dx);
+          }
         } else {
           this.touchMoveVector = { x: 0, y: 0 };
         }
       } else if (t.identifier === this.touchAimId) {
         this.updateMouseFromClient(t.clientX, t.clientY);
+        this.lastFacingAngle = Math.atan2(this.mouseY - this.lastPlayerScreenY, this.mouseX - this.lastPlayerScreenX);
       }
     }
   }
@@ -251,6 +316,7 @@ export class InputManager {
       this.touchMoveId = null;
       this.touchMoveOrigin = null;
       this.touchMoveVector = { x: 0, y: 0 };
+      this.touchAimId = null;
       if (this.joystickBase) this.joystickBase.style.display = 'none';
       return;
     }
@@ -308,6 +374,9 @@ export class InputManager {
    * @returns {{ moveX: number, moveY: number, sprint: boolean, aimAngle: number, firing: boolean, reload: boolean, dt: number }}
    */
   pollInput(playerScreenX = 400, playerScreenY = 400) {
+    this.lastPlayerScreenX = playerScreenX;
+    this.lastPlayerScreenY = playerScreenY;
+
     const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
     const elapsed = Math.max(1, Math.min(100, now - this.lastPollTime));
     const dt = Math.round(elapsed * 100) / 100;
@@ -335,14 +404,30 @@ export class InputManager {
     }
 
     const sprint = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') || this.isTouchSprint;
-    const firing = this.isMouseDown || this.isSpaceDown;
+    const firing = this.isMouseDown || this.isSpaceDown || this.isTouchFiring;
     const reload = this.reloadRequested;
     this.reloadRequested = false;
     const ability = this.abilityRequested;
     this.abilityRequested = false;
 
-    // Calculate aim angle from player screen position to mouse cursor
-    const aimAngle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
+    // Calculate aim angle
+    let aimAngle;
+    if (this.touchAimId !== null) {
+      // Direct touch aiming on right screen
+      aimAngle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
+      this.lastFacingAngle = aimAngle;
+    } else if (this.isTouchDevice && (Math.hypot(moveX, moveY) > 0.05)) {
+      // In mobile version: character turns together with movement!
+      aimAngle = Math.atan2(moveY, moveX);
+      this.lastFacingAngle = aimAngle;
+    } else if (this.isTouchDevice) {
+      // In mobile version when stopped: preserve last facing angle
+      aimAngle = this.lastFacingAngle;
+    } else {
+      // Desktop: aim towards mouse cursor
+      aimAngle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
+      this.lastFacingAngle = aimAngle;
+    }
 
     return {
       moveX: Math.round(moveX * 1000) / 1000,

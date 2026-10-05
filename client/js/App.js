@@ -99,6 +99,11 @@ export class App {
     this.btnIdleSoloPlay = document.getElementById('btnIdleSoloPlay');
     this.btnIdleGoLobby = document.getElementById('btnIdleGoLobby');
     this.btnIdleGoHome = document.getElementById('btnIdleGoHome');
+
+    // Landscape Orientation Prompt elements for mobile
+    this.landscapeRotatePrompt = document.getElementById('landscapeRotatePrompt');
+    this.btnRotateFullscreen = document.getElementById('btnRotateFullscreen');
+    this.btnDismissRotatePrompt = document.getElementById('btnDismissRotatePrompt');
   }
 
   initNetworking() {
@@ -410,14 +415,39 @@ export class App {
       this.btnEditorFullscreen.addEventListener('click', () => this.toggleFullscreen());
     }
 
+    // Mobile Landscape Orientation Prompt Actions
+    if (this.btnRotateFullscreen) {
+      this.btnRotateFullscreen.addEventListener('click', async () => {
+        await this.toggleFullscreen();
+        await this.requestLandscapeOrientation();
+        if (this.landscapeRotatePrompt) {
+          this.landscapeRotatePrompt.style.display = 'none';
+        }
+      });
+    }
+
+    if (this.btnDismissRotatePrompt) {
+      this.btnDismissRotatePrompt.addEventListener('click', () => {
+        if (this.landscapeRotatePrompt) {
+          this.landscapeRotatePrompt.style.display = 'none';
+        }
+      });
+    }
+
     document.addEventListener('fullscreenchange', () => this.updateFullscreenUI());
-    window.addEventListener('resize', () => {
+    const handleViewportChange = () => {
       this.resizeGameCanvas();
       if (this.currentView === 'editor' && this.editor) {
         this.editor.setupCanvas();
         this.editor.render();
       }
-    });
+      this.checkLandscapeOrientationPrompt();
+    };
+
+    window.addEventListener('resize', handleViewportChange);
+    if (typeof screen !== 'undefined' && screen.orientation && typeof screen.orientation.addEventListener === 'function') {
+      screen.orientation.addEventListener('change', handleViewportChange);
+    }
 
     window.addEventListener('keydown', (e) => {
       if (this.isMatchOver) {
@@ -443,15 +473,55 @@ export class App {
     });
   }
 
-  toggleFullscreen() {
+  async toggleFullscreen() {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(err => {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch (err) {
         console.warn('Fullscreen request failed:', err);
-      });
+      }
     } else {
       if (document.exitFullscreen) {
-        document.exitFullscreen().catch(err => console.warn(err));
+        try {
+          await document.exitFullscreen();
+        } catch (err) {
+          console.warn(err);
+        }
       }
+    }
+  }
+
+  /**
+   * Attempts to lock the screen to landscape orientation (especially useful on mobile touch devices).
+   */
+  async requestLandscapeOrientation() {
+    if (typeof window === 'undefined') return;
+    try {
+      if (screen && screen.orientation && typeof screen.orientation.lock === 'function') {
+        await screen.orientation.lock('landscape').catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  /**
+   * Evaluates if device is in portrait mode on mobile/touch viewports while in game view,
+   * showing the rotate prompt if needed.
+   */
+  checkLandscapeOrientationPrompt() {
+    if (!this.landscapeRotatePrompt) return;
+    if (typeof window === 'undefined') return;
+
+    const isPortrait = window.innerHeight > window.innerWidth;
+    const isMobileOrTouch = Boolean(
+      (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) ||
+      ('ontouchstart' in window) ||
+      (navigator.maxTouchPoints > 0)
+    );
+
+    if (this.currentView === 'game' && isPortrait && isMobileOrTouch) {
+      this.landscapeRotatePrompt.style.display = 'flex';
+    } else {
+      this.landscapeRotatePrompt.style.display = 'none';
     }
   }
 
@@ -579,7 +649,13 @@ export class App {
       if (this.gameIdleOverlay) {
         this.gameIdleOverlay.style.display = (this.gameLoopActive || this.activeMatchMap) ? 'none' : 'flex';
       }
+      this.requestLandscapeOrientation();
+      this.checkLandscapeOrientationPrompt();
       setTimeout(() => this.resizeGameCanvas(), 50);
+    } else {
+      if (this.landscapeRotatePrompt) {
+        this.landscapeRotatePrompt.style.display = 'none';
+      }
     }
   }
 
