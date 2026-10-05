@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.agents/
+
+# Test caches and temp files
+.tmp_*
+.temp_bundle/
+*.zip
+*.log
+*.kra
+data/
+
+# Documentation and root screenshots
+Steamstrike_Technical_Documentation.pdf
+/home_screenshot_updated.png
+/home_online_rooms_screenshot.png
+/lobby_screenshot.png
+/editor_view_hd.png
+/lobby_rooms_and_join_screenshot.png
+/battle_arena_hd.png
+/workshop_view_hd.png
+/multiplayer_lobby_scroll_and_button.png
+/battle_arena_active_hd.png
+/multiplayer_lobby_scrolled.png
+/match_over_canvas_screenshot.png
+/wreck_visual_screenshot.png
+/assets/

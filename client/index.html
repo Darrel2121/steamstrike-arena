@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steamstrike: Tactical Arena — Steampunk Tactical Shooter</title>
+  <link rel="stylesheet" href="css/steampunk.css">
+  <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="css/progression.css">
+</head>
+<body>
+
+  <!-- Top Global Navigation Header -->
+  <header class="steampunk-header">
+    <div class="header-title-wrap" id="headerBrand" title="На головну сторінку" style="cursor: pointer;">
+      <div class="gear-icon"></div>
+      <div class="header-title">Steamstrike: Tactical Arena</div>
+    </div>
+    <nav class="header-nav">
+      <button id="navBtnHome" class="btn-steampunk active">🏠 Сайт (Home)</button>
+      <button id="navBtnLobby" class="btn-steampunk btn-iron">⚔ Лобі (Lobby)</button>
+      <button id="navBtnEditor" class="btn-steampunk btn-iron">🗺 Редактор карт</button>
+      <button id="navBtnWorkshop" class="btn-steampunk btn-iron">⚙ Майстерня</button>
+      <button id="navBtnGame" class="btn-steampunk btn-iron">🎮 Арена</button>
+      <button id="btnGlobalFullscreen" class="btn-steampunk btn-iron" title="Повний екран (F / F11)">⛶ Повний екран</button>
+      <button id="navBtnAuth" class="btn-steampunk btn-iron"><span id="headerUserBadge">👤 Профіль / Вхід</span></button>
+    </nav>
+  </header>
+
+  <!-- ======================================================================
+       VIEW 0: Steampunk Game Portal & Landing Website (Home)
+       ====================================================================== -->
+  <div id="view-home" class="view-container active">
+    <div class="home-scroll-wrap">
+      
+      <!-- Hero Section -->
+      <section class="home-hero-section">
+        <div class="hero-steam-badge">⚡ ВЕРСІЯ 1.0 &bull; STEAMSTRIKE TACTICAL ARENA ⚡</div>
+        <div class="hero-brand">
+          <h1 class="hero-title">STEAMSTRIKE</h1>
+          <p class="hero-subtitle">Tactical Arena &bull; Тактичний мультиплеєрний 2D-шутер у світі вікторіанського стімпанку</p>
+          <div class="hero-feature-tags">
+            <span class="feature-tag">🔦 Паровий ліхтар FOV</span>
+            <span class="feature-tag">🔊 Акустичний туман війни</span>
+            <span class="feature-tag">🌐 Мережеві бої 30 Hz</span>
+            <span class="feature-tag">🗺 Вбудований редактор карт</span>
+            <span class="feature-tag">⚙ Прокачка арсеналу</span>
+          </div>
+        </div>
+
+        <!-- Quick Battle Command Center -->
+        <div class="steampunk-panel home-battle-console">
+          <div class="console-header">
+            <div class="console-title">⚙ КОМАНДНИЙ ПУЛЬТ АРЕНИ</div>
+            <div class="console-profile-chip" id="homeUserPill">
+              <span id="homeUserCallsign">FoundryRanger_1</span>
+              <span class="pill-badge guest" id="homeUserBadge">Гість</span>
+            </div>
+          </div>
+
+          <div class="console-body">
+            <!-- Callsign row -->
+            <div class="console-field">
+              <label for="homePlayerNameInput">Позивний бійця (Callsign):</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="homePlayerNameInput" class="steampunk-input" value="FoundryRanger_1" maxlength="20" style="flex: 1;">
+                <button id="btnRandomCallsign" class="btn-steampunk btn-iron" title="Випадковий позивний">🎲</button>
+              </div>
+            </div>
+
+            <!-- Mode selector tabs -->
+            <div class="console-field">
+              <label>Оберіть режим гри:</label>
+              <div class="mode-selector-grid">
+                <button type="button" id="btnModeSolo" class="mode-select-btn active" data-mode="solo">
+                  <span class="mode-icon">🤖</span>
+                  <div class="mode-text">
+                    <strong>Одиночний бій</strong>
+                    <small>Миттєвий старт з ботами</small>
+                  </div>
+                </button>
+                <button type="button" id="btnModeOnline" class="mode-select-btn" data-mode="online">
+                  <span class="mode-icon">🌐</span>
+                  <div class="mode-text">
+                    <strong>Мультиплеєр онлайн</strong>
+                    <small>Створити / знайти кімнату</small>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Arena selection -->
+            <div class="console-field">
+              <label for="homeMapSelect">Поле бою (Арена):</label>
+              <select id="homeMapSelect" class="steampunk-input" style="cursor: pointer;">
+                <option value="foundry" selected>The Clockwork Foundry (20x20 Стандарт)</option>
+                <option value="ironworks_catacombs">The Ironworks Catacombs (28x28 Катакомби)</option>
+                <option value="zeppelin_docks">The Grand Zeppelin Docks (32x32 Велика арена)</option>
+                <option value="alchemical_citadel">The Alchemical Citadel (36x36 Велетенська цитадель)</option>
+                <option value="steam_terminal">The Steam Rail Terminal (40x24 Довгий вокзал)</option>
+              </select>
+            </div>
+
+            <!-- Game Mode selection on Home -->
+            <div class="console-field">
+              <label for="homeGameModeSelect">Режим бою:</label>
+              <select id="homeGameModeSelect" class="steampunk-input" style="cursor: pointer;">
+                <option value="solo_elim">⚔️ Кожен за себе (Остаточна смерть / Battle Royale)</option>
+                <option value="team_elim">👥 Командний бій (Остаточна смерть / Last Team)</option>
+                <option value="ffa_dm">⚡ Кожен сам за себе (З відродженням / 10 кілів)</option>
+                <option value="team_dm">🐺 vs 🦊 Командний бій (З відродженням / 15 кілів)</option>
+              </select>
+            </div>
+
+            <!-- Online Room Name & Actions (multiplayer mode) -->
+            <div class="console-field" id="homeRoomField" style="display: none; flex-direction: column; gap: 8px;">
+              <label for="homeRoomInput">Код або назва кімнати (Chamber ID):</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="homeRoomInput" class="steampunk-input" value="Sector_Omega" maxlength="24" style="flex: 1;">
+                <button type="button" id="btnHomeJoinRoom" class="btn-steampunk btn-brass" style="white-space: nowrap;">⚡ Приєднатися</button>
+                <button type="button" id="btnHomeCreateRoom" class="btn-steampunk btn-copper" style="white-space: nowrap;">⚙ Створити</button>
+              </div>
+
+              <!-- Quick Helper Instruction -->
+              <div class="lobby-guide-banner" style="margin-top: 4px;">
+                <div class="guide-title">💡 Як грати разом з другом:</div>
+                <div style="color: var(--color-text-dim); font-size: 12px; line-height: 1.4;">
+                  Введіть однаковий код кімнати або натисніть «Приєднатися» біля кімнати у списку нижче. В лобі ви також зможете скопіювати пряме посилання для друга!
+                </div>
+              </div>
+
+              <!-- Active Chambers list on Home Screen -->
+              <div class="home-rooms-container" style="margin-top: 6px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <span style="font-size: 12px; font-weight: bold; color: var(--color-brass-bright);">🌐 ВІДКРИТІ ПАРОВІ КІМНАТИ:</span>
+                  <button type="button" id="btnHomeRefreshRooms" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 2px 8px;">🔄 Оновити</button>
+                </div>
+                <div id="homeRoomsList" class="active-rooms-scroll-list" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                  <!-- Dynamic cards -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Main Launch Button -->
+            <button id="btnHeroQuickPlay" class="btn-steampunk btn-launch hero-launch-action">
+              ⚔ В БІЙ! (СТАРТ ГРИ)
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Portals to Other Sections -->
+      <section class="home-portals-section">
+        <h2 class="section-heading"><span>⚙</span> РОЗДІЛИ ТА МОЖЛИВОСТІ <span>⚙</span></h2>
+        <div class="portals-grid">
+          <!-- Portal 1: Map Editor -->
+          <div class="portal-card steampunk-panel">
+            <div class="portal-icon">🗺️</div>
+            <h3>Вбудований редактор карт</h3>
+            <p>Малюйте власні поля бою на сітці, розставляйте укриття, точки спавну та ящики з боєприпасами. Грайте на них з друзями!</p>
+            <button id="btnPortalEditor" class="btn-steampunk btn-copper">Відкрити редактор ➔</button>
+          </div>
+
+          <!-- Portal 2: Workshop & Progression -->
+          <div class="portal-card steampunk-panel">
+            <div class="portal-icon">⚙️</div>
+            <h3>Майстерня та прокачка</h3>
+            <p>Заробляйте XP та шестерні в боях! Покращуйте характеристики персонажа (здоров'я, швидкість, ліхтар) та модернізуйте всі 4 види зброї.</p>
+            <button id="btnPortalWorkshop" class="btn-steampunk btn-brass">Увійти до майстерні ➔</button>
+          </div>
+
+          <!-- Portal 3: Multiplayer Rooms -->
+          <div class="portal-card steampunk-panel">
+            <div class="portal-icon">🌐</div>
+            <h3>Мережеве лобі</h3>
+            <p>Створюйте кімнати, діліться кодом з друзями та проводьте спільні тактичні битви у реальному часі на сервері 30 Hz.</p>
+            <button id="btnPortalLobby" class="btn-steampunk btn-iron">Відкрити лобі ➔</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Key Features Showcase -->
+      <section class="home-features-section">
+        <h2 class="section-heading"><span>🔦</span> КЛЮЧОВІ МЕХАНІКИ ГРИ <span>🔦</span></h2>
+        <div class="features-grid">
+          <div class="feature-box">
+            <div class="feature-header">
+              <span class="feature-icon">🔦</span>
+              <h4>Паровий ліхтар огляду (FOV)</h4>
+            </div>
+            <p>Ви бачите лише те, куди спрямований ваш ліхтар. Стіни та колони відкидають глибокі динамічні тіні. Вороги за укриттями приховані туманом війни.</p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-header">
+              <span class="feature-icon">🔊</span>
+              <h4>Акустичні хвилі звуку</h4>
+            </div>
+            <p>Швидкий біг та постріли випромінюють розбіжні візуальні кільця звуку. Вони пробивають темряву і вказують напрямок до ворога, навіть коли він невидимий.</p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-header">
+              <span class="feature-icon">🔫</span>
+              <h4>4 види стімпанк-зброї</h4>
+            </div>
+            <p>Револьвер з барабаном, швидкострільний паровий карабін, картечниця Blunderbuss та далекобійна голчаста гвинтівка. Чесна фізика без пробиття стін.</p>
+          </div>
+
+          <div class="feature-box">
+            <div class="feature-header">
+              <span class="feature-icon">🤖</span>
+              <h4>Розумні сенсорні боти</h4>
+            </div>
+            <p>AI-супротивники мають власний ліхтар, чують звукові хвилі від ваших кроків, шукають шлях лабіринтом і влаштовують засідки.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controls Guide -->
+      <section class="home-controls-section">
+        <h2 class="section-heading"><span>🕹</span> КЕРУВАННЯ В БОЮ <span>🕹</span></h2>
+        <div class="controls-card steampunk-panel">
+          <div class="control-row">
+            <div class="keys-badge"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></div>
+            <div class="control-desc">Пересування персонажа ареною</div>
+          </div>
+          <div class="control-row">
+            <div class="keys-badge"><kbd>Shift</kbd></div>
+            <div class="control-desc">Тихий крок (менше звукових кіл) / Прискорення</div>
+          </div>
+          <div class="control-row">
+            <div class="keys-badge"><kbd>Миша</kbd></div>
+            <div class="control-desc">Поворот ліхтаря та напрямок прицілу</div>
+          </div>
+          <div class="control-row">
+            <div class="keys-badge"><kbd>ЛКМ</kbd> / <kbd>Space</kbd></div>
+            <div class="control-desc">Постріл з поточної зброї (або дотик на екрані)</div>
+          </div>
+          <div class="control-row">
+            <div class="keys-badge"><kbd>R</kbd></div>
+            <div class="control-desc">Перезаряджання боєзапасу</div>
+          </div>
+          <div class="control-row">
+            <div class="keys-badge"><kbd>F</kbd></div>
+            <div class="control-desc">Увімкнення / вимкнення парового ліхтаря</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="home-footer">
+        <p><strong>Clockwork Echo</strong> &bull; Steampunk Tactical Top-Down Shooter &bull; 2026</p>
+        <p style="font-size: 12px; color: var(--color-text-dim); margin-top: 4px;">
+          Статус сервера: <span style="color: var(--color-status-success);">● Активний онлайн (Port 3000)</span> | Рушій: Canvas 2D + WebSocket 30 Hz
+        </p>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       VIEW 1: Match Lobby
+       ====================================================================== -->
+  <div id="view-lobby" class="view-container">
+    <div class="lobby-hero">
+      <div class="lobby-title-banner">
+        <h1>Clockwork Echo</h1>
+        <p>Top-Down Tactical Steam Shooter &bull; Lantern Field-of-View &bull; Acoustic Fog Tracking</p>
+      </div>
+
+      <div class="lobby-grid">
+        <!-- Column 1: Match Setup & Active Chamber Roster -->
+        <div class="steampunk-panel lobby-side-card">
+          <div class="lobby-card-header">
+            <h3><span>⚔</span> Парова Камера (Chamber)</h3>
+            <span id="lobbyPingBadge" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #22262d; color: var(--color-status-success);">Підключено</span>
+          </div>
+
+          <!-- Inputs when setting up or changing room -->
+          <div class="lobby-input-group">
+            <label for="playerNameInput">Позивний бійця (Нікнейм):</label>
+            <input type="text" id="playerNameInput" class="steampunk-input" value="FoundryRanger_1" maxlength="20">
+          </div>
+
+          <div class="lobby-input-group">
+            <label for="roomInput">Код або назва кімнати (Chamber ID):</label>
+            <input type="text" id="roomInput" class="steampunk-input" value="Sector_Omega" maxlength="24">
+          </div>
+
+          <div class="lobby-input-group">
+            <label for="lobbyMapSelect">Арена бою:</label>
+            <select id="lobbyMapSelect" class="steampunk-input" style="cursor: pointer;">
+              <option value="foundry" selected>The Clockwork Foundry (20x20 Стандарт)</option>
+              <option value="ironworks_catacombs">The Ironworks Catacombs (28x28 Катакомби)</option>
+              <option value="zeppelin_docks">The Grand Zeppelin Docks (32x32 Велика арена)</option>
+              <option value="alchemical_citadel">The Alchemical Citadel (36x36 Велетенська цитадель)</option>
+              <option value="steam_terminal">The Steam Rail Terminal (40x24 Довгий вокзал)</option>
+            </select>
+          </div>
+
+          <div class="lobby-input-group">
+            <label for="lobbyGameModeSelect">Режим гри:</label>
+            <select id="lobbyGameModeSelect" class="steampunk-input" style="cursor: pointer;">
+              <option value="solo_elim">⚔️ Кожен за себе (Остаточна смерть)</option>
+              <option value="team_elim">👥 Командний бій (Остаточна смерть)</option>
+              <option value="ffa_dm">⚡ Кожен сам за себе (Відродження / 10 кілів)</option>
+              <option value="team_dm">🐺 vs 🦊 Командний бій (Відродження / 15 кілів)</option>
+            </select>
+          </div>
+
+          <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: none;">
+            <label for="lobbyTargetKillsInput">Ціль кілів для перемоги:</label>
+            <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="5" max="50" value="15">
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button id="btnJoinRoom" class="btn-steampunk btn-brass" style="flex: 1;">
+              ⚡ Приєднатися
+            </button>
+            <button id="btnCreateRoom" class="btn-steampunk btn-copper" style="flex: 1;">
+              ⚙ Створити кімнату
+            </button>
+          </div>
+
+          <div id="lobbyErrorMsg" style="display: none; color: var(--color-status-danger); font-size: 13px; text-align: center; margin-top: 4px;"></div>
+
+          <!-- Active Room State Card (Players Roster & Pinned Start Buttons) -->
+          <div id="lobbyStatusCard" style="display: none; margin-top: 8px; padding: 12px; background: rgba(17, 20, 26, 0.9); border: 1px solid var(--color-brass-dark); border-radius: 4px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <div>
+                <span style="font-weight: bold; color: var(--color-brass-glow);" id="lobbyRoomTitle">Chamber</span>
+                <span style="font-size: 12px; color: var(--color-text-dim); margin-left: 6px;" id="lobbyMapTitle">Foundry</span>
+              </div>
+              <span id="lobbyModeBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 3px; background: #2b230f; color: #ffcf48; border: 1px solid #c59b27;">ВИЖИВАННЯ</span>
+            </div>
+
+            <!-- Team selection buttons (visible in team modes) -->
+            <div id="lobbyTeamSelectGroup" style="display: none; margin-bottom: 8px; padding: 6px 8px; background: rgba(0,0,0,0.3); border-radius: 4px;">
+              <div style="font-size: 11px; color: var(--color-text-dim); margin-bottom: 4px; font-weight: bold;">Оберіть вашу команду:</div>
+              <div style="display: flex; gap: 8px;">
+                <button type="button" id="btnSelectTeam1" class="btn-steampunk btn-iron" style="flex: 1; border-color: #2575fc; color: #80b5ff; font-size: 11px; padding: 6px 4px;">🐺 Парові Вовки</button>
+                <button type="button" id="btnSelectTeam2" class="btn-steampunk btn-iron" style="flex: 1; border-color: #ff4757; color: #ffa4ad; font-size: 11px; padding: 6px 4px;">🦊 Мідні Лиси</button>
+              </div>
+            </div>
+
+            <!-- Share buttons for friend invitation -->
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button type="button" id="btnCopyRoomCode" class="btn-steampunk btn-iron" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+                📋 Скопіювати код
+              </button>
+              <button type="button" id="btnCopyRoomLink" class="btn-steampunk btn-brass" style="flex: 1; font-size: 11px; padding: 6px 8px;">
+                🔗 Посилання для друга
+              </button>
+            </div>
+            <div id="lobbyCopyToast" style="display: none; font-size: 12px; color: var(--color-status-success); text-align: center; margin-bottom: 8px; font-weight: bold;">
+              ✓ Скопійовано в буфер обміну!
+            </div>
+
+            <div style="font-size: 12px; color: var(--color-brass-bright); font-weight: bold; margin-bottom: 6px;">Бійці у кімнаті:</div>
+            <ul id="lobbyPlayerList" style="list-style: none; max-height: 180px; overflow-y: auto; margin-bottom: 12px; padding: 0;"></ul>
+
+            <!-- Prominent Pinned Action Buttons directly attached to Roster -->
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; gap: 8px;">
+                <button id="btnToggleReady" class="btn-steampunk btn-iron" style="flex: 1; padding: 10px 14px; font-weight: bold;">Готовий</button>
+                <button id="btnStartMatch" class="btn-steampunk btn-launch" style="flex: 1.5; display: none; padding: 10px 14px; font-size: 15px; font-weight: bold; box-shadow: 0 0 14px rgba(85, 239, 196, 0.6);">⚔ Почати бій</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-top: 6px; padding-top: 10px; border-top: 1px solid #2a313d;">
+            <button id="btnEnterEditor" class="btn-steampunk btn-iron" style="flex: 1; font-size: 12px;">
+              🛠 Редактор карт
+            </button>
+            <button id="btnQuickPlay" class="btn-steampunk btn-copper" style="flex: 1; font-size: 12px;">
+              ⚙ Бій з ботами
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 2: Open Steam Chambers Browser & Tactical Guide -->
+        <div class="steampunk-panel lobby-side-card">
+          <div class="lobby-card-header">
+            <h3><span>🌐</span> Відкриті парові кімнати</h3>
+            <button type="button" id="btnLobbyRefreshRooms" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 3px 10px;">🔄 Оновити</button>
+          </div>
+
+          <div id="lobbyRoomsList" style="max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px;">
+            <!-- Dynamic cards -->
+          </div>
+
+          <!-- Guidance Banner -->
+          <div class="lobby-guide-banner" style="margin-top: 10px;">
+            <div class="guide-title">📌 Як грати разом з другом:</div>
+            <ol style="margin: 6px 0 0 18px; padding: 0; line-height: 1.5; font-size: 12px; color: var(--color-text-dim);">
+              <li>Введіть позивний та однаковий код кімнати (або виберіть зі списку вище).</li>
+              <li>Натисніть <strong>«⚡ Приєднатися»</strong> або <strong>«⚙ Створити кімнату»</strong>.</li>
+              <li>Скопіюйте посилання кнопкою <strong>«🔗 Посилання для друга»</strong> та надішліть його.</li>
+              <li>Коли бійці готові — хост тисне <strong>«⚔ Почати бій»</strong>!</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       VIEW 2: Interactive Battle Map Editor
+       ====================================================================== -->
+  <div id="view-editor" class="view-container">
+    <!-- Top Action Bar -->
+    <div class="editor-topbar">
+      <div class="editor-topbar-left">
+        <button id="btnEditorReturnHome" class="btn-steampunk btn-iron" title="Повернутися на сайт">🏠 На сайт</button>
+        <input type="text" id="mapNameInput" class="map-name-input" value="The Clockwork Foundry" title="Map Name">
+        <select id="editorTemplateSelect" class="editor-size-select" title="Завантажити готовий шаблон арени" style="background: rgba(44, 28, 14, 0.9); border-color: var(--color-brass-primary); color: var(--color-brass-light);">
+          <option value="" disabled selected>📋 Шаблони арен...</option>
+          <option value="foundry">Foundry (20x20 Стандарт)</option>
+          <option value="ironworks_catacombs">Catacombs (28x28 Катакомби)</option>
+          <option value="zeppelin_docks">Zeppelin Docks (32x32 Велика)</option>
+          <option value="alchemical_citadel">Citadel (36x36 Цитадель)</option>
+          <option value="steam_terminal">Steam Rail Terminal (40x24 Вокзал)</option>
+        </select>
+        <select id="gridSizeSelect" class="editor-size-select" title="Розмір сітки бойової арени">
+          <option value="20" selected>20 x 20 Стандарт (800 x 800 px)</option>
+          <option value="26">26 x 26 Розширена (1040 x 1040 px)</option>
+          <option value="28">28 x 28 Катакомби (1120 x 1120 px)</option>
+          <option value="32">32 x 32 Велика арена (1280 x 1280 px)</option>
+          <option value="36">36 x 36 Цитадель (1440 x 1440 px)</option>
+          <option value="40">40 x 40 Гранд цитадель (1600 x 1600 px)</option>
+          <option value="50">50 x 50 Мегаполіс (2000 x 2000 px)</option>
+        </select>
+        <button id="btnBorderWall" class="btn-steampunk btn-iron" title="Surround border with solid perimeter walls">Perimeter</button>
+        <button id="btnClearGrid" class="btn-steampunk btn-iron" title="Clear all interior tiles to floor">Clear</button>
+        <button id="btnDefaultMap" class="btn-steampunk btn-iron" title="Reset to canonical Clockwork Foundry arena">Default</button>
+      </div>
+
+      <div class="editor-topbar-center">
+        <button id="btnSaveLocal" class="btn-steampunk btn-copper" title="Store map in browser storage">Save Local</button>
+        <button id="btnLoadLocal" class="btn-steampunk btn-copper" title="Retrieve map from browser storage">Load Local</button>
+        <button id="btnExportJson" class="btn-steampunk btn-iron" title="Download map JSON file">Export JSON</button>
+        <button id="btnImportJson" class="btn-steampunk btn-iron" title="Upload map JSON file">Import JSON</button>
+        <input type="file" id="fileInputMap" accept=".json" style="display: none;">
+      </div>
+
+      <div class="editor-topbar-right">
+        <button id="btnEditorPlaySolo" class="btn-steampunk btn-launch" title="Миттєво запустити бій з ботами на цій карті">
+          🤖 Грати з ботами
+        </button>
+        <button id="btnEditorPlayOnline" class="btn-steampunk btn-copper" title="Створити онлайн-кімнату з цією картою для гри з друзями">
+          🌐 Онлайн-матч
+        </button>
+        <button id="btnLaunchCustomMatch" class="btn-steampunk btn-launch" style="display: none;">
+          ⚔ Launch Match on Custom Map
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Workspace -->
+    <div class="editor-workspace">
+      <!-- Left Sidebar: Brush Tools -->
+      <aside class="editor-sidebar-left">
+        <div class="sidebar-section-title">Industrial Brush</div>
+        <div class="tool-palette-grid">
+          <button class="tool-btn active" data-tool="wall">
+            <span class="tool-icon-swatch swatch-wall"></span>
+            <span>Wall (Solid)</span>
+          </button>
+          <button class="tool-btn" data-tool="obstacle">
+            <span class="tool-icon-swatch swatch-obstacle"></span>
+            <span>Obstacle / Cover</span>
+          </button>
+          <button class="tool-btn" data-tool="floor">
+            <span class="tool-icon-swatch swatch-floor"></span>
+            <span>Floor (Eraser)</span>
+          </button>
+        </div>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">Spawns & Pickups</div>
+        <div class="tool-palette-grid">
+          <button class="tool-btn" data-tool="player">
+            <span class="tool-icon-swatch swatch-player"></span>
+            <span>Player Spawn</span>
+          </button>
+          <button class="tool-btn" data-tool="bot">
+            <span class="tool-icon-swatch swatch-bot"></span>
+            <span>Bot Spawn</span>
+          </button>
+          <button class="tool-btn" data-tool="ammo">
+            <span class="tool-icon-swatch swatch-ammo"></span>
+            <span>Ammo Crate</span>
+          </button>
+          <button class="tool-btn" data-tool="health">
+            <span class="tool-icon-swatch swatch-health"></span>
+            <span>Health Vial</span>
+          </button>
+        </div>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">⚙️ Steampunk Декор</div>
+        <div class="tool-palette-grid">
+          <button class="tool-btn" data-tool="gear" title="Шестерня (Brass Cog)">
+            <span class="tool-icon-swatch swatch-gear">⚙️</span>
+            <span>Шестерня</span>
+          </button>
+          <button class="tool-btn" data-tool="vent" title="Парова решітка (Steam Vent)">
+            <span class="tool-icon-swatch swatch-vent">💨</span>
+            <span>Вентиляція</span>
+          </button>
+          <button class="tool-btn" data-tool="pipes" title="Мідні труби (Copper Pipes)">
+            <span class="tool-icon-swatch swatch-pipes">🔧</span>
+            <span>Труби</span>
+          </button>
+          <button class="tool-btn" data-tool="lantern" title="Паровий ліхтар (Lantern Post)">
+            <span class="tool-icon-swatch swatch-lantern">🏮</span>
+            <span>Ліхтар</span>
+          </button>
+          <button class="tool-btn" data-tool="tank" title="Паровий котел (Pressure Tank)">
+            <span class="tool-icon-swatch swatch-tank">🛢</span>
+            <span>Котел</span>
+          </button>
+          <button class="tool-btn" data-tool="crate" title="Залізна скриня (Supply Crate)">
+            <span class="tool-icon-swatch swatch-crate">📦</span>
+            <span>Скриня</span>
+          </button>
+          <button class="tool-btn" data-tool="crack" title="Тріщини кам'яної підлоги (Floor Cracks)">
+            <span class="tool-icon-swatch swatch-crack">⚡</span>
+            <span>Тріщини</span>
+          </button>
+          <button class="tool-btn" data-tool="sign" title="Попереджувальний напис/трафарет (Hazard Sign)">
+            <span class="tool-icon-swatch swatch-sign">⚠️</span>
+            <span>Напис/Знак</span>
+          </button>
+          <button class="tool-btn" data-tool="bush" title="Стімпанк чагарник/мох (Alchemical Foliage)">
+            <span class="tool-icon-swatch swatch-bush">🌿</span>
+            <span>Кущі/Мох</span>
+          </button>
+        </div>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">Controls Guide</div>
+        <div style="font-size: 11px; color: var(--color-text-dim); line-height: 1.5;">
+          • <strong>Left Click / Drag</strong>: Paint tile or place decor<br>
+          • <strong>Right Click / Drag</strong>: Pan arena<br>
+          • <strong>Mouse Wheel</strong>: Zoom in/out<br>
+          • <strong>Shift + Click</strong>: Sample / Erase
+        </div>
+      </aside>
+
+      <!-- Center Viewport -->
+      <main class="editor-viewport" id="editorViewport">
+        <canvas id="editorCanvas"></canvas>
+        
+        <!-- Floating Viewport Controls -->
+        <div class="viewport-floating-controls">
+          <button id="btnZoomIn" class="ctrl-btn" title="Zoom In">+</button>
+          <button id="btnZoomOut" class="ctrl-btn" title="Zoom Out">&minus;</button>
+          <button id="btnZoomReset" class="ctrl-btn" title="Reset View">&#8635;</button>
+          <button id="btnEditorFullscreen" class="ctrl-btn" title="Повний екран (F)">⛶</button>
+        </div>
+      </main>
+
+      <!-- Right Sidebar: Live Playability Validation & Diagnostics -->
+      <aside class="editor-sidebar-right">
+        <div class="sidebar-section-title">Playability Diagnostic</div>
+        <div class="validation-card">
+          <div class="validation-header">
+            <span style="font-size: 13px; font-weight: bold;">Arena Status:</span>
+            <span id="validationBadge" class="badge-status valid">&check; PLAYABLE</span>
+          </div>
+          <ul id="validationErrorsList" class="validation-errors-list" style="display: none;"></ul>
+        </div>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">Arena Structure</div>
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-label">Solid Walls</div>
+            <div class="stat-val" id="statWalls">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Cover Obstacles</div>
+            <div class="stat-val" id="statObstacles">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Player Spawns</div>
+            <div class="stat-val" id="statPlayerSpawns">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Bot Spawns</div>
+            <div class="stat-val" id="statBotSpawns">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Декор арени</div>
+            <div class="stat-val" id="statDecorations">0</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-label">Merged Raycast Segments</div>
+            <div class="stat-val" id="statSegments">0</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section-title" style="margin-top: 10px;">Validation Rules</div>
+        <div style="font-size: 11px; color: var(--color-text-dim); line-height: 1.4;">
+          &bull; Minimum 1 Player Spawn<br>
+          &bull; Minimum 1 Bot Spawn<br>
+          &bull; Spawns cannot be placed on walls<br>
+          &bull; BFS: All spawns must connect through walkable floors!
+        </div>
+      </aside>
+    </div>
+
+    <!-- Status Bar -->
+    <footer class="editor-statusbar">
+      <div class="status-left">
+        <span id="statusBarCoords">Cursor: (0, 0) | Tile: (0, 0)</span>
+        <span id="statusBarDimensions">Dimensions: 20 x 20 (800 x 800 px)</span>
+      </div>
+      <div class="status-right">
+        <span id="statusBarZoom">Zoom: 100%</span>
+        <span>Steamstrike Engine v1.0</span>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ======================================================================
+       VIEW 3: Active Match Arena (Canvas & Tactical HUD)
+       ====================================================================== -->
+  <div id="view-game" class="view-container">
+    <div class="steampunk-header" style="height: 40px; background: #0c0e14;">
+      <div style="font-size: 14px; color: var(--color-brass-bright);">
+        ⚔ <span id="gameStatusTitle">Бойова арена</span> &bull; <span id="gameMapNameDisplay">The Clockwork Foundry</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="btnGameFullscreen" class="btn-steampunk btn-launch" style="font-size: 12px; padding: 4px 12px;" title="Повний екран (F / F11)">
+          ⛶ Повний екран (F)
+        </button>
+        <button id="btnReturnToEditor" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 4px 10px;">
+          🗺 Редактор
+        </button>
+        <button id="btnReturnToLobby" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 4px 10px;">
+          ⚔ До лобі
+        </button>
+      </div>
+    </div>
+
+    <div class="game-canvas-container">
+      <canvas id="gameCanvas" width="800" height="800"></canvas>
+      <div class="game-hud-overlay" id="gameHud">
+        <!-- Steampunk tactical HUD injected dynamically -->
+        <!-- Mobile Touch Action Controls (Visible on touch devices / mobile viewports) -->
+        <div id="mobileTouchControls" class="mobile-touch-controls">
+          <div id="touchJoystickBase" class="touch-joystick-base" style="display: none;">
+            <div id="touchJoystickThumb" class="touch-joystick-thumb"></div>
+          </div>
+          <div class="touch-action-buttons">
+            <button type="button" id="btnTouchReload" class="touch-btn touch-btn-reload" title="Перезарядка (R)">
+              <span>🔄</span><small>RELOAD</small>
+            </button>
+            <button type="button" id="btnTouchSprint" class="touch-btn touch-btn-sprint" title="Прискорення (Shift)">
+              <span>⚡</span><small>SPRINT</small>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Idle Screen when no match is active -->
+      <div id="gameIdleOverlay" class="game-idle-overlay">
+        <div class="idle-card">
+          <div class="idle-badge">⚙ БОЙОВИЙ АНГАР ⚙</div>
+          <h2 class="idle-title">АРЕНА ГОТОВА ДО БОЮ</h2>
+          <p class="idle-desc">Екран <strong>«Арена»</strong> відображає активний бойовий симулятор з ліхтарем і туманом війни. Зараз матч не запущено. Оберіть дію нижче:</p>
+          <div class="idle-buttons">
+            <button type="button" id="btnIdleSoloPlay" class="btn-steampunk btn-launch" style="padding: 12px 20px; font-size: 15px;">
+              ⚡ Швидкий бій (Solo з ботами)
+            </button>
+            <button type="button" id="btnIdleGoLobby" class="btn-steampunk btn-brass" style="padding: 11px 18px; font-size: 14px;">
+              🌐 Мультиплеєр (Знайти або створити кімнату в Лобі)
+            </button>
+            <button type="button" id="btnIdleGoHome" class="btn-steampunk btn-iron" style="padding: 10px 18px; font-size: 13px;">
+              🏠 Повернутися на головну сторінку
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       VIEW 4: Steampunk Workshop & Armory
+       ====================================================================== -->
+  <div id="view-workshop" class="view-container">
+    <div class="workshop-wrapper">
+      <!-- Header with Rank, XP, and Currencies -->
+      <div class="workshop-header-card">
+        <div class="workshop-header-left">
+          <div class="rank-cog-badge" id="workshopRankBadge">I</div>
+          <div class="workshop-profile-info">
+            <div class="workshop-rank-title" id="workshopRankTitle">Rank 1 Mechanist</div>
+            <div style="display: flex; align-items: center;">
+              <div class="xp-progress-bar-wrap">
+                <div class="xp-progress-bar-fill" id="workshopXpFill"></div>
+              </div>
+              <span class="xp-text" id="workshopXpText">0 / 100 XP</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="workshop-currencies">
+          <div class="currency-pill">
+            <span class="currency-icon">⚙</span>
+            <span class="currency-amount scrap" id="workshopScrapVal">500</span>
+          </div>
+          <div class="currency-pill">
+            <span class="currency-icon">💎</span>
+            <span class="currency-amount cores" id="workshopCoreVal">2</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Guest Notice Banner for Workshop Upgrades -->
+      <div id="workshopGuestNotice" class="workshop-guest-notice" style="display: none;">
+        <span class="notice-icon">🔒</span>
+        <div class="notice-text">
+          <strong>Прокачка арсеналу доступна лише зареєстрованим бійцям</strong>
+          <small>Увійдіть через Google Акаунт, щоб відкривати нові рівні характеристик, розблоковувати зброю та зберігати свій прогрес.</small>
+        </div>
+        <button type="button" id="btnWorkshopAuthPrompt" class="btn-steampunk btn-brass" style="font-size: 12px; padding: 7px 16px; white-space: nowrap;">
+          🔑 Увійти через Google
+        </button>
+      </div>
+
+      <!-- Alchemical Smelter / Scrap-to-Core Transmutation Chamber -->
+      <div class="steampunk-panel alchemical-smelter-panel" style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; background: linear-gradient(135deg, rgba(32, 22, 12, 0.95), rgba(18, 24, 32, 0.95)); border: 1px solid var(--color-copper-warm); border-radius: 6px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="font-size: 32px; filter: drop-shadow(0 0 8px rgba(255, 170, 0, 0.6));">⚗️</div>
+          <div>
+            <div style="font-family: var(--font-header); font-size: 15px; color: var(--color-brass-bright); letter-spacing: 0.5px;">Алхімічна Плавильня (Transmutation Chamber)</div>
+            <div style="font-size: 12px; color: var(--color-text-dim); margin-top: 2px;">
+              Переплавка металобрухту в ефірні ядра: <strong style="color: var(--color-brass-light);">500 ⚙ Scrap ➔ 1 💎 Aetherium Core</strong>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div id="smelterScrapStatus" style="font-size: 12px; color: var(--color-text-dim); text-align: right;"></div>
+          <button type="button" id="btnTransmuteScrap" class="btn-steampunk btn-brass" style="font-size: 13px; font-weight: bold; padding: 8px 16px; display: flex; align-items: center; gap: 6px;">
+            <span>⚗️</span> Переплавити (+1 💎)
+          </button>
+        </div>
+      </div>
+
+      <!-- Workshop Tab Navigation -->
+      <div class="workshop-tab-bar">
+        <button class="workshop-tab-btn active" data-tab="character">⚙ Character Foundry</button>
+        <button class="workshop-tab-btn" data-tab="weapons">⚔ Weapon Armory</button>
+      </div>
+
+      <!-- Tab Content 1: Character Foundry -->
+      <div id="tabContentCharacter" class="workshop-tab-content active">
+        <div class="foundry-dials-grid">
+          <!-- Boiler / Health Dial -->
+          <div class="dial-card">
+            <div class="dial-header">Reinforced Boiler (HP)</div>
+            <div class="dial-canvas-wrap">
+              <canvas id="dialHealth" width="120" height="120"></canvas>
+            </div>
+            <div class="dial-stats">
+              <span class="tier-badge" id="tierLabelHealth">Tier 0 / 5</span>
+              <span class="dial-val-now" id="valCurrentHp">100 HP</span>
+              <span class="dial-val-next" id="valNextHp">+5 HP Next</span>
+            </div>
+            <div class="dial-cost" id="costHealth">Cost: 150 ⚙</div>
+            <button id="btnUpgradeHealth" class="btn-dial-upgrade">Reinforce Boiler</button>
+          </div>
+
+          <!-- Pistons / Speed Dial -->
+          <div class="dial-card">
+            <div class="dial-header">Hydraulic Pistons (SPD)</div>
+            <div class="dial-canvas-wrap">
+              <canvas id="dialSpeed" width="120" height="120"></canvas>
+            </div>
+            <div class="dial-stats">
+              <span class="tier-badge" id="tierLabelSpeed">Tier 0 / 5</span>
+              <span class="dial-val-now" id="valCurrentSpeed">180 px/s</span>
+              <span class="dial-val-next" id="valNextSpeed">+4 px/s Next</span>
+            </div>
+            <div class="dial-cost" id="costSpeed">Cost: 150 ⚙</div>
+            <button id="btnUpgradeSpeed" class="btn-dial-upgrade">Calibrate Pistons</button>
+          </div>
+
+          <!-- Filament / Lantern Range Dial -->
+          <div class="dial-card">
+            <div class="dial-header">Aether Filament (LAN)</div>
+            <div class="dial-canvas-wrap">
+              <canvas id="dialLantern" width="120" height="120"></canvas>
+            </div>
+            <div class="dial-stats">
+              <span class="tier-badge" id="tierLabelLantern">Tier 0 / 5</span>
+              <span class="dial-val-now" id="valCurrentLantern">420 px</span>
+              <span class="dial-val-next" id="valNextLantern">+15 px Next</span>
+            </div>
+            <div class="dial-cost" id="costLantern">Cost: 150 ⚙</div>
+            <button id="btnUpgradeLantern" class="btn-dial-upgrade">Ignite Filament</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Content 2: Weapon Armory -->
+      <div id="tabContentWeapons" class="workshop-tab-content">
+        <div class="armory-layout">
+          <!-- Left: Weapon Selector -->
+          <div class="weapon-roster-list" id="armoryWeaponList">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Right: Workbench Detail & Tracks -->
+          <div class="workbench-panel">
+            <div class="workbench-header">
+              <div>
+                <div class="workbench-name" id="workbenchWeaponName">Clockwork Revolver</div>
+                <div class="workbench-desc" id="workbenchWeaponDesc">Reliable six-shot sidearm with precision clockwork action.</div>
+              </div>
+              <div class="workbench-actions">
+                <button id="btnEquipWeapon" class="btn-equip-weapon">⚔ Equip Loadout</button>
+                <button id="btnUnlockWeapon" class="btn-unlock-weapon" style="display: none;">🔓 Unlock Blueprint</button>
+              </div>
+            </div>
+
+            <div class="tracks-container">
+              <!-- Damage Track -->
+              <div class="upgrade-track" data-track="damage">
+                <span class="track-name">Impact Caliber</span>
+                <span class="track-val">35 (+0%)</span>
+                <div class="track-pips"></div>
+                <span class="track-cost">200 ⚙</span>
+                <button class="btn-track-upgrade">Upgrade</button>
+              </div>
+
+              <!-- Fire Rate Track -->
+              <div class="upgrade-track" data-track="fireRate">
+                <span class="track-name">Cycling Rate</span>
+                <span class="track-val">2.5/s (+0%)</span>
+                <div class="track-pips"></div>
+                <span class="track-cost">200 ⚙</span>
+                <button class="btn-track-upgrade">Upgrade</button>
+              </div>
+
+              <!-- Reload Track -->
+              <div class="upgrade-track" data-track="reload">
+                <span class="track-name">Ejector Speed</span>
+                <span class="track-val">1.5s (-0%)</span>
+                <div class="track-pips"></div>
+                <span class="track-cost">200 ⚙</span>
+                <button class="btn-track-upgrade">Upgrade</button>
+              </div>
+
+              <!-- Magazine Capacity Track -->
+              <div class="upgrade-track" data-track="capacity">
+                <span class="track-name">Drum Capacity</span>
+                <span class="track-val">6 rds</span>
+                <div class="track-pips"></div>
+                <span class="track-cost">200 ⚙</span>
+                <button class="btn-track-upgrade">Upgrade</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       Authentication & Profile Modal Overlay
+       ====================================================================== -->
+  <div id="authModalOverlay" class="auth-modal-overlay">
+    <div class="auth-modal-panel">
+      <div class="auth-modal-header">
+        <div class="auth-modal-title">⚙ Mechanic Dossier & Identity</div>
+        <button id="btnAuthClose" class="btn-close-modal">&times;</button>
+      </div>
+
+      <div class="auth-identity-card">
+        <div class="auth-badge-row">
+          <span id="authTypeBadge" class="auth-type-pill guest">⚙ Guest Mechanist</span>
+          <span id="authLevelBadge" style="font-size: 12px; color: #ffcf48; font-weight: bold;">Rank 1</span>
+        </div>
+        <div class="auth-callsign" id="authCallsignDisplay">FoundryMechanic#101</div>
+        <div class="auth-email" id="authEmailDisplay">Stored Locally in Browser Machinery</div>
+      </div>
+
+      <div class="auth-notice" id="authStatusNotice">
+        Your progression is safely recorded locally in this browser. Link Google to preserve your blueprints across multiple terminals.
+      </div>
+
+      <div class="auth-actions">
+        <div id="gsiContainer"></div>
+        <button id="btnMockGoogleSignIn" class="btn-mock-google">
+          🌐 Sign in with Google (Identity Link)
+        </button>
+      </div>
+
+      <!-- Account Linking Conflict Dialog -->
+      <div id="linkConfirmSection" class="link-confirm-box" style="display: none;">
+        <div class="link-confirm-msg">
+          Existing cloud blueprints discovered! Would you like to merge your local progress (<span id="linkGuestXp">0 XP</span>, <span id="linkGuestScrap">0 Scrap</span>) into your cloud account?
+        </div>
+        <div class="link-confirm-buttons">
+          <button id="btnConfirmLinkMerge" class="btn-confirm-merge">Merge Blueprints</button>
+          <button id="btnConfirmLinkCloud" class="btn-confirm-cloud">Use Cloud Only</button>
+        </div>
+      </div>
+
+      <button id="btnSignOut" class="btn-signout" style="display: none;">Disconnect Account</button>
+    </div>
+  </div>
+
+  <!-- Load Main Application Script -->
+  <script type="module" src="js/App.js"></script>
+  <script type="module">
+    import App from './js/App.js';
+    if (typeof window !== 'undefined' && !window.app) {
+      try {
+        window.app = new App();
+      } catch (err) {
+        console.error('[Clockwork Echo] Fallback bootstrap error:', err);
+      }
+    }
+  </script>
+</body>
+</html>

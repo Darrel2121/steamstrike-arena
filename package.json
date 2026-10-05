@@ -1,0 +1,26 @@
+{
+  "name": "steampunk-tactical-shooter",
+  "version": "1.0.0",
+  "description": "Real-time multiplayer top-down tactical shooter with Steampunk Fantasy aesthetic and built-in map editor",
+  "type": "module",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "test": "node tests/runner.js"
+  },
+  "keywords": [
+    "steampunk",
+    "tactical-shooter",
+    "bullet-echo",
+    "map-editor",
+    "websockets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "basic-ftp": "^6.2.2"
+  }
+}

@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <title>Steamstrike: Tactical Arena — Повна технічна документація</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 16mm 14mm 16mm 14mm;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.55;
+      color: #1e2430;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+    }
+    .page-break {
+      page-break-after: always;
+      break-after: page;
+    }
+    .avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+
+    /* Cover Page */
+    .cover-page {
+      min-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 40px 20px;
+      border: 3px double #b8860b;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #fdfbf7 0%, #f6f0e6 100%);
+      margin-bottom: 20px;
+    }
+    .cover-badge {
+      display: inline-block;
+      font-size: 9pt;
+      font-weight: bold;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #8c6200;
+      background: rgba(184, 134, 11, 0.15);
+      border: 1px solid #b8860b;
+      padding: 6px 18px;
+      border-radius: 20px;
+      margin-bottom: 25px;
+    }
+    .cover-title {
+      font-size: 32pt;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      color: #161a22;
+      margin: 0 0 10px 0;
+      text-transform: uppercase;
+    }
+    .cover-subtitle {
+      font-size: 15pt;
+      color: #a05a00;
+      font-weight: 600;
+      margin: 0 0 25px 0;
+    }
+    .cover-desc {
+      font-size: 11pt;
+      color: #555e6d;
+      max-width: 600px;
+      line-height: 1.6;
+      margin-bottom: 40px;
+    }
+    .cover-meta {
+      margin-top: 30px;
+      font-size: 9.5pt;
+      color: #4a5568;
+      border-top: 1px solid #d4c5a9;
+      padding-top: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 80%;
+      text-align: left;
+    }
+    .cover-meta strong {
+      color: #1a202c;
+    }
+
+    /* Headings */
+    h1 {
+      font-size: 19pt;
+      font-weight: 700;
+      color: #161a22;
+      border-bottom: 2px solid #b8860b;
+      padding-bottom: 6px;
+      margin-top: 24pt;
+      margin-bottom: 12pt;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2 {
+      font-size: 13.5pt;
+      font-weight: 600;
+      color: #8c5300;
+      margin-top: 16pt;
+      margin-bottom: 8pt;
+      border-left: 4px solid #b8860b;
+      padding-left: 8px;
+    }
+    h3 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #2d3748;
+      margin-top: 12pt;
+      margin-bottom: 6pt;
+    }
+
+    p {
+      margin: 0 0 8pt 0;
+    }
+    ul, ol {
+      margin: 0 0 10pt 0;
+      padding-left: 20px;
+    }
+    li {
+      margin-bottom: 4pt;
+    }
+
+    /* Code Blocks */
+    pre {
+      background: #181d26;
+      color: #f7fafc;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 8.5pt;
+      line-height: 1.45;
+      overflow-x: auto;
+      border: 1px solid #323d4f;
+      margin: 8pt 0 12pt 0;
+      page-break-inside: avoid;
+    }
+    code {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 9pt;
+      background: #edf2f7;
+      color: #b85d00;
+      padding: 2px 5px;
+      border-radius: 3px;
+      border: 1px solid #e2e8f0;
+    }
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10pt 0 14pt 0;
+      font-size: 9pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #cbd5e0;
+      padding: 7px 10px;
+      text-align: left;
+    }
+    th {
+      background: #f7fafc;
+      color: #1a202c;
+      font-weight: 600;
+      border-bottom: 2px solid #b8860b;
+    }
+    tr:nth-child(even) {
+      background: #fcfdfd;
+    }
+
+    /* Callout Card */
+    .callout {
+      background: #fffaf0;
+      border-left: 4px solid #dd6b20;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin: 10pt 0;
+      font-size: 9.5pt;
+      page-break-inside: avoid;
+    }
+    .callout-title {
+      font-weight: bold;
+      color: #9c4221;
+      margin-bottom: 4px;
+    }
+
+    .diagram {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      margin: 10pt 0;
+      font-family: monospace;
+      font-size: 8.5pt;
+      line-height: 1.35;
+      white-space: pre;
+      page-break-inside: avoid;
+      color: #2d3748;
+    }
+
+    .footer-bar {
+      margin-top: 25px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: #a0aec0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- COVER PAGE -->
+  <div class="cover-page">
+    <div class="cover-badge">ТЕХНІЧНА СПЕЦИФІКАЦІЯ ТА АРХІТЕКТУРА</div>
+    <div class="cover-title">STEAMSTRIKE</div>
+    <div class="cover-subtitle">Tactical Arena (Версія 1.0)</div>
+    <div class="cover-desc">
+      Повна системна архітектура, протокол клієнт-серверної синхронізації 30 Hz, алгоритми трасування світла (Raycasting FOV), акустичні хвилі, автономний штучний інтелект ботів, вбудований редактор карт та підсистема безпеки.
+    </div>
+
+    <div class="cover-meta">
+      <div><strong>Платформа:</strong> Браузери (Web, Canvas 2D, WebSocket)</div>
+      <div><strong>Серверний стек:</strong> Node.js (ESM), pure `ws` (Zero-dep)</div>
+      <div><strong>Дата публікації:</strong> 5 Жовтня 2026 р.</div>
+      <div><strong>Покриття тестами:</strong> 228 тестів (100% Pass)</div>
+      <div><strong>Стилістика:</strong> Вікторіанський стімпанк (Steampunk Fantasy)</div>
+      <div><strong>Статус релізу:</strong> Production Ready (v1.0.0)</div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 1 -->
+  <h1>1. Загальний огляд проекту</h1>
+  <p><strong>Steamstrike: Tactical Arena</strong> — це змагальний багатокористувацький тактичний 2D-шутер з видом зверху у вікторіанському стімпанк-сеттингу. Гра побудована на геймплейній філософії напружених перестрілок на коротких дистанціях, де ключову перевагу дають орієнтація за звуком кроків супротивника, контроль кутів огляду ліхтаря та позиційна боротьба за укриттями.</p>
+
+  <h3>Ключові відмінні характеристики:</h3>
+  <ul>
+    <li><strong>Спрямований паровий ліхтар (Directional Lantern FOV):</strong> персонаж освітлює сектор у 90 градусів перед собою. Усе за межами променя занурене в непроглядну пітьму туману війни.</li>
+    <li><strong>Акустична візуалізація (Acoustic Sound Waves):</strong> біг (спринт), стрільба та взаємодія з механізмами створюють кільцеві звукові імпульси, що проходять крізь стіни та виявляють позицію бійців на радарі у темряві.</li>
+    <li><strong>Манометр витривалості (Steam PSI Gauge):</strong> спринт витрачає робочий тиск пари (до 0 PSI). При вичерпанні гравець змушений рухатися кроком, поки клапан скидання не відновить тиск.</li>
+    <li><strong>Високошвидкісна балістика (Continuous Collision Detection):</strong> снаряди рухаються зі швидкістю 1100–1800 px/s із миттєвим трасуванням відрізків переміщення, унеможливлюючи проходження крізь перешкоди.</li>
+    <li><strong>Вбудований редактор карт (Battle Map Editor):</strong> інтерактивне середовище малювання власних арен із перевіркою взаємної досяжності спавнів алгоритмом заливки BFS.</li>
+  </ul>
+
+  <!-- SECTION 2 -->
+  <h1>2. Архітектура системи та мережевий стек</h1>
+  <p>Мережева підсистема реалізована за строго авторитарною моделлю (Authoritative Server Pattern). Клієнти передають лише сирі команди керування (вектори руху, кут прицілу, натискання гачка). Вся фізика, балістика, нанесення шкоди, збір луту та таймери підрахунку очок обчислюються на сервері з фіксованим кроком 30 Hz (кожні 33.33 мс).</p>
+
+  <div class="diagram">
+                           [ КЛІЄНТИ БРАУЗЕРІВ ]
+                       /            |            \
+          Client 1 (Host)     Client 2 (Peer)    Client N...
+                 \                  |                  /
+             WebSocket (JSON)   HTTP (REST)   WebSocket (JSON)
+                   \                |                /
+                    ▼               ▼               ▼
+          +---------------------------------------------------+
+          |                  HTTP & WS SERVER                 |
+          |                  (server/index.js)                |
+          +---------------------------------------------------+
+          |   REST API:               GameServer Manager:     |
+          |   - /api/auth/*           - Client connection     |
+          |   - /api/profile/*        - Room dispatching      |
+          |   - /api/rooms            - Heartbeat / Ping      |
+          +---------------------------------------------------+
+                                    |
+                    +---------------+---------------+
+                    ▼                               ▼
+       +-------------------------+     +-------------------------+
+       |   Authoritative Room    |     |   ProfileStore (DB)     |
+       |     (server/Room.js)    |     |  (server/db/Profile.js) |
+       +-------------------------+     +-------------------------+
+       | - 30Hz Simulation Loop  |     | - Atomic file write     |
+       | - Physics & Collisions  |     | - Mutex Promise queues  |
+       | - Anticheat Clamping    |     | - Google / Guest index  |
+       | - Bot AI Controllers    |     +-------------------------+
+       | - Spatial Visibility    |
+       | - Snapshot Broadcast    |
+       +-------------------------+
+  </div>
+
+  <h2>2.1. Мережевий протокол (WebSocket Protocol)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Тип повідомлення</th>
+        <th>Напрямок</th>
+        <th>Призначення та зміст даних</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>C2S_JOIN_LOBBY</code></td>
+        <td>Client → Server</td>
+        <td>Запит на приєднання до кімнати: <code>{ roomId, playerName }</code>.</td>
+      </tr>
+      <tr>
+        <td><code>C2S_CREATE_ROOM</code></td>
+        <td>Client → Server</td>
+        <td>Створення кімнати: назва, карта, режим, ліміт гравців, ціль фрагів.</td>
+      </tr>
+      <tr>
+        <td><code>C2S_PLAYER_INPUT</code></td>
+        <td>Client → Server</td>
+        <td>Тіковий пакет керування: <code>{ vx, vy, aimAngle, sprint, shooting, reload }</code>.</td>
+      </tr>
+      <tr>
+        <td><code>C2S_TOGGLE_READY</code></td>
+        <td>Client → Server</td>
+        <td>Зміна прапорця готовності гравця в лобі.</td>
+      </tr>
+      <tr>
+        <td><code>C2S_START_MATCH</code></td>
+        <td>Client → Server</td>
+        <td>Команда запуску матчу від хоста з прапорцем автозаповнення ботами.</td>
+      </tr>
+      <tr>
+        <td><code>S2C_MATCH_INIT</code></td>
+        <td>Server → Client</td>
+        <td>Ініціалізація матчу: ID гравця, спавн, розміри карти, ліміти швидкості.</td>
+      </tr>
+      <tr>
+        <td><code>S2C_GAME_STATE</code></td>
+        <td>Server → Client</td>
+        <td>Снапшот 30 Hz: позиції, кути, HP, снаряди, звукові хвилі, стан очок.</td>
+      </tr>
+      <tr>
+        <td><code>S2C_MATCH_OVER</code></td>
+        <td>Server → Client</td>
+        <td>Завершення бою: переможець, таблиця фрагів, нагороди (XP, Scrap, Cores).</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 3 -->
+  <h1>3. Тактичні механіки та математика фізики</h1>
+
+  <h2>3.1. Паровий ліхтар та 2D Raycasting огляду</h2>
+  <p>Кожен боєць проєктує світловий конус у напрямку погляду (кут $\theta = \frac{\pi}{2}$, дальність $R = 420\dots495\text{ px}$). Розрахунок тіней відбувається за алгоритмом радіального трасування променів:</p>
+  <ol>
+    <li>Усі стіни карти декомпонуються на множину двовимірних відрізків $S = \{(\vec{A}_i, \vec{B}_i)\}$.</li>
+    <li>З позиції гравця випускаються промені до кожної вершини з дельта-зміщенням $\pm 0.0001$ радіана.</li>
+    <li>Для кожного променя знаходиться найближча точка перетину за векторним рівнянням:
+      $$\vec{P} = \vec{O} + t \cdot \vec{D}, \quad t = \frac{(\vec{B}_x - \vec{A}_x)(O_y - A_y) - (\vec{B}_y - \vec{A}_y)(O_x - A_x)}{D_x(B_y - A_y) - D_y(B_x - A_x)}$$
+    </li>
+    <li>Упорядковані за кутом точки перетину утворюють 2D-багатокутник видимості, який відсікає пітьму за допомогою трафарету Canvas <code>clip()</code>.</li>
+  </ol>
+
+  <h2>3.2. Акустичні хвилі (Acoustic Wave System)</h2>
+  <p>Спринт і постріли створюють сферичні звукові імпульси, що поширюються у просторі:</p>
+  <ul>
+    <li><strong>Кроки під час спринту:</strong> початковий радіус $12\text{ px}$, швидкість розширення $180\text{ px/s}$, час життя $650\text{ мс}$.</li>
+    <li><strong>Постріли зі зброї:</strong> початковий радіус $20\text{ px}$, швидкість розширення $600\text{ px/s}$, максимальний радіус $450\text{ px}$, час життя $1100\text{ мс}$.</li>
+  </ul>
+  <p>Звукові хвилі транслюються через мережевий снапшот і малюються на клієнті пульсуючими концентричними латунними кільцями крізь туман війни, дозволяючи орієнтуватися в темряві.</p>
+
+  <h2>3.3. Балістика Continuous Collision Detection (CCD)</h2>
+  <div class="callout">
+    <div class="callout-title">Захист від тунелювання куль (Anti-Tunnelling):</div>
+    При швидкості кулі $1800\text{ px/s}$ за один кадр симуляції ($33.33\text{ мс}$) снаряд долає $60\text{ px}$, що перевищує товщину стіни ($40\text{ px}$). Алгоритм CCD розраховує перетин відрізка польоту $[\vec{P}_t, \vec{P}_{t+\Delta t}]$ з усіма стінами карти та колами колізій бійців, гарантуючи 100% реєстрацію влучання.
+  </div>
+
+  <h2>3.4. Манометр витривалості (Steam PSI Manometer)</h2>
+  <p>Спринт витрачає тиск пари в ранці персонажа (зі 100 PSI до 0 за 4.5 секунди). При вичерпанні пари спринт вимикається, швидкість падає до базової ходи. У стані спокою або звичайної ходи тиск пари відновлюється через випускний клапан (Passive Vent Recovery).</p>
+
+  <!-- SECTION 4 -->
+  <h1>4. Режими гри (Game Modes)</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Режим гри</th>
+        <th>Ідентифікатор</th>
+        <th>Відродження</th>
+        <th>Умова завершення матчу</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Кожен за себе</strong></td>
+        <td><code>solo_elim</code></td>
+        <td>Ні (Остаточна смерть)</td>
+        <td>Залишається останній вижилий гравець на арені.</td>
+      </tr>
+      <tr>
+        <td><strong>Командний бій</strong></td>
+        <td><code>team_elim</code></td>
+        <td>Ні (Остаточна смерть)</td>
+        <td>Повна ліквідація всіх бійців команди суперника.</td>
+      </tr>
+      <tr>
+        <td><strong>Кожен сам за себе</strong></td>
+        <td><code>ffa_dm</code></td>
+        <td>Так (3 секунди)</td>
+        <td>Перший гравець, який набрав 10 ліквідацій.</td>
+      </tr>
+      <tr>
+        <td><strong>Командний Deathmatch</strong></td>
+        <td><code>team_dm</code></td>
+        <td>Так (3 секунди)</td>
+        <td>Перша команда (Вовки або Лисиці), яка набрала 15 фрагів.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 5 -->
+  <h1>5. Вбудований редактор бойових карт</h1>
+  <p>Редактор рівня дозволяє конструювати тактичні арени будь-якої складності. Карта зберігається у валідованому форматі JSON і може бути збережена локально, експортована або миттєво запущена в бій.</p>
+
+  <h2>5.1. Готові бойові арени (Presets):</h2>
+  <ul>
+    <li>🏭 <strong>The Clockwork Foundry (20 × 20, 800 × 800 px):</strong> компактна індустріальна ливарня з центральним котлом для швидких дуелей.</li>
+    <li>🕸️ <strong>The Ironworks Catacombs (28 × 28, 1120 × 1120 px):</strong> заплутана мережа підземних тунелів, цегляних арок, труб і кутів для засідок.</li>
+    <li>🛸 <strong>The Grand Zeppelin Docks (32 × 32, 1280 × 1280 px):</strong> великий ангар дирижаблів із причальними пірсами, вантажними кранами та складами ящиків.</li>
+    <li>🏰 <strong>The Alchemical Citadel (36 × 36, 1440 × 1440 px):</strong> грандіозна 4-бастіонна фортеця з центральним плацом та внутрішніми галереями.</li>
+    <li>🚂 <strong>The Steam Rail Terminal (40 × 24, 1600 × 960 px):</strong> видовжений залізничний вокзал з пасажирськими поїздами, коліями та снайперськими секторами.</li>
+  </ul>
+
+  <h2>5.2. Алгоритм верифікації зв'язності (BFS Reachability Invariant)</h2>
+  <p>Карта вважається валідною лише за умови, що всі спавни гравців, ботів, аптечки та патрони є взаємно досяжними. Алгоритм пошуку в ширину (BFS Flood Fill) виходить зі спавну №0 і заповнює доступні клітинки підлоги (<code>0</code>). Якщо хоча б один спавн або предмет опиняється замурованим, редактор забороняє експорт і позначає помилку зв'язності.</p>
+
+  <!-- SECTION 6 -->
+  <h1>6. Штучний інтелект автономних ботів</h1>
+  <p>ШІ ботів реалізовано у вигляді детермінованого скінченного автомата станів (FSM) із просторовим зором та слухом:</p>
+
+  <div class="diagram">
+                      +-------------------+
+                      |      PATROL       | <-------------+
+                      | (Обхід контрольних|               |
+                      |      точок)       |               |
+                      +-------------------+               |
+                         /             \                  |
+           Почув звук   /               \ Побачив ворога  | Втрата
+           хвилі кроків/                 \ у конусі FOV   | контакту
+                      ▼                   ▼               |
+         +-------------------+     +-------------------+  |
+         |    INVESTIGATE    |     |      COMBAT       | -+
+         | (Рух до джерела   | --> | (Прицілювання,    |
+         |      шуму)        |     |  стрейф, вогонь)  |
+         +-------------------+     +-------------------+
+                                            |
+                                 Низький HP | (< 35%)
+                                            ▼
+                                   +-------------------+
+                                   |      RETREAT      |
+                                   | (Пошук укриття    |
+                                   |   та аптечки)     |
+                                   +-------------------+
+  </div>
+
+  <!-- SECTION 7 -->
+  <h1>7. Система прогресії, економіка та авторизація</h1>
+
+  <h2>7.1. Арсенал зброї та модифікатори:</h2>
+  <ul>
+    <li><strong>Revolver «Peacemaker» (Базовий):</strong> шкода 35 HP, швидкість 1400 px/s, ємність 6, перезарядка 1.5 с.</li>
+    <li><strong>Steam Carbine:</strong> скорострільність 6.5/с, шкода 18 HP, швидкість 1500 px/s, ємність 25.</li>
+    <li><strong>Heavy Blunderbuss:</strong> залп із 5 куль з конічним розсіюванням, сумарна шкода до 75 HP.</li>
+    <li><strong>Pneumatic Needle Gun:</strong> бронебійна снайперська голка, швидкість 1800 px/s, шкода 70 HP.</li>
+  </ul>
+
+  <h2>7.2. Політика захисту покупок для зареєстрованих акаунтів</h2>
+  <div class="callout">
+    <div class="callout-title">Правило доступу до Майстерні (Upgrade Gating):</div>
+    Гостьові акаунти можуть вільно грати, заробляти досвід (XP), металобрухт (⚙️ Scrap) та ядра (💎 Cores). Однак кнопки апгрейду характеристик та відкриття нових креслень зброї блокуються замком (<code>🔒 Увійти для апгрейду</code>). При натисканні виринає вікно входу Google. Серверний API на маршрутах <code>/api/profile/upgrade/*</code> повертає статус <code>403 Forbidden</code> для гостей.
+  </div>
+
+  <h2>7.3. База даних та атомарність (ProfileStore)</h2>
+  <p>Збереження облікових записів відбувається у файлі <code>server/db/profiles.json</code> з використанням мікро-черг Promise Mutex для кожного профілю та атомарного запису через тимчасові файли (temp write + atomic rename) з експоненційним бекоффом під Windows.</p>
+
+  <div class="page-break"></div>
+
+  <!-- SECTION 8 -->
+  <h1>8. Інструкція з розгортання та адміністрування</h1>
+
+  <h3>8.1. Системні вимоги</h3>
+  <ul>
+    <li><strong>Операційна система:</strong> Windows 10/11, Linux (Ubuntu 20.04+), macOS.</li>
+    <li><strong>Середовище:</strong> Node.js v18.0.0+ (ES Modules, native crypto, native fetch).</li>
+    <li><strong>Мережеві порти:</strong> TCP 3000 (HTTP + WebSocket).</li>
+  </ul>
+
+  <h3>8.2. Команди запуску</h3>
+  <pre><code># Крок 1: Перехід у робочу директорію
+cd d:\!Annet_game
+
+# Крок 2: Запуск основного сервера
+node server/index.js
+
+# Крок 3: Запуск повного комплексу автоматичних тестів
+node tests/runner.js</code></pre>
+
+  <h3>8.3. Налаштування Google Sign-In (OAuth Client ID)</h3>
+  <ol>
+    <li>Перейдіть до <a href="https://console.cloud.google.com/">Google Cloud Console</a>.</li>
+    <li>Створіть проект <strong>Steamstrike Tactical Arena</strong>.</li>
+    <li>У меню <em>APIs & Services → OAuth consent screen</em> вкажіть назву додатка та контактний email.</li>
+    <li>У розділі <em>Credentials → Create Credentials → OAuth Client ID</em> оберіть тип <strong>Web Application</strong>.</li>
+    <li>Вкажіть дозволені адреси (Authorized JavaScript Origins): <code>http://localhost:3000</code> та ваш домен.</li>
+    <li>Скопіюйте Client ID та вставте його в конфігурацію клієнта.</li>
+  </ol>
+
+  <!-- SECTION 9 -->
+  <h1>9. Звіт про проходження автоматичних тестів</h1>
+  <p>Комплексний тест-раннер <code>tests/runner.js</code> містить 4 рівні верифікації:</p>
+  <ul>
+    <li><strong>Tier 1 (Unit & Schema):</strong> серіалізація/десеріалізація карт, валідація BFS, екстракція геометрії.</li>
+    <li><strong>Tier 2 (Boundary & Stress):</strong> фаззинг протоколу (5 000 мутацій), шторм 150 сокетів, античит спідхаку, фаззинг геометрії променів (1 000 ітерацій).</li>
+    <li><strong>Tier 3 (Integration):</strong> швидкісні снаряди CCD, багатоліхтарна видимість союзників і ворогів, правила Team Deathmatch, манометр пари.</li>
+    <li><strong>Tier 4 (E2E Lifecycle):</strong> повний 10-етапний наскрізний цикл матчу від підключення до фіналу та нагород.</li>
+  </ul>
+
+  <div class="callout" style="border-left-color: #2ec4b6; background: #f0fdf4;">
+    <div class="callout-title" style="color: #0d9488;">✓ Результат верифікації кодової бази:</div>
+    <strong>Загальна кількість тест-кейсів:</strong> 228<br>
+    <strong>Успішно пройдено:</strong> 228 (100%)<br>
+    <strong>Помилок / збоїв:</strong> 0<br>
+    <strong>Час повного виконання:</strong> 2.95 с
+  </div>
+
+  <div class="footer-bar">
+    <span>Steamstrike: Tactical Arena &bull; Повна технічна документація</span>
+    <span>Версія 1.0.0 &bull; Жовтень 2026</span>
+  </div>
+
+</body>
+</html>

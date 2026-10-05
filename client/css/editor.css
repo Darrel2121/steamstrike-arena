@@ -1,0 +1,380 @@
+/* ==========================================================================
+   Steampunk Battle Map Editor Stylesheet
+   ========================================================================== */
+
+#view-editor {
+  flex-direction: column;
+  background-color: var(--color-ambient-void);
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Editor Top Action Bar */
+.editor-topbar {
+  height: 52px;
+  background: linear-gradient(180deg, #242a36 0%, #171b24 100%);
+  border-bottom: 2px solid var(--color-brass-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  gap: 12px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+  z-index: 50;
+}
+
+.editor-topbar-left,
+.editor-topbar-right,
+.editor-topbar-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.map-name-input {
+  background: #11141a;
+  border: 1px solid var(--color-brass-dark);
+  color: var(--color-text-brass);
+  font-family: var(--font-serif);
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 3px;
+  width: 190px;
+}
+.map-name-input:focus {
+  border-color: var(--color-brass-glow);
+  outline: none;
+}
+
+.editor-size-select {
+  background: #11141a;
+  border: 1px solid var(--color-brass-dark);
+  color: var(--color-text-brass);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Editor Workspace Body */
+.editor-workspace {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Left Sidebar Tool Palette */
+.editor-sidebar-left {
+  width: 220px;
+  background: linear-gradient(90deg, #181d26 0%, #14171f 100%);
+  border-right: 2px solid var(--color-iron-rivet);
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 16px;
+  z-index: 20;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.6);
+  overflow-y: auto;
+}
+
+.sidebar-section-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--color-brass-primary);
+  border-bottom: 1px solid var(--color-iron-rivet);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.tool-palette-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #1f2530;
+  border: 1px solid var(--color-iron-rivet);
+  border-radius: 3px;
+  color: var(--color-text-brass);
+  font-family: var(--font-serif);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.tool-btn:hover {
+  background: #2a3242;
+  border-color: var(--color-brass-dark);
+  color: #fff;
+}
+
+.tool-btn.active {
+  background: linear-gradient(90deg, rgba(197, 155, 39, 0.25) 0%, rgba(33, 40, 52, 0.8) 100%);
+  border: 1px solid var(--color-brass-glow);
+  color: var(--color-brass-bright);
+  box-shadow: 0 0 8px rgba(255, 207, 72, 0.3), inset 0 0 6px rgba(197, 155, 39, 0.3);
+}
+
+.tool-icon-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.8);
+  flex-shrink: 0;
+}
+
+.swatch-wall {
+  background: #3b424e;
+  border: 1px solid #707b8e;
+}
+.swatch-obstacle {
+  background: #8e5428;
+  border: 1px solid #c97c36;
+}
+.swatch-floor {
+  background: #1a1e26;
+  border: 1px dashed #404856;
+}
+.swatch-player {
+  background: #2ec4b6;
+  border: 1px solid #5ffbf1;
+  border-radius: 50%;
+}
+.swatch-bot {
+  background: #e71d36;
+  border: 1px solid #ff6b7d;
+  border-radius: 50%;
+}
+.swatch-ammo {
+  background: #e09f3e;
+  border: 1px solid #ffe685;
+}
+.swatch-health {
+  background: #38b000;
+  border: 1px solid #70e000;
+}
+.swatch-gear {
+  background: rgba(197, 155, 39, 0.2);
+  border: 1px solid #ffcf48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-vent {
+  background: rgba(59, 66, 78, 0.3);
+  border: 1px solid #5ffbf1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-pipes {
+  background: rgba(142, 84, 40, 0.3);
+  border: 1px solid #c97c36;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-lantern {
+  background: rgba(255, 207, 72, 0.25);
+  border: 1px solid #ffe685;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-tank {
+  background: rgba(142, 84, 40, 0.4);
+  border: 1px solid #e09f3e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-crate {
+  background: rgba(70, 50, 30, 0.4);
+  border: 1px solid #a67c52;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-crack {
+  background: rgba(14, 17, 23, 0.7);
+  border: 1px solid #555e6d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-sign {
+  background: rgba(184, 134, 11, 0.35);
+  border: 1px solid #ffcf48;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.swatch-bush {
+  background: rgba(27, 77, 62, 0.5);
+  border: 1px solid #2e8b57;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+
+/* Center Interactive Canvas Viewport */
+.editor-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(circle at center, #151821 0%, #0a0c10 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+}
+
+#editorCanvas {
+  display: block;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 2px var(--color-brass-dark);
+}
+
+/* Floating Viewport Controls */
+.viewport-floating-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  gap: 6px;
+  background: rgba(22, 26, 34, 0.88);
+  border: 1px solid var(--color-iron-rivet);
+  padding: 6px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  z-index: 30;
+}
+
+.ctrl-btn {
+  background: #2a3140;
+  border: 1px solid var(--color-iron-rivet);
+  color: var(--color-text-brass);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  cursor: pointer;
+  font-weight: bold;
+}
+.ctrl-btn:hover {
+  background: #394254;
+  border-color: var(--color-brass-dark);
+  color: #fff;
+}
+
+/* Right Sidebar Validation & Details */
+.editor-sidebar-right {
+  width: 260px;
+  background: linear-gradient(270deg, #181d26 0%, #14171f 100%);
+  border-left: 2px solid var(--color-iron-rivet);
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  gap: 16px;
+  z-index: 20;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.6);
+  overflow-y: auto;
+}
+
+.validation-card {
+  padding: 12px;
+  border-radius: 3px;
+  background: #1a1e27;
+  border: 1px solid var(--color-iron-rivet);
+}
+
+.validation-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.validation-errors-list {
+  list-style: none;
+  font-size: 12px;
+  color: var(--color-status-danger);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 140px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+}
+
+.validation-errors-list li {
+  padding: 4px;
+  background: rgba(231, 29, 54, 0.1);
+  border-left: 2px solid var(--color-status-danger);
+  border-radius: 2px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.stat-item {
+  background: #11141a;
+  padding: 6px 8px;
+  border-radius: 2px;
+  border: 1px solid var(--color-iron-rivet);
+}
+.stat-label {
+  color: var(--color-text-dim);
+  font-size: 11px;
+}
+.stat-val {
+  color: var(--color-brass-bright);
+  font-weight: bold;
+  font-family: var(--font-mono);
+}
+
+/* Editor Status Bar */
+.editor-statusbar {
+  height: 28px;
+  background: #12151c;
+  border-top: 1px solid var(--color-iron-rivet);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  font-size: 12px;
+  color: var(--color-text-dim);
+  font-family: var(--font-mono);
+  z-index: 40;
+}
+
+.status-left,
+.status-right {
+  display: flex;
+  gap: 16px;
+}
