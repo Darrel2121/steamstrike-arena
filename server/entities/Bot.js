@@ -18,6 +18,7 @@ import {
 } from '../../shared/Constants.js';
 import { isPointVisible } from '../../shared/RaycastMath.js';
 import { TILE_TYPES } from '../../shared/MapSchema.js';
+import { tacticalNeuralAgent } from '../ai/TacticalNeuralAgent.js';
 
 /**
  * Grid-based BFS pathfinder navigating strictly on walkable FLOOR tiles (0).
@@ -424,8 +425,12 @@ export class Bot extends Player {
       return;
     }
 
-    // Rate-limited angular aim smoothing (~360 deg/sec)
-    const desiredAngle = Math.atan2(target.y - this.y, target.x - this.x);
+    // Rate-limited angular aim smoothing with predictive ballistic lead
+    let desiredAngle = Math.atan2(target.y - this.y, target.x - this.x);
+    if (this.aimTime > 0.10 && typeof tacticalNeuralAgent?.predictLeadAim === 'function') {
+      desiredAngle = tacticalNeuralAgent.predictLeadAim(this, target, this.weaponSpeed || 1800);
+    }
+
     const maxTurnRate = (this.turnRate || (Math.PI * 3.5)) * dt;
     let angleDiff = desiredAngle - this.angle;
     while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
@@ -472,6 +477,9 @@ export class Bot extends Player {
         this.reload();
       }
 
+      // Tactical decision from behavioral policy neural agent
+      const decision = tacticalNeuralAgent.evaluateBot(this, target, room, dt);
+
       // Maintain combat engagement distance (100px - 250px)
       const dist = Math.hypot(target.x - this.x, target.y - this.y);
       let moveDir = 0;
@@ -481,9 +489,18 @@ export class Bot extends Player {
         moveDir = -1; // Back away
       }
 
-      if (moveDir !== 0) {
-        const dx = Math.cos(this.angle) * this.maxSpeed * dt * moveDir;
-        const dy = Math.sin(this.angle) * this.maxSpeed * dt * moveDir;
+      // Base sightline movement
+      let dx = Math.cos(this.angle) * this.maxSpeed * dt * moveDir;
+      let dy = Math.sin(this.angle) * this.maxSpeed * dt * moveDir;
+
+      // Blend lateral strafing & evasive maneuvers from neural network
+      if (decision && (decision.strafeX !== 0 || decision.strafeY !== 0)) {
+        const strafeWeight = 0.65;
+        dx = dx * 0.70 + decision.strafeX * this.maxSpeed * dt * strafeWeight;
+        dy = dy * 0.70 + decision.strafeY * this.maxSpeed * dt * strafeWeight;
+      }
+
+      if (dx !== 0 || dy !== 0) {
         if (room && typeof room.moveWithSliding === 'function') {
           room.moveWithSliding(this, dx, dy, this.radius);
         } else {

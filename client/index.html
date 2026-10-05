@@ -165,7 +165,7 @@
           <div class="portal-card steampunk-panel">
             <div class="portal-icon">⚙️</div>
             <h3>Майстерня та прокачка</h3>
-            <p>Заробляйте XP та шестерні в боях! Покращуйте характеристики персонажа (здоров'я, швидкість, ліхтар) та модернізуйте всі 4 види зброї.</p>
+            <p>Заробляйте XP та шестерні в боях! Покращуйте характеристики персонажа (здоров'я, швидкість, ліхтар) та модернізуйте весь арсенал з 8 видів зброї.</p>
             <button id="btnPortalWorkshop" class="btn-steampunk btn-brass">Увійти до майстерні ➔</button>
           </div>
 
@@ -202,17 +202,17 @@
           <div class="feature-box">
             <div class="feature-header">
               <span class="feature-icon">🔫</span>
-              <h4>4 види стімпанк-зброї</h4>
+              <h4>8 унікальних видів зброї</h4>
             </div>
-            <p>Револьвер з барабаном, швидкострільний паровий карабін, картечниця Blunderbuss та далекобійна голчаста гвинтівка. Чесна фізика без пробиття стін.</p>
+            <p>Револьвер, паровий карабін, мушкетон, голкостріл, тесла-карабін "Зевс", паровий гранатомет "Молох", вогнемет "Дракон" та роторна картечниця Гатлінга.</p>
           </div>
 
           <div class="feature-box">
             <div class="feature-header">
               <span class="feature-icon">🤖</span>
-              <h4>Розумні сенсорні боти</h4>
+              <h4>Адаптивні нейромережеві боти</h4>
             </div>
-            <p>AI-супротивники мають власний ліхтар, чують звукові хвилі від ваших кроків, шукають шлях лабіринтом і влаштовують засідки.</p>
+            <p>AI-автоматоні використовують тактичну нейромережу онлайн-навчання: стріляють на випередження, виконують бічні стрейфи та ховаються під час перезаряджання.</p>
           </div>
         </div>
       </section>
@@ -694,7 +694,7 @@
         <div class="workshop-header-left">
           <div class="rank-cog-badge" id="workshopRankBadge">I</div>
           <div class="workshop-profile-info">
-            <div class="workshop-rank-title" id="workshopRankTitle">Rank 1 Mechanist</div>
+            <div class="workshop-rank-title" id="workshopRankTitle">Ранг 1: Учень-механік</div>
             <div style="display: flex; align-items: center;">
               <div class="xp-progress-bar-wrap">
                 <div class="xp-progress-bar-fill" id="workshopXpFill"></div>
@@ -735,7 +735,7 @@
           <div>
             <div style="font-family: var(--font-header); font-size: 15px; color: var(--color-brass-bright); letter-spacing: 0.5px;">Алхімічна Плавильня (Transmutation Chamber)</div>
             <div style="font-size: 12px; color: var(--color-text-dim); margin-top: 2px;">
-              Переплавка металобрухту в ефірні ядра: <strong style="color: var(--color-brass-light);">500 ⚙ Scrap ➔ 1 💎 Aetherium Core</strong>
+              Переплавка металобрухту в ефірні ядра: <strong style="color: var(--color-brass-light);">500 ⚙ Брухту ➔ 1 💎 Ефірне ядро</strong>
             </div>
           </div>
         </div>
@@ -749,8 +749,8 @@
 
       <!-- Workshop Tab Navigation -->
       <div class="workshop-tab-bar">
-        <button class="workshop-tab-btn active" data-tab="character">⚙ Character Foundry</button>
-        <button class="workshop-tab-btn" data-tab="weapons">⚔ Weapon Armory</button>
+        <button class="workshop-tab-btn active" data-tab="character">⚙ Ливарня персонажа</button>
+        <button class="workshop-tab-btn" data-tab="weapons">⚔ Збройова палата</button>
       </div>
 
       <!-- Tab Content 1: Character Foundry -->
@@ -758,47 +758,47 @@
         <div class="foundry-dials-grid">
           <!-- Boiler / Health Dial -->
           <div class="dial-card">
-            <div class="dial-header">Reinforced Boiler (HP)</div>
+            <div class="dial-header">Посилений паровий котел (HP)</div>
             <div class="dial-canvas-wrap">
               <canvas id="dialHealth" width="120" height="120"></canvas>
             </div>
             <div class="dial-stats">
-              <span class="tier-badge" id="tierLabelHealth">Tier 0 / 5</span>
+              <span class="tier-badge" id="tierLabelHealth">Рівень 0 / 5</span>
               <span class="dial-val-now" id="valCurrentHp">100 HP</span>
-              <span class="dial-val-next" id="valNextHp">+5 HP Next</span>
+              <span class="dial-val-next" id="valNextHp">+5 HP далі</span>
             </div>
-            <div class="dial-cost" id="costHealth">Cost: 150 ⚙</div>
-            <button id="btnUpgradeHealth" class="btn-dial-upgrade">Reinforce Boiler</button>
+            <div class="dial-cost" id="costHealth">Вартість: 150 ⚙</div>
+            <button id="btnUpgradeHealth" class="btn-dial-upgrade">Посилити котел</button>
           </div>
 
           <!-- Pistons / Speed Dial -->
           <div class="dial-card">
-            <div class="dial-header">Hydraulic Pistons (SPD)</div>
+            <div class="dial-header">Гідравлічні поршні (Швидкість)</div>
             <div class="dial-canvas-wrap">
               <canvas id="dialSpeed" width="120" height="120"></canvas>
             </div>
             <div class="dial-stats">
-              <span class="tier-badge" id="tierLabelSpeed">Tier 0 / 5</span>
-              <span class="dial-val-now" id="valCurrentSpeed">180 px/s</span>
-              <span class="dial-val-next" id="valNextSpeed">+4 px/s Next</span>
+              <span class="tier-badge" id="tierLabelSpeed">Рівень 0 / 5</span>
+              <span class="dial-val-now" id="valCurrentSpeed">180 px/с</span>
+              <span class="dial-val-next" id="valNextSpeed">+4 px/с далі</span>
             </div>
-            <div class="dial-cost" id="costSpeed">Cost: 150 ⚙</div>
-            <button id="btnUpgradeSpeed" class="btn-dial-upgrade">Calibrate Pistons</button>
+            <div class="dial-cost" id="costSpeed">Вартість: 150 ⚙</div>
+            <button id="btnUpgradeSpeed" class="btn-dial-upgrade">Калібрувати поршні</button>
           </div>
 
           <!-- Filament / Lantern Range Dial -->
           <div class="dial-card">
-            <div class="dial-header">Aether Filament (LAN)</div>
+            <div class="dial-header">Ефірна нитка розжарення (Ліхтар)</div>
             <div class="dial-canvas-wrap">
               <canvas id="dialLantern" width="120" height="120"></canvas>
             </div>
             <div class="dial-stats">
-              <span class="tier-badge" id="tierLabelLantern">Tier 0 / 5</span>
+              <span class="tier-badge" id="tierLabelLantern">Рівень 0 / 5</span>
               <span class="dial-val-now" id="valCurrentLantern">420 px</span>
-              <span class="dial-val-next" id="valNextLantern">+15 px Next</span>
+              <span class="dial-val-next" id="valNextLantern">+15 px далі</span>
             </div>
-            <div class="dial-cost" id="costLantern">Cost: 150 ⚙</div>
-            <button id="btnUpgradeLantern" class="btn-dial-upgrade">Ignite Filament</button>
+            <div class="dial-cost" id="costLantern">Вартість: 150 ⚙</div>
+            <button id="btnUpgradeLantern" class="btn-dial-upgrade">Полірувати лінзи</button>
           </div>
         </div>
       </div>
@@ -815,50 +815,50 @@
           <div class="workbench-panel">
             <div class="workbench-header">
               <div>
-                <div class="workbench-name" id="workbenchWeaponName">Clockwork Revolver</div>
-                <div class="workbench-desc" id="workbenchWeaponDesc">Reliable six-shot sidearm with precision clockwork action.</div>
+                <div class="workbench-name" id="workbenchWeaponName">Годинниковий револьвер</div>
+                <div class="workbench-desc" id="workbenchWeaponDesc">Надійний шестизарядний пістолет із прецизійним годинниковим механізмом.</div>
               </div>
               <div class="workbench-actions">
-                <button id="btnEquipWeapon" class="btn-equip-weapon">⚔ Equip Loadout</button>
-                <button id="btnUnlockWeapon" class="btn-unlock-weapon" style="display: none;">🔓 Unlock Blueprint</button>
+                <button id="btnEquipWeapon" class="btn-equip-weapon">⚔ Спорядити для бою</button>
+                <button id="btnUnlockWeapon" class="btn-unlock-weapon" style="display: none;">🔓 Розблокувати креслення</button>
               </div>
             </div>
 
             <div class="tracks-container">
               <!-- Damage Track -->
               <div class="upgrade-track" data-track="damage">
-                <span class="track-name">Impact Caliber</span>
+                <span class="track-name">Ударний калібр</span>
                 <span class="track-val">35 (+0%)</span>
                 <div class="track-pips"></div>
                 <span class="track-cost">200 ⚙</span>
-                <button class="btn-track-upgrade">Upgrade</button>
+                <button class="btn-track-upgrade">Покращити</button>
               </div>
 
               <!-- Fire Rate Track -->
               <div class="upgrade-track" data-track="fireRate">
-                <span class="track-name">Cycling Rate</span>
-                <span class="track-val">2.5/s (+0%)</span>
+                <span class="track-name">Темп стрільби</span>
+                <span class="track-val">2.5/с (+0%)</span>
                 <div class="track-pips"></div>
                 <span class="track-cost">200 ⚙</span>
-                <button class="btn-track-upgrade">Upgrade</button>
+                <button class="btn-track-upgrade">Покращити</button>
               </div>
 
               <!-- Reload Track -->
               <div class="upgrade-track" data-track="reload">
-                <span class="track-name">Ejector Speed</span>
-                <span class="track-val">1.5s (-0%)</span>
+                <span class="track-name">Швидкість перезаряджання</span>
+                <span class="track-val">1.5с (-0%)</span>
                 <div class="track-pips"></div>
                 <span class="track-cost">200 ⚙</span>
-                <button class="btn-track-upgrade">Upgrade</button>
+                <button class="btn-track-upgrade">Покращити</button>
               </div>
 
               <!-- Magazine Capacity Track -->
               <div class="upgrade-track" data-track="capacity">
-                <span class="track-name">Drum Capacity</span>
-                <span class="track-val">6 rds</span>
+                <span class="track-name">Місткість магазину</span>
+                <span class="track-val">6 наб.</span>
                 <div class="track-pips"></div>
                 <span class="track-cost">200 ⚙</span>
-                <button class="btn-track-upgrade">Upgrade</button>
+                <button class="btn-track-upgrade">Покращити</button>
               </div>
             </div>
           </div>
@@ -873,21 +873,21 @@
   <div id="authModalOverlay" class="auth-modal-overlay">
     <div class="auth-modal-panel">
       <div class="auth-modal-header">
-        <div class="auth-modal-title">⚙ Mechanic Dossier & Identity</div>
+        <div class="auth-modal-title">⚙ Особова справа та профіль механіка</div>
         <button id="btnAuthClose" class="btn-close-modal">&times;</button>
       </div>
 
       <div class="auth-identity-card">
         <div class="auth-badge-row">
-          <span id="authTypeBadge" class="auth-type-pill guest">⚙ Guest Mechanist</span>
-          <span id="authLevelBadge" style="font-size: 12px; color: #ffcf48; font-weight: bold;">Rank 1</span>
+          <span id="authTypeBadge" class="auth-type-pill guest">⚙ Гість-механік</span>
+          <span id="authLevelBadge" style="font-size: 12px; color: #ffcf48; font-weight: bold;">Ранг 1</span>
         </div>
         <div class="auth-callsign" id="authCallsignDisplay">FoundryMechanic#101</div>
-        <div class="auth-email" id="authEmailDisplay">Stored Locally in Browser Machinery</div>
+        <div class="auth-email" id="authEmailDisplay">Збережено локально в механізмах браузера</div>
       </div>
 
       <div class="auth-notice" id="authStatusNotice">
-        Your progression is safely recorded locally in this browser. Link Google to preserve your blueprints across multiple terminals.
+        Ваш бойовий прогрес зберігається локально в браузері. Прив'яжіть акаунт Google, щоб синхронізувати креслення між різними терміналами.
       </div>
 
       <div class="auth-actions">
@@ -900,15 +900,15 @@
       <!-- Account Linking Conflict Dialog -->
       <div id="linkConfirmSection" class="link-confirm-box" style="display: none;">
         <div class="link-confirm-msg">
-          Existing cloud blueprints discovered! Would you like to merge your local progress (<span id="linkGuestXp">0 XP</span>, <span id="linkGuestScrap">0 Scrap</span>) into your cloud account?
+          Виявлено хмарні креслення! Бажаєте об'єднати локальний прогрес (<span id="linkGuestXp">0 XP</span>, <span id="linkGuestScrap">0 Брухту</span>) з вашим хмарним акаунтом?
         </div>
         <div class="link-confirm-buttons">
-          <button id="btnConfirmLinkMerge" class="btn-confirm-merge">Merge Blueprints</button>
-          <button id="btnConfirmLinkCloud" class="btn-confirm-cloud">Use Cloud Only</button>
+          <button id="btnConfirmLinkMerge" class="btn-confirm-merge">Об'єднати креслення</button>
+          <button id="btnConfirmLinkCloud" class="btn-confirm-cloud">Лише хмарний профіль</button>
         </div>
       </div>
 
-      <button id="btnSignOut" class="btn-signout" style="display: none;">Disconnect Account</button>
+      <button id="btnSignOut" class="btn-signout" style="display: none;">Вийти з акаунта</button>
     </div>
   </div>
 

@@ -109,12 +109,12 @@ export class AuthModal {
 
     const isGuest = profile.isGuest !== false;
     if (this.dom.authTypeBadge) {
-      this.dom.authTypeBadge.textContent = isGuest ? '⚙ Guest Mechanist' : '🌐 Linked Google Account';
+      this.dom.authTypeBadge.textContent = isGuest ? '⚙ Гість-механік' : '🌐 Прив\'язаний акаунт Google';
       this.dom.authTypeBadge.className = `auth-type-pill ${isGuest ? 'guest' : 'linked'}`;
     }
 
     if (this.dom.authLevelBadge) {
-      this.dom.authLevelBadge.textContent = `Rank ${profile.level}`;
+      this.dom.authLevelBadge.textContent = `Ранг ${profile.level}`;
     }
 
     if (this.dom.authCallsignDisplay) {
@@ -122,13 +122,13 @@ export class AuthModal {
     }
 
     if (this.dom.authEmailDisplay) {
-      this.dom.authEmailDisplay.textContent = isGuest ? 'Stored Locally in Browser Machinery' : (profile.email || 'Cloud Verified');
+      this.dom.authEmailDisplay.textContent = isGuest ? 'Збережено локально в механізмах браузера' : (profile.email || 'Хмарна автентифікація');
     }
 
     if (this.dom.authStatusNotice) {
       this.dom.authStatusNotice.textContent = isGuest
-        ? 'Your progression is safely recorded locally in this browser. Link Google to preserve your blueprints across multiple terminals.'
-        : 'Your account is linked to Google Identity. Progression is securely synchronized with the steam cloud.';
+        ? 'Ваш бойовий прогрес зберігається локально в браузері. Прив\'яжіть акаунт Google, щоб синхронізувати креслення між різними терміналами.'
+        : 'Ваш акаунт прив\'язано до Google. Прогрес надійно синхронізовано з паровою хмарою.';
     }
 
     if (this.dom.btnSignOut) {
@@ -216,7 +216,7 @@ export class AuthModal {
       if (this.dom.linkConfirmSection) {
         this.dom.linkConfirmSection.style.display = 'block';
         if (this.dom.linkGuestXp) this.dom.linkGuestXp.textContent = `${profile.xp} XP`;
-        if (this.dom.linkGuestScrap) this.dom.linkGuestScrap.textContent = `${profile.currency?.scrap} Scrap`;
+        if (this.dom.linkGuestScrap) this.dom.linkGuestScrap.textContent = `${profile.currency?.scrap} Брухту`;
       }
     } else {
       await this.prog.linkGoogleAccount(idToken, 'merge');

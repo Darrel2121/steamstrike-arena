@@ -15,6 +15,7 @@ import { solveProjectileHit } from './physics/Collision.js';
 import { createProjectileSpecs, getWeapon } from './combat/WeaponDefinitions.js';
 import { profileStore } from './db/ProfileStore.js';
 import { calculateMatchRewards, calculateCharacterStats, calculateEffectiveWeaponStats } from '../shared/ProgressionSchema.js';
+import { tacticalNeuralAgent } from './ai/TacticalNeuralAgent.js';
 
 export class Room {
   /**
@@ -827,9 +828,12 @@ export class Room {
 
     this.cleanupDisconnected();
 
-    // Advance player states
+    // Advance player states and observe human combat maneuvers for neural AI imitation
     for (const player of this.players.values()) {
       player.update(dtSec, player.isSprinting);
+      if (player.isAlive && !player.isBot && typeof tacticalNeuralAgent?.observePlayer === 'function') {
+        tacticalNeuralAgent.observePlayer(player, this, dtSec);
+      }
     }
 
     // Advance respawn timers for eliminated combatants in respawn modes

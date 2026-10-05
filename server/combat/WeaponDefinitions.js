@@ -6,9 +6,10 @@
 export const WEAPON_DEFINITIONS = {
   revolver: {
     id: 'revolver',
-    name: 'Clockwork Revolver',
+    name: 'Годинниковий револьвер',
+    englishName: 'Clockwork Revolver',
     damage: 35,
-    speed: 1800,         // px/s (was 850) - high-velocity precision sidearm
+    speed: 1800,         // px/s - high-velocity precision sidearm
     spread: 0.02,        // radians (+/- ~1.15 deg)
     magazine: 6,
     maxAmmo: 6,
@@ -19,13 +20,14 @@ export const WEAPON_DEFINITIONS = {
     range: 650,
     soundType: 'gunfire',
     soundRadius: 240,
-    description: 'Reliable six-shot sidearm with precision clockwork action.'
+    description: 'Надійний шестизарядний пістолет із прецизійним годинниковим механізмом.'
   },
   steam_carbine: {
     id: 'steam_carbine',
-    name: 'Steam Carbine',
+    name: 'Паровий карабін',
+    englishName: 'Steam Carbine',
     damage: 18,
-    speed: 2100,         // px/s (was 950) - pneumatic rapid brass rounds
+    speed: 2100,         // px/s - pneumatic rapid brass rounds
     spread: 0.05,        // radians (+/- ~2.86 deg)
     magazine: 20,
     maxAmmo: 20,
@@ -36,13 +38,14 @@ export const WEAPON_DEFINITIONS = {
     range: 750,
     soundType: 'gunfire',
     soundRadius: 240,
-    description: 'Pneumatic rifle cycling rapid pressurized brass rounds.'
+    description: 'Пневматичний карабін для швидкісної стрільби каліброваними латунними кулями.'
   },
   blunderbuss: {
     id: 'blunderbuss',
-    name: 'Clockwork Blunderbuss',
+    name: 'Механічний мушкетон',
+    englishName: 'Clockwork Blunderbuss',
     damage: 14,          // damage per pellet
-    speed: 1600,         // px/s (was 750) - fast shrapnel scatter
+    speed: 1600,         // px/s - fast shrapnel scatter
     spread: 0.22,        // radians (+/- ~12.6 deg cone)
     magazine: 2,
     maxAmmo: 2,
@@ -53,13 +56,14 @@ export const WEAPON_DEFINITIONS = {
     range: 450,
     soundType: 'gunfire',
     soundRadius: 300,
-    description: 'Twin-barrel close-quarters scattergun launching brass shrapnel pellets.'
+    description: 'Двоствольний картечник ближнього бою, що накриває ворога шквалом шрапнелі.'
   },
   needle_gun: {
     id: 'needle_gun',
-    name: 'Pneumatic Needle Gun',
+    name: 'Пневматичний голкостріл',
+    englishName: 'Pneumatic Needle Gun',
     damage: 10,
-    speed: 2500,         // px/s (was 1100) - hyper-velocity flechette dart
+    speed: 2500,         // px/s - hyper-velocity flechette dart
     spread: 0.01,        // radians (+/- ~0.57 deg)
     magazine: 30,
     maxAmmo: 30,
@@ -70,7 +74,79 @@ export const WEAPON_DEFINITIONS = {
     range: 800,
     soundType: 'gunfire',
     soundRadius: 180,
-    description: 'High-cadence dart launcher firing hyper-velocity steel flechettes.'
+    description: 'Високострільний метач, що запускає смертоносні сталеві флешети з шаленою швидкістю.'
+  },
+  tesla_rifle: {
+    id: 'tesla_rifle',
+    name: 'Тесла-карабін "Зевс"',
+    englishName: 'Tesla Arc Rifle',
+    damage: 48,
+    speed: 2800,
+    spread: 0.015,
+    magazine: 5,
+    maxAmmo: 5,
+    reload: 2.2,
+    reloadTime: 2.2,
+    fireRate: 1.8,
+    pellets: 1,
+    range: 850,
+    soundType: 'gunfire',
+    soundRadius: 280,
+    description: 'Електро-дугова гвинтівка, що генерує надшвидкісні ланцюгові високовольтні розряди.'
+  },
+  steam_mortar: {
+    id: 'steam_mortar',
+    name: 'Паровий гранатомет "Молох"',
+    englishName: 'Steam Mortar',
+    damage: 65,
+    speed: 1400,
+    spread: 0.08,
+    magazine: 3,
+    maxAmmo: 3,
+    reload: 2.6,
+    reloadTime: 2.6,
+    fireRate: 1.0,
+    pellets: 1,
+    range: 600,
+    soundType: 'gunfire',
+    soundRadius: 340,
+    description: 'Важка пневматична мортира для пробивання броньованих автоматонів вибуховою паровою шрапнеллю.'
+  },
+  aether_flamethrower: {
+    id: 'aether_flamethrower',
+    name: 'Вогнемет "Дракон"',
+    englishName: 'Aether Flamethrower',
+    damage: 8,
+    speed: 1300,
+    spread: 0.28,
+    magazine: 40,
+    maxAmmo: 40,
+    reload: 2.4,
+    reloadTime: 2.4,
+    fireRate: 14.0,
+    pellets: 2,
+    range: 380,
+    soundType: 'gunfire',
+    soundRadius: 210,
+    description: 'Розпилювач палаючого алхімічного ефіру, що створює смертоносну вогняну завісу.'
+  },
+  gatling_cannon: {
+    id: 'gatling_cannon',
+    name: 'Картечниця Гатлінга',
+    englishName: 'Gatling Cannon',
+    damage: 16,
+    speed: 2200,
+    spread: 0.06,
+    magazine: 45,
+    maxAmmo: 45,
+    reload: 3.0,
+    reloadTime: 3.0,
+    fireRate: 11.0,
+    pellets: 1,
+    range: 720,
+    soundType: 'gunfire',
+    soundRadius: 320,
+    description: 'Шестиствольна роторна картечниця з паровим приводом та гігантським латунним барабаном.'
   }
 };
 
