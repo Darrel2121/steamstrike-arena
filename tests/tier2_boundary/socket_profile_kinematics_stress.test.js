@@ -182,6 +182,31 @@ export const tests = [
             return sendJson(result.ok ? 200 : 400, { success: result.ok, ...result });
           }
 
+          if ((pathname === '/api/profile/equip' || pathname === '/api/profile/equip/weapon' || pathname === '/api/profile/equip/class') && req.method === 'POST') {
+            const body = await parseJsonBody(req);
+            const accountId = userPayload?.accountId || body.guestId || body.profileId;
+            const weaponId = body.weaponId;
+            const classId = body.classId;
+
+            let updatedProfile = null;
+            if (accountId) {
+              if (weaponId) {
+                await profileStore.setEquippedWeapon(accountId, weaponId);
+              }
+              if (classId) {
+                await profileStore.setEquippedClass(accountId, classId);
+              }
+              updatedProfile = await profileStore.getProfile(accountId);
+            }
+
+            return sendJson(200, {
+              success: true,
+              equippedWeapon: weaponId,
+              equippedClass: classId,
+              profile: updatedProfile
+            });
+          }
+
           return sendJson(404, { success: false, error: 'Not found' });
         } catch (err) {
           return sendJson(400, { success: false, error: err.message });

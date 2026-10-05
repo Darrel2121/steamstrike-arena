@@ -410,6 +410,52 @@ export class ProfileStore {
   }
 
   /**
+   * Sets the currently equipped weapon on a profile.
+   * @param {string} profileId
+   * @param {string} weaponId
+   * @returns {Promise<{ ok: boolean, profile?: Object, error?: string, equippedWeapon?: string }>}
+   */
+  async setEquippedWeapon(profileId, weaponId) {
+    return this.enqueue(profileId, async () => {
+      let profile = this.cache.get(profileId);
+      if (!profile) return { ok: false, error: 'Profile not found' };
+
+      if (!profile.weapons || !profile.weapons[weaponId]) {
+        return { ok: false, error: `Invalid weapon ID: ${weaponId}` };
+      }
+
+      if (!profile.weapons[weaponId].unlocked) {
+        return { ok: false, error: `Weapon ${weaponId} is locked` };
+      }
+
+      profile.equippedWeapon = weaponId;
+      profile.updatedAt = Date.now();
+      await this.flush();
+
+      return { ok: true, profile, equippedWeapon: weaponId };
+    });
+  }
+
+  /**
+   * Sets the currently equipped hero class on a profile.
+   * @param {string} profileId
+   * @param {string} classId
+   * @returns {Promise<{ ok: boolean, profile?: Object, error?: string, equippedClass?: string }>}
+   */
+  async setEquippedClass(profileId, classId) {
+    return this.enqueue(profileId, async () => {
+      let profile = this.cache.get(profileId);
+      if (!profile) return { ok: false, error: 'Profile not found' };
+
+      profile.equippedClass = classId || 'vanguard';
+      profile.updatedAt = Date.now();
+      await this.flush();
+
+      return { ok: true, profile, equippedClass: profile.equippedClass };
+    });
+  }
+
+  /**
    * Transmutes clockwork scrap into aetherium cores.
    * @param {string} profileId
    * @param {number} [coresToConvert=1]

@@ -5,6 +5,7 @@
  */
 
 import { PROTOCOL_MSG_TYPES, serializePacket, deserializePacket } from '../../shared/Protocol.js';
+import { WEAPON_DEFINITIONS } from '../../shared/ProgressionSchema.js';
 
 /**
  * Tests if a 2D circle intersects a line segment.
@@ -75,6 +76,11 @@ export class NetworkClient {
     this.snapshotBuffer = [];
     this.maxSnapshotBufferSize = 30;
     this.interpolationDelayMs = 60; // 2 ticks at 30Hz
+
+    // Loadout configuration
+    this.equippedWeapon = 'revolver';
+    this.equippedClass = 'vanguard';
+    this.cachedProfile = null;
 
     // Event listeners
     this.listeners = new Map();
@@ -533,13 +539,43 @@ export class NetworkClient {
   }
 
   /**
+   * Updates locally tracked loadout and broadcasts to server if connected.
+   * @param {Object} loadout
+   * @param {string} [loadout.weaponId]
+   * @param {string} [loadout.classId]
+   * @param {Object} [loadout.profile]
+   */
+  setLoadout(loadout = {}) {
+    if (loadout.weaponId) this.equippedWeapon = loadout.weaponId;
+    if (loadout.classId) this.equippedClass = loadout.classId;
+    if (loadout.profile) this.cachedProfile = loadout.profile;
+
+    if (this.isSocketReady) {
+      this.send(PROTOCOL_MSG_TYPES.C2S_LOADOUT_UPDATE, {
+        weaponId: this.equippedWeapon,
+        classId: this.equippedClass,
+        profile: this.cachedProfile || null
+      });
+    }
+  }
+
+  /**
    * Sends room join request.
    * @param {string} roomId
    * @param {string} playerName
+   * @param {Object} [options]
    */
-  joinLobby(roomId = 'default', playerName = 'Mechanic') {
+  joinLobby(roomId = 'default', playerName = 'Mechanic', options = {}) {
     this.roomId = roomId;
-    this.send(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, { roomId, playerName });
+    const payload = {
+      roomId,
+      playerName,
+      equippedWeapon: options.equippedWeapon || this.equippedWeapon || 'revolver',
+      equippedClass: options.equippedClass || this.equippedClass || 'vanguard',
+      profile: options.profile || this.cachedProfile || null,
+      ...options
+    };
+    this.send(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, payload);
   }
 
   /**
@@ -565,7 +601,10 @@ export class NetworkClient {
         map: roomIdOrOptions.map || null,
         autoFillBots: roomIdOrOptions.autoFillBots ?? false,
         gameMode: roomIdOrOptions.gameMode || 'solo_elim',
-        targetKills: roomIdOrOptions.targetKills || 10
+        targetKills: roomIdOrOptions.targetKills || 10,
+        equippedWeapon: roomIdOrOptions.equippedWeapon || this.equippedWeapon || 'revolver',
+        equippedClass: roomIdOrOptions.equippedClass || this.equippedClass || 'vanguard',
+        profile: roomIdOrOptions.profile || this.cachedProfile || null
       };
     } else {
       payload = {
@@ -576,7 +615,10 @@ export class NetworkClient {
         map: map || null,
         autoFillBots: !!autoFillBots,
         gameMode: gameMode || 'solo_elim',
-        targetKills: targetKills || 10
+        targetKills: targetKills || 10,
+        equippedWeapon: this.equippedWeapon || 'revolver',
+        equippedClass: this.equippedClass || 'vanguard',
+        profile: this.cachedProfile || null
       };
     }
     this.roomId = payload.roomId;
@@ -727,7 +769,8 @@ export class NetworkClient {
       respawnTimer: serverPlayer?.respawnTimer || 0,
       ammo: serverPlayer?.ammo ?? 6,
       maxAmmo: serverPlayer?.maxAmmo ?? 6,
-      weaponId: serverPlayer?.weaponId || 'revolver',
+      weaponId: serverPlayer?.weaponId || this.equippedWeapon || 'revolver',
+      weaponName: serverPlayer?.weaponName || WEAPON_DEFINITIONS[serverPlayer?.weaponId || this.equippedWeapon]?.name || 'Годинниковий револьвер',
       isAlive: serverPlayer?.isAlive ?? true,
       isReloading: serverPlayer?.isReloading ?? false,
       isInvulnerable: serverPlayer?.isInvulnerable ?? false,

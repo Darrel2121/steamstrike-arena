@@ -1056,16 +1056,98 @@ export class GameRenderer {
       // Rotate body to aim angle
       ctx.rotate(aimAngle);
 
-      // 1. Weapon Barrel / Steampunk Carbine
-      ctx.fillStyle = '#22262d';
-      ctx.strokeStyle = '#c59b27';
+      // 1. Weapon Barrel / Steampunk Weapon Model
+      const wId = pl.weaponId || 'revolver';
       ctx.lineWidth = 1.5;
-      ctx.fillRect(8, -2.5, 16, 5);
-      ctx.strokeRect(8, -2.5, 16, 5);
 
-      // Muzzle cap
-      ctx.fillStyle = '#ffcf48';
-      ctx.fillRect(22, -3.5, 3, 7);
+      if (wId === 'blunderbuss') {
+        // Funnel-shaped flared muzzle
+        ctx.fillStyle = '#1e2229';
+        ctx.strokeStyle = '#c59b27';
+        ctx.beginPath();
+        ctx.moveTo(8, -2.5);
+        ctx.lineTo(20, -6);
+        ctx.lineTo(22, -6);
+        ctx.lineTo(22, 6);
+        ctx.lineTo(20, 6);
+        ctx.lineTo(8, 2.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        // Brass muzzle rim
+        ctx.fillStyle = '#ffcf48';
+        ctx.fillRect(21, -6.5, 2.5, 13);
+      } else if (wId === 'needle_gun') {
+        // Ultra-slim elongated needle barrel
+        ctx.fillStyle = '#2d333f';
+        ctx.strokeStyle = '#2ec4b6';
+        ctx.fillRect(8, -1.2, 22, 2.4);
+        ctx.strokeRect(8, -1.2, 22, 2.4);
+        // Needle tip
+        ctx.fillStyle = '#2ec4b6';
+        ctx.beginPath();
+        ctx.moveTo(30, -2);
+        ctx.lineTo(34, 0);
+        ctx.lineTo(30, 2);
+        ctx.fill();
+      } else if (wId === 'tesla_rifle') {
+        // Dual arc coils & capacitor
+        ctx.fillStyle = '#1a1f26';
+        ctx.strokeStyle = '#00d4ff';
+        ctx.fillRect(8, -3, 18, 6);
+        ctx.strokeRect(8, -3, 18, 6);
+        // Energy arc rings
+        ctx.fillStyle = '#00d4ff';
+        ctx.fillRect(14, -4.5, 2.5, 9);
+        ctx.fillRect(20, -4.5, 2.5, 9);
+        ctx.fillRect(25, -2, 3, 4);
+      } else if (wId === 'steam_mortar') {
+        // Heavy artillery mortar
+        ctx.fillStyle = '#261c14';
+        ctx.strokeStyle = '#c59b27';
+        ctx.fillRect(7, -5, 15, 10);
+        ctx.strokeRect(7, -5, 15, 10);
+        ctx.fillStyle = '#ff9f1c';
+        ctx.fillRect(20, -6, 4, 12);
+      } else if (wId === 'aether_flamethrower') {
+        // Dual brass pipes & pilot flame
+        ctx.fillStyle = '#331c12';
+        ctx.strokeStyle = '#ff7b00';
+        ctx.fillRect(8, -3.5, 17, 7);
+        ctx.strokeRect(8, -3.5, 17, 7);
+        ctx.fillStyle = '#ff7b00';
+        ctx.beginPath();
+        ctx.arc(26, 0, 3, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (wId === 'gatling_cannon') {
+        // Multi-barrel rotary cluster
+        ctx.fillStyle = '#161920';
+        ctx.strokeStyle = '#c59b27';
+        ctx.fillRect(8, -4.5, 18, 9);
+        ctx.strokeRect(8, -4.5, 18, 9);
+        ctx.fillStyle = '#7a8291';
+        ctx.fillRect(24, -4, 4, 2.5);
+        ctx.fillRect(24, -1, 4, 2.5);
+        ctx.fillRect(24, 2, 4, 2.5);
+      } else if (wId === 'steam_carbine') {
+        // Extended pneumatic carbine with brass steam bypass
+        ctx.fillStyle = '#22262d';
+        ctx.strokeStyle = '#c59b27';
+        ctx.fillRect(8, -2.5, 18, 5);
+        ctx.strokeRect(8, -2.5, 18, 5);
+        ctx.fillStyle = '#ffcf48';
+        ctx.fillRect(24, -3.5, 3, 7);
+        ctx.fillStyle = '#cf712b';
+        ctx.fillRect(10, 2.5, 10, 2);
+      } else {
+        // Clockwork revolver: compact barrel and brass sight
+        ctx.fillStyle = '#22262d';
+        ctx.strokeStyle = '#c59b27';
+        ctx.fillRect(8, -2, 12, 4);
+        ctx.strokeRect(8, -2, 12, 4);
+        ctx.fillStyle = '#ffcf48';
+        ctx.fillRect(18, -3, 3, 6);
+      }
 
       // 2. Brass Backpack / Steam Engine Boiler
       ctx.fillStyle = '#703816';

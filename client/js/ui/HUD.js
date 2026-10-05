@@ -12,6 +12,7 @@ import {
   PLAYER_STAMINA_MAX,
   THEME_COLORS
 } from '../../../shared/Constants.js';
+import { WEAPON_DEFINITIONS } from '../../../shared/ProgressionSchema.js';
 
 export class HUD {
   /**
@@ -418,9 +419,9 @@ export class HUD {
     ctx.save();
 
     const cylinderRadius = 38;
-    const numChambers = maxAmmo;
-    const chamberRadius = 7.5;
+    const numChambers = Math.max(1, maxAmmo);
     const orbitRadius = 21;
+    const chamberRadius = Math.max(1.8, Math.min(7.5, (orbitRadius * Math.PI) / numChambers - 0.8));
 
     // Outer dark steel cylinder casing
     ctx.fillStyle = '#1a1d24';
@@ -433,8 +434,9 @@ export class HUD {
 
     // Fluted cylinder grooves (scallops on cylinder edge)
     ctx.fillStyle = '#0f1116';
-    for (let i = 0; i < numChambers; i++) {
-      const a = (i / numChambers) * Math.PI * 2 + this.reloadRotation;
+    const numFlutes = Math.min(numChambers, 12);
+    for (let i = 0; i < numFlutes; i++) {
+      const a = (i / numFlutes) * Math.PI * 2 + this.reloadRotation;
       const gx = cx + Math.cos(a) * (cylinderRadius - 3);
       const gy = cy + Math.sin(a) * (cylinderRadius - 3);
       ctx.beginPath();
@@ -473,9 +475,10 @@ export class HUD {
         ctx.fill();
 
         // Center percussion primer
+        const primerRadius = Math.max(0.6, chamberRadius * 0.35);
         ctx.fillStyle = '#cf712b';
         ctx.beginPath();
-        ctx.arc(chX, chY, 2.5, 0, Math.PI * 2);
+        ctx.arc(chX, chY, primerRadius, 0, Math.PI * 2);
         ctx.fill();
       } else {
         // Empty chamber: dark hollow bore
@@ -493,7 +496,7 @@ export class HUD {
     ctx.fillStyle = isReloading ? '#ffcf48' : '#e6e1d6';
     ctx.font = 'bold 12px monospace';
     ctx.textAlign = 'center';
-    const text = isReloading ? 'RELOAD' : `${ammo}/${maxAmmo}`;
+    const text = isReloading ? 'ПЕРЕЗАРЯДКА' : `${ammo}/${maxAmmo}`;
     ctx.fillText(text, cx, cy + cylinderRadius + 16);
 
     ctx.restore();
@@ -634,8 +637,9 @@ export class HUD {
   renderWeaponCard(ctx, x, y, player) {
     ctx.save();
 
-    const wName = player.weaponName || 'Clockwork Revolver';
-    const callSign = player.name || 'Mechanic Ranger';
+    const def = WEAPON_DEFINITIONS[player.weaponId];
+    const wName = player.weaponName || def?.name || 'Годинниковий револьвер';
+    const callSign = player.name || 'Механік-рейнджер';
 
     // Drop shadow
     ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';

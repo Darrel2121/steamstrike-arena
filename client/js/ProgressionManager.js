@@ -172,7 +172,17 @@ export class ProgressionManager {
       if (res.ok) {
         const data = await res.json();
         if (data && data.profile) {
+          const localWeapon = this.profile?.equippedWeapon;
+          const localClass = this.profile?.equippedClass;
           this.profile = { ...this.profile, ...data.profile };
+          if (localWeapon && this.profile.weapons?.[localWeapon]?.unlocked && (!data.profile.equippedWeapon || data.profile.equippedWeapon === 'revolver')) {
+            this.profile.equippedWeapon = localWeapon;
+            this.syncEquippedLoadout();
+          }
+          if (localClass && (!data.profile.equippedClass || data.profile.equippedClass === 'vanguard')) {
+            this.profile.equippedClass = localClass;
+            this.syncEquippedLoadout();
+          }
           this.saveLocalProfile();
           this.emit('profileUpdated', this.profile);
         }
@@ -463,6 +473,7 @@ export class ProgressionManager {
       this.profile.equippedWeapon = weaponId;
       this.saveLocalProfile();
       this.emit('profileUpdated', this.profile);
+      this.syncEquippedLoadout();
       return true;
     }
     return false;
@@ -473,7 +484,27 @@ export class ProgressionManager {
     this.profile.equippedClass = classId;
     this.saveLocalProfile();
     this.emit('profileUpdated', this.profile);
+    this.syncEquippedLoadout();
     return true;
+  }
+
+  async syncEquippedLoadout() {
+    if (!this.profile) return;
+    try {
+      await fetch(`${this.apiBase}/api/profile/equip`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {})
+        },
+        body: JSON.stringify({
+          weaponId: this.profile.equippedWeapon,
+          classId: this.profile.equippedClass,
+          profileId: this.profile.id,
+          guestId: this.profile.id
+        })
+      });
+    } catch (_) {}
   }
 
   getEquippedClass() {

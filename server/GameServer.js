@@ -156,8 +156,23 @@ export class GameServer {
             cleanupEmptyRoom(currentRoom);
           }
 
+          const playerProfile = payload?.profile || socket.profile || meta.profile || null;
+          const equippedWeapon = payload?.equippedWeapon || playerProfile?.equippedWeapon || 'revolver';
+          const equippedClass = payload?.equippedClass || playerProfile?.equippedClass || 'vanguard';
+          if (!socket.profile) {
+            socket.profile = playerProfile ? { ...playerProfile } : { id: clientId, isGuest: true };
+          }
+          socket.profile.equippedWeapon = equippedWeapon;
+          socket.profile.equippedClass = equippedClass;
+          if (payload?.profile?.weapons) {
+            socket.profile.weapons = payload.profile.weapons;
+          }
+          if (payload?.profile?.characterStats) {
+            socket.profile.characterStats = payload.profile.characterStats;
+          }
+
           currentRoom = room;
-          room.addPlayer(clientId, playerName, socket, socket.profile || meta.profile);
+          room.addPlayer(clientId, playerName, socket, socket.profile);
           break;
         }
 
@@ -230,9 +245,43 @@ export class GameServer {
             cleanupEmptyRoom(currentRoom);
           }
 
+          const playerProfile = payload?.profile || socket.profile || meta.profile || null;
+          const equippedWeapon = payload?.equippedWeapon || playerProfile?.equippedWeapon || 'revolver';
+          const equippedClass = payload?.equippedClass || playerProfile?.equippedClass || 'vanguard';
+          if (!socket.profile) {
+            socket.profile = playerProfile ? { ...playerProfile } : { id: clientId, isGuest: true };
+          }
+          socket.profile.equippedWeapon = equippedWeapon;
+          socket.profile.equippedClass = equippedClass;
+          if (payload?.profile?.weapons) {
+            socket.profile.weapons = payload.profile.weapons;
+          }
+          if (payload?.profile?.characterStats) {
+            socket.profile.characterStats = payload.profile.characterStats;
+          }
+
           currentRoom = room;
           const playerName = payload?.playerName || `Host_${clientId.slice(-4)}`;
-          room.addPlayer(clientId, playerName, socket, socket.profile || meta.profile);
+          room.addPlayer(clientId, playerName, socket, socket.profile);
+          break;
+        }
+
+        case PROTOCOL_MSG_TYPES.C2S_LOADOUT_UPDATE: {
+          if (payload) {
+            if (!socket.profile) socket.profile = {};
+            if (payload.weaponId) socket.profile.equippedWeapon = payload.weaponId;
+            if (payload.classId) socket.profile.equippedClass = payload.classId;
+            if (payload.profile) {
+              socket.profile = { ...socket.profile, ...payload.profile };
+            }
+            if (currentRoom) {
+              currentRoom.updatePlayerLoadout(clientId, {
+                weaponId: payload.weaponId,
+                classId: payload.classId,
+                profile: socket.profile
+              });
+            }
+          }
           break;
         }
 

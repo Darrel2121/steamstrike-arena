@@ -267,15 +267,29 @@ export class Player {
   /**
    * Equips a new weapon, updating magazine bounds and weapon stats.
    * @param {string} weaponId
+   * @param {Object} [weaponConfig]
    */
-  setWeapon(weaponId) {
+  setWeapon(weaponId, weaponConfig = null) {
     this.weaponId = weaponId;
-    this.weapon = getWeapon(weaponId);
-    this.maxAmmo = this.weapon.magazine;
-    this.ammo = Math.min(this.ammo, this.maxAmmo);
+    this.weapon = weaponConfig || getWeapon(weaponId);
+    this.maxAmmo = this.weapon ? this.weapon.magazine : 6;
+    this.ammo = this.maxAmmo;
+    this.reloadDuration = this.weapon ? this.weapon.reload : 2.0;
     this.isReloading = false;
     this.reloadTimer = 0;
     this.fireCooldown = 0;
+  }
+
+  /**
+   * Updates hero class and associated abilities.
+   * @param {string} classId
+   */
+  setClass(classId) {
+    this.classId = classId || DEFAULT_CLASS_ID;
+    const clsDef = getClassDefinition(this.classId);
+    this.classDef = clsDef;
+    this.ability = clsDef.ability;
+    this.passive = clsDef.passive;
   }
 
   /**
@@ -372,6 +386,7 @@ export class Player {
       ammo: this.ammo,
       maxAmmo: this.maxAmmo,
       weaponId: this.weaponId,
+      weaponName: this.weapon?.name || 'Годинниковий револьвер',
       team: this.team || null,
       kills: this.kills || 0,
       respawnTimer: Math.round((this.respawnTimer || 0) * 10) / 10,

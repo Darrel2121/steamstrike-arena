@@ -519,7 +519,19 @@ export class LobbyUI {
     this.setButtonBusy(this.dom.btnHomeJoinRoom, '⚡ Приєднання...');
 
     const doJoin = () => {
-      this.networkClient.joinLobby(roomId, playerName);
+      const prof = this.options.progressionManager?.getProfile();
+      if (prof) {
+        this.networkClient.setLoadout({
+          weaponId: prof.equippedWeapon,
+          classId: prof.equippedClass,
+          profile: prof
+        });
+      }
+      this.networkClient.joinLobby(roomId, playerName, {
+        equippedWeapon: prof?.equippedWeapon || 'revolver',
+        equippedClass: prof?.equippedClass || 'vanguard',
+        profile: prof
+      });
     };
 
     if (this.networkClient.isSocketReady) {
@@ -585,6 +597,14 @@ export class LobbyUI {
     this.setButtonBusy(this.dom.btnHomeCreateRoom, '⚙ Створення...');
 
     const doCreate = () => {
+      const prof = this.options.progressionManager?.getProfile();
+      if (prof) {
+        this.networkClient.setLoadout({
+          weaponId: prof.equippedWeapon,
+          classId: prof.equippedClass,
+          profile: prof
+        });
+      }
       this.networkClient.createLobby({
         roomId,
         playerName,
@@ -592,7 +612,10 @@ export class LobbyUI {
         maxPlayers: 4,
         map: selectedMap,
         gameMode,
-        targetKills
+        targetKills,
+        equippedWeapon: prof?.equippedWeapon || 'revolver',
+        equippedClass: prof?.equippedClass || 'vanguard',
+        profile: prof
       });
     };
 

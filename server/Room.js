@@ -15,6 +15,7 @@ import { solveProjectileHit } from './physics/Collision.js';
 import { createProjectileSpecs, getWeapon } from './combat/WeaponDefinitions.js';
 import { profileStore } from './db/ProfileStore.js';
 import { calculateMatchRewards, calculateCharacterStats, calculateEffectiveCharacterStats, calculateEffectiveWeaponStats } from '../shared/ProgressionSchema.js';
+import { getClassDefinition } from '../shared/CharacterClasses.js';
 import { tacticalNeuralAgent } from './ai/TacticalNeuralAgent.js';
 
 export class Room {
@@ -242,15 +243,14 @@ export class Room {
     player.lanternRange = lanternRange;
     player.profile = playerProfile;
 
-    if (playerProfile && playerProfile.weapons && playerProfile.weapons[weaponId]) {
-      const baseW = getWeapon(weaponId);
-      const effW = calculateEffectiveWeaponStats(baseW, playerProfile.weapons[weaponId]);
-      if (effW) {
-        player.weapon = effW;
-        player.maxAmmo = effW.magazine;
-        player.ammo = effW.magazine;
-        player.reloadDuration = effW.reload;
-      }
+    const baseW = getWeapon(weaponId);
+    if (baseW) {
+      const upgradeTiers = playerProfile?.weapons?.[weaponId] || null;
+      const effW = upgradeTiers ? calculateEffectiveWeaponStats(baseW, upgradeTiers) : baseW;
+      player.weapon = effW;
+      player.maxAmmo = effW.magazine;
+      player.ammo = effW.magazine;
+      player.reloadDuration = effW.reload;
     }
 
     this.players.set(id, player);
@@ -259,6 +259,50 @@ export class Room {
     this.broadcastLobbyState();
 
     return player;
+  }
+
+  /**
+   * Updates player loadout (equipped weapon, hero class, character stats) in real time.
+   * @param {string} id
+   * @param {Object} loadout
+   */
+  updatePlayerLoadout(id, loadout = {}) {
+    const player = this.players.get(id);
+    if (!player) return;
+
+    if (loadout.classId) {
+      player.classId = loadout.classId;
+      const clsDef = getClassDefinition(loadout.classId);
+      player.classDef = clsDef;
+      player.ability = clsDef.ability;
+      player.passive = clsDef.passive;
+    }
+
+    if (loadout.weaponId) {
+      player.weaponId = loadout.weaponId;
+      const baseW = getWeapon(loadout.weaponId);
+      if (baseW) {
+        const upgradeTiers = loadout.profile?.weapons?.[loadout.weaponId] || player.profile?.weapons?.[loadout.weaponId] || null;
+        const effW = upgradeTiers ? calculateEffectiveWeaponStats(baseW, upgradeTiers) : baseW;
+        player.weapon = effW;
+        player.maxAmmo = effW.magazine;
+        player.ammo = effW.magazine;
+        player.reloadDuration = effW.reload;
+      }
+    }
+
+    if (loadout.profile) {
+      player.profile = { ...(player.profile || {}), ...loadout.profile };
+      const cStats = calculateEffectiveCharacterStats(player.profile.characterStats || {}, player.classId);
+      player.maxHp = cStats.maxHp;
+      player.hp = Math.min(player.hp, player.maxHp);
+      player.maxSpeed = cStats.moveSpeed;
+      player.lanternRange = cStats.lanternRange;
+    }
+
+    if (this.state === 'LOBBY') {
+      this.broadcastLobbyState();
+    }
   }
 
   /**
@@ -505,6 +549,19 @@ export class Room {
 
     // Initialize stats tracking for all combatants
     for (const p of this.players.values()) {
+      if (p.profile) {
+        const wId = p.profile.equippedWeapon || p.weaponId || 'revolver';
+        const baseW = getWeapon(wId);
+        if (baseW) {
+          const upgradeTiers = p.profile.weapons?.[wId] || null;
+          const effW = upgradeTiers ? calculateEffectiveWeaponStats(baseW, upgradeTiers) : baseW;
+          p.weaponId = wId;
+          p.weapon = effW;
+          p.maxAmmo = effW.magazine;
+          p.ammo = effW.magazine;
+          p.reloadDuration = effW.reload;
+        }
+      }
       p.kills = 0;
       p.deaths = 0;
       p.respawnTimer = 0;

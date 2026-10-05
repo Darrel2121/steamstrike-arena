@@ -153,6 +153,61 @@ export const tests = [
       assert.strictEqual(hostEntry.isHost, true, 'Host entry isHost must be true');
       assert.strictEqual(guestEntry.isHost, false, 'Guest entry isHost must be false');
     }
+  },
+
+  {
+    id: 'T3.RC5',
+    name: 'Player Equipped Weapon Spawns and Live Updates with Exact Arsenal Stats (Blunderbuss -> Needle Gun)',
+    fn: async () => {
+      const server = new GameServer();
+      const pair = new MockWebSocketPair();
+      server.handleConnection(pair.serverSide, { id: 'arsenal_client_1', playerName: 'Gunsmith' });
+
+      // 1. Create chamber with equipped Blunderbuss (2-shot shotgun)
+      const waitCreate = pair.clientSide.waitFor(PROTOCOL_MSG_TYPES.S2C_LOBBY_STATE);
+      pair.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOBBY_CREATE, {
+        roomId: 'Sector_Armory',
+        playerName: 'Gunsmith',
+        equippedWeapon: 'blunderbuss',
+        equippedClass: 'demolitionist'
+      }));
+      await waitCreate;
+
+      const room = server.rooms.get('Sector_Armory');
+      assert.ok(room, 'Room Sector_Armory must exist');
+
+      const player = room.players.get('arsenal_client_1');
+      assert.ok(player, 'Player must be registered in chamber');
+      assert.strictEqual(player.weaponId, 'blunderbuss', 'Equipped weapon must be blunderbuss');
+      assert.strictEqual(player.weapon.magazine, 2, 'Blunderbuss magazine must be 2');
+      assert.strictEqual(player.maxAmmo, 2, 'maxAmmo must match blunderbuss 2-shot capacity');
+      assert.strictEqual(player.ammo, 2, 'Initial ammo must be 2');
+      assert.strictEqual(player.classId, 'demolitionist', 'Hero class must be demolitionist');
+
+      // 2. Client changes weapon to needle_gun via C2S_LOADOUT_UPDATE
+      pair.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOADOUT_UPDATE, {
+        weaponId: 'needle_gun',
+        classId: 'sharpshooter'
+      }));
+
+      // Allow tick/event dispatch
+      await new Promise(r => setTimeout(r, 10));
+
+      assert.strictEqual(player.weaponId, 'needle_gun', 'Weapon should update to needle_gun');
+      assert.strictEqual(player.weapon.magazine, 30, 'Needle gun magazine must be 30');
+      assert.strictEqual(player.maxAmmo, 30, 'maxAmmo must update to 30');
+      assert.strictEqual(player.ammo, 30, 'Ammo should refresh to 30');
+      assert.strictEqual(player.classId, 'sharpshooter', 'Hero class should update to sharpshooter');
+
+      // 3. Start match and verify snapshot reflects needle_gun
+      room.startMatch();
+      const snapshot = player.toSnapshot();
+      assert.strictEqual(snapshot.weaponId, 'needle_gun');
+      assert.strictEqual(snapshot.maxAmmo, 30);
+      assert.strictEqual(snapshot.ammo, 30);
+      assert.strictEqual(snapshot.classId, 'sharpshooter');
+      assert.ok(snapshot.weaponName, 'weaponName must be present');
+    }
   }
 ];
 

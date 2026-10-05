@@ -192,6 +192,47 @@ export function startServer(port = process.env.PORT || 3000) {
           return sendJson(result.ok ? 200 : 400, { success: result.ok, ...result });
         }
 
+        // POST /api/profile/equip (Equip weapon or hero class)
+        if ((pathname === '/api/profile/equip' || pathname === '/api/profile/equip/weapon' || pathname === '/api/profile/equip/class') && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          const accountId = userPayload?.accountId || body.guestId || body.profileId;
+          const weaponId = body.weaponId;
+          const classId = body.classId;
+
+          let updatedProfile = null;
+          if (accountId) {
+            if (weaponId) {
+              await profileStore.setEquippedWeapon(accountId, weaponId);
+            }
+            if (classId) {
+              await profileStore.setEquippedClass(accountId, classId);
+            }
+            updatedProfile = await profileStore.getProfile(accountId);
+          }
+
+          // Also synchronize active WebSocket rooms if present
+          if (accountId && gameServer) {
+            for (const [, room] of gameServer.rooms) {
+              for (const [, player] of room.players) {
+                if (player.profile?.id === accountId || player.id === accountId) {
+                  room.updatePlayerLoadout(player.id, {
+                    weaponId,
+                    classId,
+                    profile: updatedProfile
+                  });
+                }
+              }
+            }
+          }
+
+          return sendJson(200, {
+            success: true,
+            equippedWeapon: weaponId,
+            equippedClass: classId,
+            profile: updatedProfile
+          });
+        }
+
         // POST /api/match/reward
         if (pathname === '/api/match/reward' && req.method === 'POST') {
           const body = await parseJsonBody(req);

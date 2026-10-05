@@ -323,6 +323,13 @@ export class App {
           this.homeUserBadge.textContent = p.isGuest !== false ? 'Гість' : 'Google';
           this.homeUserBadge.className = `pill-badge ${p.isGuest !== false ? 'guest' : 'linked'}`;
         }
+        if (this.networkClient && p) {
+          this.networkClient.setLoadout({
+            weaponId: p.equippedWeapon,
+            classId: p.equippedClass,
+            profile: p
+          });
+        }
       });
     }
 
@@ -616,7 +623,24 @@ export class App {
     const playerName = (this.lobbyUI?.dom?.playerNameInput?.value || 'HostEngineer').trim();
 
     const doCreate = () => {
-      this.networkClient.createLobby(roomId, playerName, map.name || 'Custom Arena', 4, map);
+      const prof = this.progressionManager?.getProfile();
+      if (prof && this.networkClient) {
+        this.networkClient.setLoadout({
+          weaponId: prof.equippedWeapon,
+          classId: prof.equippedClass,
+          profile: prof
+        });
+      }
+      this.networkClient.createLobby({
+        roomId,
+        playerName,
+        mapName: map.name || 'Custom Arena',
+        maxPlayers: 4,
+        map,
+        equippedWeapon: prof?.equippedWeapon || 'revolver',
+        equippedClass: prof?.equippedClass || 'vanguard',
+        profile: prof
+      });
     };
 
     if (this.networkClient.isConnected && this.networkClient.socket?.readyState === 1) {
@@ -666,6 +690,15 @@ export class App {
     const targetKills = isDm ? (gameMode === 'team_dm' ? 15 : 10) : 0;
 
     const doLaunch = () => {
+      const prof = this.progressionManager?.getProfile();
+      if (prof && this.networkClient) {
+        this.networkClient.setLoadout({
+          weaponId: prof.equippedWeapon,
+          classId: prof.equippedClass,
+          profile: prof
+        });
+      }
+
       const onLobbyState = (state) => {
         if (state.roomId === soloRoomId) {
           this.networkClient.off('lobbyState', onLobbyState);
@@ -674,16 +707,19 @@ export class App {
       };
       this.networkClient.on('lobbyState', onLobbyState);
 
-      this.networkClient.createLobby(
-        soloRoomId,
+      this.networkClient.createLobby({
+        roomId: soloRoomId,
         playerName,
-        targetMap.name || 'Solo Training Arena',
-        4,
-        targetMap,
-        true, // autoFillBots
+        mapName: targetMap.name || 'Solo Training Arena',
+        maxPlayers: 4,
+        map: targetMap,
+        autoFillBots: true,
         gameMode,
-        targetKills
-      );
+        targetKills,
+        equippedWeapon: prof?.equippedWeapon || 'revolver',
+        equippedClass: prof?.equippedClass || 'vanguard',
+        profile: prof
+      });
     };
 
     if (this.networkClient.isConnected && this.networkClient.socket?.readyState === 1) {
