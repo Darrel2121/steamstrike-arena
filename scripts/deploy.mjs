@@ -9,23 +9,18 @@ const FTP_CONFIG = {
   secure: false
 };
 
-async function main() {
+async function runDeployAttempt(attempt = 1) {
   const client = new ftp.Client();
   client.ftp.verbose = true;
+  client.ftp.timeout = 45000;
 
   try {
-    console.log('Connecting to FTP...');
+    console.log(`\n=== Connecting to FTP (Attempt ${attempt}/3)... ===`);
     await client.access(FTP_CONFIG);
     console.log('Connected!');
 
     await client.cd('public_html');
     console.log('Entered public_html');
-
-    const initialList = await client.list();
-    console.log('Current files in public_html:');
-    for (const item of initialList) {
-      console.log(` - ${item.name} (${item.isDirectory ? 'DIR' : item.size + ' bytes'})`);
-    }
 
     // 1. Upload root bootstrap files
     console.log('\n--- Uploading root bootstrap files ---');
@@ -48,18 +43,27 @@ async function main() {
     console.log('\n--- Uploading node_modules/ws directory ---');
     await client.uploadFromDir('node_modules/ws', 'node_modules/ws');
 
-    console.log('\n--- Verifying final public_html state ---');
-    const finalList = await client.list();
-    for (const item of finalList) {
-      console.log(` - ${item.name} (${item.isDirectory ? 'DIR' : item.size + ' bytes'})`);
-    }
-
     console.log('\n✔ DEPLOYMENT COMPLETED SUCCESSFULLY!');
+    return true;
   } catch (err) {
-    console.error('Deployment error:', err);
-    process.exit(1);
+    console.error(`Deployment error on attempt ${attempt}:`, err.message || err);
+    if (attempt < 3) {
+      console.log('Waiting 3s before retrying...');
+      await new Promise(r => setTimeout(r, 3000));
+      return runDeployAttempt(attempt + 1);
+    }
+    throw err;
   } finally {
     client.close();
+  }
+}
+
+async function main() {
+  try {
+    await runDeployAttempt(1);
+  } catch (err) {
+    console.error('All deployment attempts failed:', err);
+    process.exit(1);
   }
 }
 
