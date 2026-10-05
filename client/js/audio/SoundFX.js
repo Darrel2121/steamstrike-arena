@@ -1,11 +1,12 @@
 /**
- * Steampunk Tactical Audio Engine (Procedural Web Audio API)
- * Generates zero-dependency procedural steampunk sound effects:
- * - Gunfire (Revolver, Carbine, Blunderbuss, Needle Gun)
- * - Bullet ricochets (metallic ping) & impacts (wall debris vs entity armor)
- * - Mechanical reloads & footsteps
- * - Steam abilities & pressure releases
- * - Elimination brass gong, victory fanfare, and defeat chimes.
+ * Steampunk Tactical Audio Engine (Realistic Physical Acoustic DSP)
+ * Generates zero-dependency HD physical acoustic audio buffers:
+ * - Gunfire (Revolver, Carbine, Blunderbuss, Needle Gun) using multi-stage combustion modeling
+ * - Bullet ricochets (metallic supersonic ping) & impacts (masonry wall vs automaton metal chassis)
+ * - Mechanical cylinder reloads with tactile ratchet locks & brass casing chimes
+ * - Steampunk steam abilities, footsteps, elimination bronze gong, victory fanfare, and defeat resonance.
+ *
+ * 100% Free of 8-bit synthesizer tones (no retro arcade oscillators).
  */
 
 export class SoundFX {
@@ -13,9 +14,10 @@ export class SoundFX {
     this.ctx = null;
     this.masterGain = null;
     this.isMuted = false;
-    this.volume = 0.6;
+    this.volume = 0.7;
     this.initialized = false;
     this.listenerPos = { x: 400, y: 300 };
+    this.audioBuffers = new Map();
 
     try {
       if (typeof localStorage !== 'undefined') {
@@ -28,7 +30,7 @@ export class SoundFX {
   }
 
   /**
-   * Initializes AudioContext upon user gesture.
+   * Initializes AudioContext upon user gesture and pre-renders physical acoustic buffers.
    */
   init() {
     if (this.initialized && this.ctx) {
@@ -39,7 +41,7 @@ export class SoundFX {
     }
 
     try {
-      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const AudioContextClass = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
       if (!AudioContextClass) return;
       this.ctx = new AudioContextClass();
 
@@ -47,8 +49,203 @@ export class SoundFX {
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : this.volume, this.ctx.currentTime);
       this.masterGain.connect(this.ctx.destination);
 
+      // Pre-compile physical acoustic PCM buffers
+      this.compileAcousticBuffers();
+
       this.initialized = true;
     } catch (_) {}
+  }
+
+  /**
+   * Generates a raw Float32Array into a Web Audio AudioBuffer.
+   */
+  createAudioBuffer(duration, generator) {
+    if (!this.ctx) return null;
+    const sampleRate = this.ctx.sampleRate || 44100;
+    const len = Math.floor(sampleRate * duration);
+    const buffer = this.ctx.createBuffer(1, len, sampleRate);
+    const channelData = buffer.getChannelData(0);
+
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    let brown = 0;
+
+    for (let i = 0; i < len; i++) {
+      const t = i / sampleRate;
+      const white = Math.random() * 2 - 1;
+
+      // Pink noise (Paul Kellet's filter approximation)
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      const pink = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+      b6 = white * 0.115926;
+
+      // Brownian noise (integrated acoustic displacement)
+      brown = (brown + (0.03 * white)) / 1.03;
+
+      const sample = generator(t, white, pink, brown, i, len);
+      channelData[i] = Math.max(-1, Math.min(1, sample));
+    }
+
+    return buffer;
+  }
+
+  /**
+   * Compiles all physical acoustic sound models into native AudioBuffers.
+   */
+  compileAcousticBuffers() {
+    if (!this.ctx) return;
+
+    // 1. Revolver (Годинниковий револьвер)
+    this.audioBuffers.set('shot_revolver', this.createAudioBuffer(0.40, (t, w, p, br) => {
+      const attack = Math.exp(-t * 120) * w * 2.4;
+      const blast = Math.exp(-t * 24) * p * 2.6;
+      const thud = Math.exp(-t * 15) * br * 9.5;
+      const snap = (Math.abs(w) > 0.80 ? w * 1.8 : 0) * Math.exp(-t * 160);
+      let s = attack + blast + thud + snap;
+      s = Math.tanh(s * 1.9) * 0.95;
+      return s * Math.exp(-t * 4.8);
+    }));
+
+    // 2. Carbine (Паровий автоматичний карабін)
+    this.audioBuffers.set('shot_carbine', this.createAudioBuffer(0.25, (t, w, p, br) => {
+      const attack = Math.exp(-t * 150) * w * 2.6;
+      const piston = Math.exp(-t * 38) * p * 2.4;
+      const punch = Math.exp(-t * 26) * br * 7.0;
+      let s = attack + piston + punch;
+      s = Math.tanh(s * 2.2) * 0.90;
+      return s * Math.exp(-t * 7.0);
+    }));
+
+    // 3. Blunderbuss (Дробовик-картечниця)
+    this.audioBuffers.set('shot_blunderbuss', this.createAudioBuffer(0.58, (t, w, p, br) => {
+      const shockwave = Math.exp(-t * 85) * w * 3.2;
+      const roar = Math.exp(-t * 15) * p * 3.4;
+      const cannon = Math.exp(-t * 9.5) * br * 15.0;
+      let s = shockwave + roar + cannon;
+      s = Math.tanh(s * 1.6) * 1.0;
+      return s * Math.exp(-t * 3.2);
+    }));
+
+    // 4. Needle Gun (Голчаста снайперська гвинтівка)
+    this.audioBuffers.set('shot_needle_gun', this.createAudioBuffer(0.32, (t, w, p, br) => {
+      const crack = Math.exp(-t * 320) * (Math.abs(w) > 0.38 ? w * 3.4 : 0);
+      const hiss = Math.exp(-t * 30) * w * 1.9;
+      const ring = Math.sin(2 * Math.PI * 1850 * t) * Math.exp(-t * 14) * 0.28;
+      let s = crack + hiss + ring;
+      return Math.tanh(s * 1.8) * 0.90 * Math.exp(-t * 5.5);
+    }));
+
+    // 5. Reload (3-Stage Steampunk Mechanical Ratchet Sequence)
+    this.audioBuffers.set('reload', this.createAudioBuffer(0.52, (t, w, p, br) => {
+      // Stage 1: Cylinder latch release (0.00 - 0.12s)
+      let s1 = (t >= 0 && t < 0.12) ? Math.exp(-t * 22) * w * 1.1 : 0;
+      // Stage 2: Brass shell insertion chimes (0.16s & 0.28s)
+      let s2 = 0;
+      if (t >= 0.16 && t < 0.24) {
+        const dt1 = t - 0.16;
+        s2 += Math.sin(2 * Math.PI * 1380 * dt1) * Math.exp(-dt1 * 48) * 0.50;
+      }
+      if (t >= 0.28 && t < 0.36) {
+        const dt2 = t - 0.28;
+        s2 += Math.sin(2 * Math.PI * 1640 * dt2) * Math.exp(-dt2 * 48) * 0.50;
+      }
+      // Stage 3: Heavy cylinder lock snap (0.38 - 0.52s)
+      let s3 = 0;
+      if (t >= 0.38) {
+        const dt3 = t - 0.38;
+        s3 = Math.exp(-dt3 * 95) * w * 2.0 + Math.exp(-dt3 * 38) * br * 4.0;
+      }
+      return Math.tanh((s1 + s2 + s3) * 1.6) * 0.88;
+    }));
+
+    // 6. Wall Impact (Masonry dust & stone fracturing thud)
+    this.audioBuffers.set('impact_wall', this.createAudioBuffer(0.20, (t, w, p, br) => {
+      const thud = Math.exp(-t * 70) * br * 8.0;
+      const crunch = Math.exp(-t * 48) * p * 1.6;
+      return Math.tanh((thud + crunch) * 1.6) * 0.80 * Math.exp(-t * 11);
+    }));
+
+    // 7. Entity Impact (Automaton copper armor plate crunch)
+    this.audioBuffers.set('impact_entity', this.createAudioBuffer(0.24, (t, w, p, br) => {
+      const armorClang = Math.sin(2 * Math.PI * 480 * t) * Math.exp(-t * 30) * 0.60
+        + Math.sin(2 * Math.PI * 1120 * t) * Math.exp(-t * 38) * 0.40;
+      const kineticPunch = Math.exp(-t * 55) * br * 8.5 + Math.exp(-t * 42) * w * 1.6;
+      return Math.tanh((armorClang + kineticPunch) * 1.6) * 0.90 * Math.exp(-t * 7.5);
+    }));
+
+    // 8. Ricochet (Supersonic whistling wire ping)
+    this.audioBuffers.set('ricochet', this.createAudioBuffer(0.28, (t, w, p, br) => {
+      const freq = 3600 * Math.exp(-t * 7.5);
+      const ping = Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * 16) * 0.70;
+      const crack = Math.exp(-t * 240) * w * 1.3;
+      return Math.tanh((ping + crack) * 1.4) * 0.75 * Math.exp(-t * 4.5);
+    }));
+
+    // 9. Footstep (Leather & iron boot sole on stone)
+    this.audioBuffers.set('footstep', this.createAudioBuffer(0.12, (t, w, p, br) => {
+      const thud = Math.exp(-t * 75) * br * 3.5;
+      const scuff = Math.exp(-t * 60) * p * 0.7;
+      return Math.tanh((thud + scuff) * 1.2) * 0.45 * Math.exp(-t * 14);
+    }));
+
+    // 10. Steam Ability Surge
+    this.audioBuffers.set('ability', this.createAudioBuffer(0.48, (t, w, p, br) => {
+      const steamWhoosh = Math.exp(-t * 6.5) * w * 1.6 * (1 - Math.exp(-t * 50));
+      const pressurePuff = Math.exp(-t * 12) * p * 1.8;
+      const deepRumble = Math.exp(-t * 8) * br * 4.0;
+      return Math.tanh((steamWhoosh + pressurePuff + deepRumble) * 1.4) * 0.85;
+    }));
+
+    // 11. Elimination Bronze Gong
+    this.audioBuffers.set('elimination', this.createAudioBuffer(1.40, (t, w, p, br) => {
+      const gong1 = Math.sin(2 * Math.PI * 220 * t) * Math.exp(-t * 2.8) * 0.55;
+      const gong2 = Math.sin(2 * Math.PI * 440 * t) * Math.exp(-t * 3.8) * 0.35;
+      const gong3 = Math.sin(2 * Math.PI * 659 * t) * Math.exp(-t * 4.8) * 0.25;
+      const gong4 = Math.sin(2 * Math.PI * 880 * t) * Math.exp(-t * 5.8) * 0.15;
+      const initialStrike = Math.exp(-t * 120) * w * 1.2;
+      return Math.tanh((gong1 + gong2 + gong3 + gong4 + initialStrike) * 1.5) * 0.90;
+    }));
+
+    // 12. Victory Fanfare
+    this.audioBuffers.set('victory', this.createAudioBuffer(1.20, (t, w, p, br) => {
+      let s = 0;
+      const notes = [
+        { f: 261.63, t0: 0.00, t1: 0.18 },
+        { f: 329.63, t0: 0.16, t1: 0.34 },
+        { f: 392.00, t0: 0.32, t1: 0.52 },
+        { f: 523.25, t0: 0.50, t1: 1.15 }
+      ];
+      for (const n of notes) {
+        if (t >= n.t0 && t <= n.t1) {
+          const dt = t - n.t0;
+          const env = Math.exp(-dt * 3.5);
+          s += (Math.sin(2 * Math.PI * n.f * dt) * 0.6 + Math.sin(2 * Math.PI * (n.f * 2) * dt) * 0.3) * env;
+        }
+      }
+      return Math.tanh(s * 1.5) * 0.85;
+    }));
+
+    // 13. Defeat Resonance
+    this.audioBuffers.set('defeat', this.createAudioBuffer(1.20, (t, w, p, br) => {
+      let s = 0;
+      const notes = [
+        { f: 311.13, t0: 0.00, t1: 0.35 },
+        { f: 293.66, t0: 0.30, t1: 0.65 },
+        { f: 261.63, t0: 0.60, t1: 1.15 }
+      ];
+      for (const n of notes) {
+        if (t >= n.t0 && t <= n.t1) {
+          const dt = t - n.t0;
+          const env = Math.exp(-dt * 3.0);
+          s += (Math.sin(2 * Math.PI * n.f * dt) * 0.5 + Math.sin(2 * Math.PI * (n.f * 1.5) * dt) * 0.25) * env;
+        }
+      }
+      return Math.tanh(s * 1.4) * 0.75;
+    }));
   }
 
   /**
@@ -72,7 +269,7 @@ export class SoundFX {
     const dy = worldY - this.listenerPos.y;
     const dist = Math.hypot(dx, dy);
 
-    const falloff = Math.max(0.1, Math.min(1.0, 1.0 - (dist / maxDist)));
+    const falloff = Math.max(0.08, Math.min(1.0, 1.0 - (dist / maxDist)));
     const pan = Math.max(-0.85, Math.min(0.85, dx / (maxDist * 0.75)));
     return { gain: falloff * falloff, pan };
   }
@@ -103,578 +300,103 @@ export class SoundFX {
   }
 
   /**
-   * Plays a procedural noise burst (for gunfire, steam, impacts).
+   * Plays a pre-rendered AudioBuffer with optional pitch variation and spatial panning.
    */
-  createNoiseBuffer(duration = 0.2) {
-    if (!this.ctx) return null;
-    const bufferSize = Math.floor(this.ctx.sampleRate * duration);
-    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
-    return buffer;
+  playBuffer(bufferKey, worldX = null, worldY = null, baseVolume = 1.0, pitchVariation = 0.04) {
+    if (!this.ctx || this.isMuted) return;
+    this.init();
+    const buf = this.audioBuffers.get(bufferKey);
+    if (!buf) return;
+
+    try {
+      const source = this.ctx.createBufferSource();
+      source.buffer = buf;
+      if (pitchVariation > 0) {
+        source.playbackRate.setValueAtTime(1.0 + (Math.random() - 0.5) * pitchVariation * 2, this.ctx.currentTime);
+      }
+      const out = this.createSpatialChain(worldX, worldY, baseVolume);
+      if (!out) return;
+      source.connect(out);
+      source.start(this.ctx.currentTime);
+    } catch (_) {}
   }
 
   /**
-   * Weapon Gunshot SFX - Visceral, punchy multi-layer acoustic synthesis.
-   * Layer 1: Sub-bass concussive kick (sine pitch envelope)
-   * Layer 2: Explosive gunpowder/steam blast (shaped noise burst with bandpass & sweep)
-   * Layer 3: Mechanical chamber crack & hammer snap (high-frequency transient)
-   * Layer 4: Arena reverberation tail (decaying diffuse room envelope)
+   * Weapon Gunshot SFX.
    */
   playGunshot(weaponId = 'revolver', worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.85);
-    if (!out) return;
+    let key = 'shot_revolver';
+    let baseVol = 0.95;
 
     if (weaponId === 'blunderbuss') {
-      // Massive concussive cannon blast + wide shrapnel roar
-      // 1. Sub-bass shockwave
-      const subOsc = this.ctx.createOscillator();
-      const subGain = this.ctx.createGain();
-      subOsc.type = 'triangle';
-      subOsc.frequency.setValueAtTime(190, now);
-      subOsc.frequency.exponentialRampToValueAtTime(26, now + 0.35);
-
-      subGain.gain.setValueAtTime(1.0, now);
-      subGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-
-      subOsc.connect(subGain);
-      subGain.connect(out);
-      subOsc.start(now);
-      subOsc.stop(now + 0.36);
-
-      // 2. Heavy explosive noise blast
-      const noiseBuf = this.createNoiseBuffer(0.42);
-      if (noiseBuf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = noiseBuf;
-
-        const lpFilter = this.ctx.createBiquadFilter();
-        lpFilter.type = 'lowpass';
-        lpFilter.frequency.setValueAtTime(1600, now);
-        lpFilter.frequency.exponentialRampToValueAtTime(180, now + 0.42);
-
-        const bpFilter = this.ctx.createBiquadFilter();
-        bpFilter.type = 'bandpass';
-        bpFilter.frequency.setValueAtTime(800, now);
-        bpFilter.Q.setValueAtTime(1.4, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(1.1, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
-
-        noise.connect(lpFilter);
-        lpFilter.connect(bpFilter);
-        bpFilter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-
-      // 3. Resonant brass barrel ring
-      const ringOsc = this.ctx.createOscillator();
-      const ringGain = this.ctx.createGain();
-      ringOsc.type = 'sine';
-      ringOsc.frequency.setValueAtTime(460, now);
-      ringOsc.frequency.exponentialRampToValueAtTime(120, now + 0.38);
-
-      ringGain.gain.setValueAtTime(0.35, now);
-      ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
-
-      ringOsc.connect(ringGain);
-      ringGain.connect(out);
-      ringOsc.start(now);
-      ringOsc.stop(now + 0.39);
+      key = 'shot_blunderbuss';
+      baseVol = 1.0;
     } else if (weaponId === 'needle_gun') {
-      // Supersonic sniper whip crack + resonant whistle
-      // 1. Ultra-sharp attack impulse
-      const crackOsc = this.ctx.createOscillator();
-      const crackGain = this.ctx.createGain();
-      crackOsc.type = 'sawtooth';
-      crackOsc.frequency.setValueAtTime(3200, now);
-      crackOsc.frequency.exponentialRampToValueAtTime(220, now + 0.04);
-
-      crackGain.gain.setValueAtTime(0.9, now);
-      crackGain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
-
-      crackOsc.connect(crackGain);
-      crackGain.connect(out);
-      crackOsc.start(now);
-      crackOsc.stop(now + 0.045);
-
-      // 2. High-velocity pneumatic hiss & echo
-      const noiseBuf = this.createNoiseBuffer(0.28);
-      if (noiseBuf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = noiseBuf;
-
-        const bpFilter = this.ctx.createBiquadFilter();
-        bpFilter.type = 'bandpass';
-        bpFilter.frequency.setValueAtTime(2600, now);
-        bpFilter.Q.setValueAtTime(3.2, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.7, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
-
-        noise.connect(bpFilter);
-        bpFilter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-
-      // 3. Crystalline harmonic ring
-      const chimeOsc = this.ctx.createOscillator();
-      const chimeGain = this.ctx.createGain();
-      chimeOsc.type = 'sine';
-      chimeOsc.frequency.setValueAtTime(1680, now);
-      chimeOsc.frequency.exponentialRampToValueAtTime(840, now + 0.40);
-
-      chimeGain.gain.setValueAtTime(0.3, now);
-      chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
-
-      chimeOsc.connect(chimeGain);
-      chimeGain.connect(out);
-      chimeOsc.start(now);
-      chimeOsc.stop(now + 0.41);
+      key = 'shot_needle_gun';
+      baseVol = 0.90;
     } else if (weaponId === 'carbine') {
-      // Rapid automatic steam carbine: punchy piston snap + metallic chamber slap
-      // 1. Piston thump
-      const punchOsc = this.ctx.createOscillator();
-      const punchGain = this.ctx.createGain();
-      punchOsc.type = 'triangle';
-      punchOsc.frequency.setValueAtTime(320, now);
-      punchOsc.frequency.exponentialRampToValueAtTime(45, now + 0.07);
-
-      punchGain.gain.setValueAtTime(0.8, now);
-      punchGain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
-
-      punchOsc.connect(punchGain);
-      punchGain.connect(out);
-      punchOsc.start(now);
-      punchOsc.stop(now + 0.075);
-
-      // 2. Sharp combustion crack
-      const noiseBuf = this.createNoiseBuffer(0.14);
-      if (noiseBuf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = noiseBuf;
-
-        const bpFilter = this.ctx.createBiquadFilter();
-        bpFilter.type = 'bandpass';
-        bpFilter.frequency.setValueAtTime(1900, now);
-        bpFilter.Q.setValueAtTime(2.0, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.85, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
-
-        noise.connect(bpFilter);
-        bpFilter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-    } else {
-      // Classic Steampunk Cylinder Revolver: heavy gunshot with solid punch & chamber crack
-      // 1. Concussive Sub-Bass Kick
-      const kickOsc = this.ctx.createOscillator();
-      const kickGain = this.ctx.createGain();
-      kickOsc.type = 'triangle';
-      kickOsc.frequency.setValueAtTime(290, now);
-      kickOsc.frequency.exponentialRampToValueAtTime(36, now + 0.10);
-
-      kickGain.gain.setValueAtTime(1.0, now);
-      kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
-
-      kickOsc.connect(kickGain);
-      kickGain.connect(out);
-      kickOsc.start(now);
-      kickOsc.stop(now + 0.11);
-
-      // 2. Gunpowder Detonation Blast
-      const noiseBuf = this.createNoiseBuffer(0.24);
-      if (noiseBuf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = noiseBuf;
-
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(2800, now);
-        filter.frequency.exponentialRampToValueAtTime(320, now + 0.24);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.95, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
-
-        noise.connect(filter);
-        filter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-
-      // 3. High-Frequency Hammer / Ignition Snap
-      const snapOsc = this.ctx.createOscillator();
-      const snapGain = this.ctx.createGain();
-      snapOsc.type = 'sawtooth';
-      snapOsc.frequency.setValueAtTime(1800, now);
-      snapOsc.frequency.exponentialRampToValueAtTime(400, now + 0.025);
-
-      snapGain.gain.setValueAtTime(0.5, now);
-      snapGain.gain.exponentialRampToValueAtTime(0.01, now + 0.025);
-
-      snapOsc.connect(snapGain);
-      snapGain.connect(out);
-      snapOsc.start(now);
-      snapOsc.stop(now + 0.028);
+      key = 'shot_carbine';
+      baseVol = 0.88;
     }
+
+    this.playBuffer(key, worldX, worldY, baseVol, 0.05);
   }
 
   /**
-   * Wall Ricochet Ping SFX - Metallic supersonic resonance.
+   * Wall Ricochet Ping SFX.
    */
   playRicochet(worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.65);
-    if (!out) return;
-
-    // Resonant supersonic ping
-    const baseFreq = 2200 + Math.random() * 800;
-    const osc = this.ctx.createOscillator();
-    const oscGain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.45, now + 0.20);
-
-    oscGain.gain.setValueAtTime(0.6, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
-
-    osc.connect(oscGain);
-    oscGain.connect(out);
-    osc.start(now);
-    osc.stop(now + 0.21);
+    this.playBuffer('ricochet', worldX, worldY, 0.70, 0.08);
   }
 
   /**
-   * Bullet Impact SFX (Wall masonry crunch vs Entity automaton armor).
+   * Bullet Impact SFX.
    */
   playImpact(isEntity = false, worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, isEntity ? 0.85 : 0.55);
-    if (!out) return;
-
-    if (isEntity) {
-      // Automaton metal armor impact: Heavy metallic clang & kinetic crunch
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(440, now);
-      osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
-
-      oscGain.gain.setValueAtTime(0.7, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-
-      osc.connect(oscGain);
-      oscGain.connect(out);
-      osc.start(now);
-      osc.stop(now + 0.13);
-
-      const buf = this.createNoiseBuffer(0.14);
-      if (buf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buf;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1100, now);
-        filter.Q.setValueAtTime(2.5, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.75, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
-
-        noise.connect(filter);
-        filter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-    } else {
-      // Solid wall hit: kinetic impact thud + masonry crumble
-      const thudOsc = this.ctx.createOscillator();
-      const thudGain = this.ctx.createGain();
-      thudOsc.type = 'triangle';
-      thudOsc.frequency.setValueAtTime(140, now);
-      thudOsc.frequency.exponentialRampToValueAtTime(38, now + 0.08);
-
-      thudGain.gain.setValueAtTime(0.65, now);
-      thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-
-      thudOsc.connect(thudGain);
-      thudGain.connect(out);
-      thudOsc.start(now);
-      thudOsc.stop(now + 0.085);
-
-      const buf = this.createNoiseBuffer(0.10);
-      if (buf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buf;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(800, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.5, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
-
-        noise.connect(filter);
-        filter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-    }
+    const key = isEntity ? 'impact_entity' : 'impact_wall';
+    this.playBuffer(key, worldX, worldY, isEntity ? 0.90 : 0.75, 0.06);
   }
 
   /**
-   * Weapon Reload SFX - Steampunk cylinder ratchet sequence.
-   * Stage 1: Chamber slide out (metallic friction)
-   * Stage 2: Brass shell insertion (resonant ping)
-   * Stage 3: Heavy cylinder lock (tactical mechanical snap)
+   * Weapon Reload Ratchet SFX.
    */
   playReload(worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.75);
-    if (!out) return;
-
-    // 1. Chamber slide out (t = 0.00s)
-    const slideBuf = this.createNoiseBuffer(0.10);
-    if (slideBuf) {
-      const noise = this.ctx.createBufferSource();
-      noise.buffer = slideBuf;
-      const bp = this.ctx.createBiquadFilter();
-      bp.type = 'bandpass';
-      bp.frequency.setValueAtTime(1600, now);
-      bp.frequency.exponentialRampToValueAtTime(650, now + 0.10);
-      bp.Q.setValueAtTime(2.2, now);
-
-      const nGain = this.ctx.createGain();
-      nGain.gain.setValueAtTime(0.6, now);
-      nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
-
-      noise.connect(bp);
-      bp.connect(nGain);
-      nGain.connect(out);
-      noise.start(now);
-    }
-
-    // 2. Brass shell insertion chimes (t = 0.15s, 0.24s)
-    [0.15, 0.24].forEach((delay, idx) => {
-      const chimeTime = now + delay;
-      const chimeOsc = this.ctx.createOscillator();
-      const chimeGain = this.ctx.createGain();
-      chimeOsc.type = 'sine';
-      chimeOsc.frequency.setValueAtTime(1350 + idx * 280, chimeTime);
-
-      chimeGain.gain.setValueAtTime(0.45, chimeTime);
-      chimeGain.gain.exponentialRampToValueAtTime(0.001, chimeTime + 0.07);
-
-      chimeOsc.connect(chimeGain);
-      chimeGain.connect(out);
-      chimeOsc.start(chimeTime);
-      chimeOsc.stop(chimeTime + 0.075);
-    });
-
-    // 3. Heavy ratchet cylinder lock & snap (t = 0.36s)
-    const lockTime = now + 0.36;
-    const lockOsc = this.ctx.createOscillator();
-    const lockGain = this.ctx.createGain();
-    lockOsc.type = 'square';
-    lockOsc.frequency.setValueAtTime(750, lockTime);
-    lockOsc.frequency.exponentialRampToValueAtTime(180, lockTime + 0.06);
-
-    lockGain.gain.setValueAtTime(0.7, lockTime);
-    lockGain.gain.exponentialRampToValueAtTime(0.01, lockTime + 0.06);
-
-    lockOsc.connect(lockGain);
-    lockGain.connect(out);
-    lockOsc.start(lockTime);
-    lockOsc.stop(lockTime + 0.065);
+    this.playBuffer('reload', worldX, worldY, 0.85, 0.02);
   }
 
   /**
-   * Footstep SFX (Soft metallic sole contact on stone).
+   * Footstep SFX.
    */
   playFootstep(worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.16);
-    if (!out) return;
-
-    const osc = this.ctx.createOscillator();
-    const oscGain = this.ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(95, now);
-    osc.frequency.exponentialRampToValueAtTime(30, now + 0.07);
-
-    oscGain.gain.setValueAtTime(0.25, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
-
-    osc.connect(oscGain);
-    oscGain.connect(out);
-    osc.start(now);
-    osc.stop(now + 0.08);
+    this.playBuffer('footstep', worldX, worldY, 0.40, 0.08);
   }
 
   /**
-   * Tactical Ability Activation SFX (High-pressure steam venting & power surge).
+   * Tactical Ability Activation SFX.
    */
   playAbility(classId = 'vanguard', worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.7);
-    if (!out) return;
-
-    // Sweeping bandpass steam plume hiss
-    const buf = this.createNoiseBuffer(0.45);
-    if (buf) {
-      const noise = this.ctx.createBufferSource();
-      noise.buffer = buf;
-      const filter = this.ctx.createBiquadFilter();
-      filter.type = 'bandpass';
-      filter.frequency.setValueAtTime(800, now);
-      filter.frequency.exponentialRampToValueAtTime(2400, now + 0.2);
-      filter.frequency.exponentialRampToValueAtTime(400, now + 0.45);
-      filter.Q.setValueAtTime(3.5, now);
-
-      const nGain = this.ctx.createGain();
-      nGain.gain.setValueAtTime(0.7, now);
-      nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
-
-      noise.connect(filter);
-      filter.connect(nGain);
-      nGain.connect(out);
-      noise.start(now);
-    }
-
-    // Class specific tonal cue
-    const osc = this.ctx.createOscillator();
-    const oscGain = this.ctx.createGain();
-    osc.type = 'sine';
-    const pitch = classId === 'sharpshooter' ? 880 : (classId === 'juggernaut' ? 220 : 550);
-    osc.frequency.setValueAtTime(pitch, now);
-    osc.frequency.exponentialRampToValueAtTime(pitch * 1.5, now + 0.25);
-
-    oscGain.gain.setValueAtTime(0.4, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-
-    osc.connect(oscGain);
-    oscGain.connect(out);
-    osc.start(now);
-    osc.stop(now + 0.26);
+    this.playBuffer('ability', worldX, worldY, 0.85, 0.03);
   }
 
   /**
    * Resonant Steampunk Brass Elimination Gong.
    */
   playElimination() {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.masterGain;
-    if (!out) return;
-
-    // Harmonic bells for deep bronze gong
-    const harmonics = [220, 440, 659, 880];
-    harmonics.forEach((freq, idx) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now);
-
-      const dur = 1.2 - idx * 0.2;
-      gain.gain.setValueAtTime(0.3 / (idx + 1), now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-
-      osc.connect(gain);
-      gain.connect(out);
-      osc.start(now);
-      osc.stop(now + dur + 0.05);
-    });
+    this.playBuffer('elimination', null, null, 0.90, 0.0);
   }
 
   /**
    * Victory Fanfare Brass Chime.
    */
   playVictory() {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.masterGain;
-    if (!out) return;
-
-    const notes = [
-      { f: 261.63, t: 0.00, d: 0.16 }, // C4
-      { f: 329.63, t: 0.15, d: 0.16 }, // E4
-      { f: 392.00, t: 0.30, d: 0.20 }, // G4
-      { f: 523.25, t: 0.48, d: 0.85 }  // C5
-    ];
-
-    notes.forEach(n => {
-      const startT = now + n.t;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(n.f, startT);
-
-      gain.gain.setValueAtTime(0.4, startT);
-      gain.gain.exponentialRampToValueAtTime(0.001, startT + n.d);
-
-      osc.connect(gain);
-      gain.connect(out);
-      osc.start(startT);
-      osc.stop(startT + n.d + 0.05);
-    });
+    this.playBuffer('victory', null, null, 0.85, 0.0);
   }
 
   /**
    * Defeat Descending Minor Tone.
    */
   playDefeat() {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.masterGain;
-    if (!out) return;
-
-    const notes = [
-      { f: 311.13, t: 0.00, d: 0.35 }, // Eb4
-      { f: 293.66, t: 0.28, d: 0.35 }, // D4
-      { f: 261.63, t: 0.56, d: 0.80 }  // C4
-    ];
-
-    notes.forEach(n => {
-      const startT = now + n.t;
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(n.f, startT);
-
-      gain.gain.setValueAtTime(0.25, startT);
-      gain.gain.exponentialRampToValueAtTime(0.001, startT + n.d);
-
-      osc.connect(gain);
-      gain.connect(out);
-      osc.start(startT);
-      osc.stop(startT + n.d + 0.05);
-    });
+    this.playBuffer('defeat', null, null, 0.80, 0.0);
   }
 
   /**
