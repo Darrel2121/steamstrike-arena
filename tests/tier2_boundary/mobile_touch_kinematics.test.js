@@ -263,6 +263,120 @@ export const tests = [
       assert.ok(roomJs.includes('victimName'), 'Room.js must broadcast victimName in elimination event');
       assert.ok(roomJs.includes('killerName'), 'Room.js must broadcast killerName in elimination event');
     }
+  },
+
+  {
+    id: 'T2.16.9',
+    name: 'Mobile Joystick Hit-Testing: #touchJoystickZone and Left Viewport Movement Mechanics',
+    fn: async () => {
+      const originalDoc = globalThis.document;
+
+      const mockJoystickZone = {
+        id: 'touchJoystickZone',
+        getBoundingClientRect: () => ({ left: 0, top: 40, width: 400, height: 600 }),
+        closest: (selector) => selector.includes('touchJoystickZone') ? mockJoystickZone : null
+      };
+
+      const mockJoystickBase = {
+        id: 'touchJoystickBase',
+        style: { display: 'none', left: '0px', top: '0px' }
+      };
+
+      const mockJoystickThumb = {
+        id: 'touchJoystickThumb',
+        style: { transform: 'translate3d(0, 0, 0)' }
+      };
+
+      const mockActionButton = {
+        id: 'btnTouchFire',
+        closest: (selector) => selector.includes('touch-btn') || selector.includes('touch-action-cluster') ? mockActionButton : null
+      };
+
+      globalThis.document = {
+        getElementById: (id) => {
+          if (id === 'touchJoystickZone') return mockJoystickZone;
+          if (id === 'touchJoystickBase') return mockJoystickBase;
+          if (id === 'touchJoystickThumb') return mockJoystickThumb;
+          return null;
+        }
+      };
+
+      try {
+        const mockTargetElement = {
+          getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 })
+        };
+
+        const input = new InputManager(mockTargetElement);
+        input.isTouchDevice = true;
+
+        // 1. Action button touches must NOT be hijacked by joystick or aiming
+        input.onTouchStart({
+          cancelable: true,
+          preventDefault: () => {},
+          touches: [
+            { identifier: 55, clientX: 700, clientY: 500, target: mockActionButton }
+          ]
+        });
+        assert.strictEqual(input.touchMoveId, null, 'Action button touch must not trigger joystick');
+        assert.strictEqual(input.touchAimId, null, 'Action button touch must not trigger touch aim');
+
+        // 2. Touch on #touchJoystickZone (clientX: 120, clientY: 340)
+        let prevented = false;
+        input.onTouchStart({
+          cancelable: true,
+          preventDefault: () => { prevented = true; },
+          touches: [
+            { identifier: 101, clientX: 120, clientY: 340, target: mockJoystickZone }
+          ]
+        });
+
+        assert.strictEqual(input.touchMoveId, 101, 'touchMoveId must be assigned on joystick zone touch');
+        assert.strictEqual(prevented, true, 'Touch on joystick zone must call preventDefault()');
+        assert.strictEqual(mockJoystickBase.style.display, 'block', 'Joystick base must be displayed');
+        assert.strictEqual(mockJoystickBase.style.left, '120px', 'Base left must match touch relative to zone');
+        assert.strictEqual(mockJoystickBase.style.top, '300px', 'Base top must match clientY - zone.top (340 - 40 = 300px)');
+
+        // 3. Move joystick thumb diagonally down-right (dx: 45, dy: 45) -> clamped to maxRadius 45
+        let movePrevented = false;
+        input.onTouchMove({
+          cancelable: true,
+          preventDefault: () => { movePrevented = true; },
+          touches: [
+            { identifier: 101, clientX: 165, clientY: 385 }
+          ]
+        });
+
+        assert.strictEqual(movePrevented, true, 'Moving joystick must call preventDefault()');
+        assert.ok(input.touchMoveVector.x > 0.65 && input.touchMoveVector.x < 0.75, 'Move vector X normalized for diagonal');
+        assert.ok(input.touchMoveVector.y > 0.65 && input.touchMoveVector.y < 0.75, 'Move vector Y normalized for diagonal');
+        assert.ok(mockJoystickThumb.style.transform.includes('translate3d'), 'Joystick thumb transform must update');
+
+        // Poll input verifies character moves diagonally and turns to face diagonal heading
+        const poll = input.pollInput(400, 300);
+        assert.ok(poll.moveX > 0.6, 'Polled moveX must reflect joystick');
+        assert.ok(poll.moveY > 0.6, 'Polled moveY must reflect joystick');
+        assertAngleClose(poll.aimAngle, Math.PI / 4, 0.05, 'Aim angle must face movement direction');
+
+        // 4. Release touch
+        input.onTouchEnd({
+          touches: []
+        });
+
+        assert.strictEqual(input.touchMoveId, null, 'touchMoveId must be cleared on touchend');
+        assert.strictEqual(input.touchMoveVector.x, 0, 'Movement vector X must be reset to 0');
+        assert.strictEqual(input.touchMoveVector.y, 0, 'Movement vector Y must be reset to 0');
+        assert.strictEqual(mockJoystickBase.style.display, 'none', 'Joystick base must be hidden on release');
+        assert.strictEqual(mockJoystickThumb.style.transform, 'translate3d(0, 0, 0)', 'Joystick thumb must be reset');
+
+        // Stopped poll preserves heading
+        const pollStopped = input.pollInput(400, 300);
+        assert.strictEqual(pollStopped.moveX, 0);
+        assert.strictEqual(pollStopped.moveY, 0);
+        assertAngleClose(pollStopped.aimAngle, Math.PI / 4, 0.05, 'Stopped poll must preserve last facing angle');
+      } finally {
+        globalThis.document = originalDoc;
+      }
+    }
   }
 ];
 

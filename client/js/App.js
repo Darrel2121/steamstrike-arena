@@ -830,10 +830,26 @@ export class App {
       }
       this.requestLandscapeOrientation();
       this.checkLandscapeOrientationPrompt();
+      if (this.inputManager) {
+        if (this.inputManager.isTouchDevice && this.inputManager.mobileControlsContainer) {
+          this.inputManager.mobileControlsContainer.classList.add('touch-active');
+        }
+        if (typeof this.inputManager.resetPollTime === 'function') {
+          this.inputManager.resetPollTime();
+        }
+      }
       setTimeout(() => this.resizeGameCanvas(), 50);
     } else {
       if (this.landscapeRotatePrompt) {
         this.landscapeRotatePrompt.style.display = 'none';
+      }
+      if (this.inputManager) {
+        this.inputManager.touchMoveId = null;
+        this.inputManager.touchMoveOrigin = null;
+        this.inputManager.touchMoveVector = { x: 0, y: 0 };
+        this.inputManager.touchAimId = null;
+        this.inputManager.isMouseDown = false;
+        if (this.inputManager.joystickBase) this.inputManager.joystickBase.style.display = 'none';
       }
     }
   }

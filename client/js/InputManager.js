@@ -25,7 +25,13 @@ export class InputManager {
     this.touchMoveVector = { x: 0, y: 0 };
     this.touchAimId = null;
     this.isTouchSprint = false;
-    this.isTouchDevice = false;
+    this.isTouchDevice = Boolean(
+      typeof window !== 'undefined' && (
+        ('ontouchstart' in window) ||
+        (navigator && navigator.maxTouchPoints > 0) ||
+        (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+      )
+    );
     this.isTouchFiring = false;
     this.lastFacingAngle = 0;
     this.lastPlayerScreenX = 400;
@@ -33,7 +39,12 @@ export class InputManager {
 
     this.joystickBase = typeof document !== 'undefined' ? document.getElementById('touchJoystickBase') : null;
     this.joystickThumb = typeof document !== 'undefined' ? document.getElementById('touchJoystickThumb') : null;
+    this.joystickZone = typeof document !== 'undefined' ? document.getElementById('touchJoystickZone') : null;
     this.mobileControlsContainer = typeof document !== 'undefined' ? document.getElementById('mobileTouchControls') : null;
+
+    if (this.isTouchDevice && this.mobileControlsContainer) {
+      this.mobileControlsContainer.classList.add('touch-active');
+    }
 
     this.boundKeyDown = this.onKeyDown.bind(this);
     this.boundKeyUp = this.onKeyUp.bind(this);
@@ -62,6 +73,7 @@ export class InputManager {
         btnFire.classList.add('active');
       };
       const stopFire = (e) => {
+        if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
         this.isTouchFiring = false;
         btnFire.classList.remove('active');
@@ -78,9 +90,13 @@ export class InputManager {
     // RELOAD Button
     const btnReload = document.getElementById('btnTouchReload');
     if (btnReload) {
+      let lastReloadTime = 0;
       const handleReload = (e) => {
         if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if (now - lastReloadTime < 250) return;
+        lastReloadTime = now;
         this.triggerReload();
         btnReload.classList.add('active');
         setTimeout(() => btnReload.classList.remove('active'), 250);
@@ -92,9 +108,13 @@ export class InputManager {
     // SPRINT Button (Shift)
     const btnSprint = document.getElementById('btnTouchSprint');
     if (btnSprint) {
+      let lastSprintTime = 0;
       const handleSprint = (e) => {
         if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if (now - lastSprintTime < 250) return;
+        lastSprintTime = now;
         const active = this.toggleSprint();
         btnSprint.classList.toggle('active', active);
       };
@@ -105,9 +125,13 @@ export class InputManager {
     // ABILITY Button [E]
     const btnAbility = document.getElementById('btnTouchAbility');
     if (btnAbility) {
+      let lastAbilityTime = 0;
       const handleAbility = (e) => {
         if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if (now - lastAbilityTime < 250) return;
+        lastAbilityTime = now;
         this.triggerAbility();
         btnAbility.classList.add('active');
         setTimeout(() => btnAbility.classList.remove('active'), 250);
@@ -119,9 +143,13 @@ export class InputManager {
     // FULLSCREEN / LANDSCAPE Utility Button
     const btnFs = document.getElementById('btnTouchFullscreen');
     if (btnFs) {
+      let lastFsTime = 0;
       const handleFs = (e) => {
         if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if (now - lastFsTime < 350) return;
+        lastFsTime = now;
         if (typeof window !== 'undefined' && window.app) {
           window.app.toggleFullscreen();
           window.app.requestLandscapeOrientation();
@@ -134,9 +162,13 @@ export class InputManager {
     // EXIT TO LOBBY Utility Button
     const btnExit = document.getElementById('btnTouchExitMatch');
     if (btnExit) {
+      let lastExitTime = 0;
       const handleExit = (e) => {
         if (e.cancelable) e.preventDefault();
         if (e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if (now - lastExitTime < 350) return;
+        lastExitTime = now;
         if (typeof window !== 'undefined' && window.app) {
           window.app.returnToLobbyFromMatch();
         }
@@ -172,13 +204,19 @@ export class InputManager {
     window.addEventListener('mousedown', this.boundMouseDown);
     window.addEventListener('mouseup', this.boundMouseUp);
 
-    const el = this.targetElement || window;
-    el.addEventListener('touchstart', this.boundTouchStart, { passive: true });
-    el.addEventListener('touchmove', this.boundTouchMove, { passive: true });
-    el.addEventListener('touchend', this.boundTouchEnd, { passive: true });
-    el.addEventListener('touchcancel', this.boundTouchEnd, { passive: true });
+    // Global touch listeners on window capture touches anywhere in the viewport,
+    // including #touchJoystickZone and overlay siblings, with passive: false to stop gesture hijacking.
+    window.addEventListener('touchstart', this.boundTouchStart, { passive: false });
+    window.addEventListener('touchmove', this.boundTouchMove, { passive: false });
+    window.addEventListener('touchend', this.boundTouchEnd, { passive: false });
+    window.addEventListener('touchcancel', this.boundTouchEnd, { passive: false });
 
-    if (this.targetElement && this.targetElement.addEventListener) {
+    // Also attach to targetElement if provided (e.g. for headless mock test environments)
+    if (this.targetElement && this.targetElement !== window && this.targetElement.addEventListener) {
+      this.targetElement.addEventListener('touchstart', this.boundTouchStart, { passive: false });
+      this.targetElement.addEventListener('touchmove', this.boundTouchMove, { passive: false });
+      this.targetElement.addEventListener('touchend', this.boundTouchEnd, { passive: false });
+      this.targetElement.addEventListener('touchcancel', this.boundTouchEnd, { passive: false });
       this.targetElement.addEventListener('contextmenu', this.boundContextMenu);
     }
   }
@@ -192,13 +230,16 @@ export class InputManager {
     window.removeEventListener('mousedown', this.boundMouseDown);
     window.removeEventListener('mouseup', this.boundMouseUp);
 
-    const el = this.targetElement || window;
-    el.removeEventListener('touchstart', this.boundTouchStart);
-    el.removeEventListener('touchmove', this.boundTouchMove);
-    el.removeEventListener('touchend', this.boundTouchEnd);
-    el.removeEventListener('touchcancel', this.boundTouchEnd);
+    window.removeEventListener('touchstart', this.boundTouchStart);
+    window.removeEventListener('touchmove', this.boundTouchMove);
+    window.removeEventListener('touchend', this.boundTouchEnd);
+    window.removeEventListener('touchcancel', this.boundTouchEnd);
 
-    if (this.targetElement && this.targetElement.removeEventListener) {
+    if (this.targetElement && this.targetElement !== window && this.targetElement.removeEventListener) {
+      this.targetElement.removeEventListener('touchstart', this.boundTouchStart);
+      this.targetElement.removeEventListener('touchmove', this.boundTouchMove);
+      this.targetElement.removeEventListener('touchend', this.boundTouchEnd);
+      this.targetElement.removeEventListener('touchcancel', this.boundTouchEnd);
       this.targetElement.removeEventListener('contextmenu', this.boundContextMenu);
     }
   }
@@ -236,6 +277,10 @@ export class InputManager {
   }
 
   onTouchStart(e) {
+    if (typeof window !== 'undefined' && window.app && window.app.currentView && window.app.currentView !== 'game') {
+      return;
+    }
+
     this.isTouchDevice = true;
     if (this.mobileControlsContainer) {
       this.mobileControlsContainer.classList.add('touch-active');
@@ -244,6 +289,9 @@ export class InputManager {
       this.joystickBase = document.getElementById('touchJoystickBase');
       this.joystickThumb = document.getElementById('touchJoystickThumb');
     }
+    if (!this.joystickZone && typeof document !== 'undefined') {
+      this.joystickZone = document.getElementById('touchJoystickZone');
+    }
 
     const rect = (this.targetElement && this.targetElement.getBoundingClientRect)
       ? this.targetElement.getBoundingClientRect()
@@ -251,42 +299,64 @@ export class InputManager {
 
     if (!e.touches) return;
 
+    let handledGameTouch = false;
+
     for (let i = 0; i < e.touches.length; i++) {
       const t = e.touches[i];
 
       // If the touch started on dedicated buttons or modals, don't hijack as joystick/aim
-      if (t.target && t.target.closest && t.target.closest('#touchActionCluster, .touch-top-bar, .touch-btn, .landscape-rotate-prompt, .modal-card')) {
+      if (t.target && t.target.closest && t.target.closest(
+        '.touch-action-cluster, .touch-btn, .touch-top-bar, .touch-util-btn, .landscape-rotate-prompt, .modal-card, .modal-overlay, .steampunk-header, button, input, select, a'
+      )) {
         continue;
       }
 
       const relX = t.clientX - rect.left;
+      const isMovementTouch = Boolean((t.target && t.target.closest && t.target.closest('#touchJoystickZone')) || (relX < rect.width * 0.48));
 
-      // Left 48% of screen -> Movement Joystick
-      if (relX < rect.width * 0.48 && this.touchMoveId === null) {
+      // Left 48% of screen or inside joystick zone -> Movement Joystick
+      if (isMovementTouch && this.touchMoveId === null) {
         this.touchMoveId = t.identifier;
         this.touchMoveOrigin = { x: t.clientX, y: t.clientY };
         this.touchMoveVector = { x: 0, y: 0 };
 
         if (this.joystickBase) {
-          this.joystickBase.style.left = `${t.clientX}px`;
-          this.joystickBase.style.top = `${t.clientY}px`;
+          const zoneRect = (this.joystickZone && this.joystickZone.getBoundingClientRect)
+            ? this.joystickZone.getBoundingClientRect()
+            : rect;
+          const localX = t.clientX - zoneRect.left;
+          const localY = t.clientY - zoneRect.top;
+          this.joystickBase.style.left = `${localX}px`;
+          this.joystickBase.style.top = `${localY}px`;
           this.joystickBase.style.display = 'block';
           if (this.joystickThumb) {
             this.joystickThumb.style.transform = 'translate3d(0, 0, 0)';
           }
         }
-      } else if (relX >= rect.width * 0.48 && this.touchAimId === null) {
+        handledGameTouch = true;
+      } else if (!isMovementTouch && this.touchAimId === null) {
         // Right side of screen -> Aiming & Weapon Fire
         this.touchAimId = t.identifier;
         this.updateMouseFromClient(t.clientX, t.clientY);
         this.isMouseDown = true;
         this.lastFacingAngle = Math.atan2(this.mouseY - this.lastPlayerScreenY, this.mouseX - this.lastPlayerScreenX);
+        handledGameTouch = true;
       }
+    }
+
+    if (handledGameTouch && e.cancelable) {
+      e.preventDefault();
     }
   }
 
   onTouchMove(e) {
+    if (typeof window !== 'undefined' && window.app && window.app.currentView && window.app.currentView !== 'game') {
+      return;
+    }
+
     if (!e.touches) return;
+
+    let handledGameMove = false;
 
     for (let i = 0; i < e.touches.length; i++) {
       const t = e.touches[i];
@@ -317,21 +387,28 @@ export class InputManager {
         } else {
           this.touchMoveVector = { x: 0, y: 0 };
         }
+        handledGameMove = true;
       } else if (t.identifier === this.touchAimId) {
         this.updateMouseFromClient(t.clientX, t.clientY);
         this.lastFacingAngle = Math.atan2(this.mouseY - this.lastPlayerScreenY, this.mouseX - this.lastPlayerScreenX);
+        handledGameMove = true;
       }
+    }
+
+    if (handledGameMove && e.cancelable) {
+      e.preventDefault();
     }
   }
 
   onTouchEnd(e) {
-    if (!e.touches) {
+    if (!e.touches || e.touches.length === 0) {
       this.isMouseDown = false;
       this.touchMoveId = null;
       this.touchMoveOrigin = null;
       this.touchMoveVector = { x: 0, y: 0 };
       this.touchAimId = null;
       if (this.joystickBase) this.joystickBase.style.display = 'none';
+      if (this.joystickThumb) this.joystickThumb.style.transform = 'translate3d(0, 0, 0)';
       return;
     }
 
