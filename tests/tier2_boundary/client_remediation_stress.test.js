@@ -17,6 +17,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import childProcess from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { runSuiteHelper } from '../harnesses/assert_helpers.js';
 import { AuthService } from '../../server/auth/AuthService.js';
@@ -502,6 +503,34 @@ export const tests = [
       const r10M = calculateLevelFromTotalXp(10_000_000);
       assert.ok(Number.isFinite(r10M.level) && r10M.level > 100);
       assert.ok(r10M.progressRatio >= 0.0 && r10M.progressRatio <= 1.0);
+    }
+  },
+  {
+    name: '[T2.13.5] Client JavaScript Files Syntax & Parse Integrity',
+    fn: async () => {
+      const clientJsDir = path.join(ROOT_DIR, 'client/js');
+      function getAllJsFiles(dir) {
+        let results = [];
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            results = results.concat(getAllJsFiles(fullPath));
+          } else if (entry.isFile() && entry.name.endsWith('.js')) {
+            results.push(fullPath);
+          }
+        }
+        return results;
+      }
+
+      const files = getAllJsFiles(clientJsDir);
+      assert.ok(files.length > 5, 'Must discover client JS files');
+
+      for (const file of files) {
+        assert.doesNotThrow(() => {
+          childProcess.execFileSync(process.execPath, ['-c', file]);
+        }, `Syntax check failed for ${path.relative(ROOT_DIR, file)}`);
+      }
     }
   }
 ];

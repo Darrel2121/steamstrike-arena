@@ -166,6 +166,7 @@ export class LobbyUI {
       if (typeof this.options.onSwitchToLobby === 'function') {
         this.options.onSwitchToLobby();
       }
+    });
   }
 
   bindNetworkEvents() {
