@@ -168,7 +168,7 @@ export class AuthModal {
 
   setupGsi() {
     try {
-      const realClientId = window.__GOOGLE_CLIENT_ID__ || null;
+      const realClientId = window.__GOOGLE_CLIENT_ID__ || '1051560828434-1ahgmrf87g5ebvpjaoit688sq000jreo.apps.googleusercontent.com';
       if (realClientId && !realClientId.startsWith('mock-') && window.google?.accounts?.id) {
         window.google.accounts.id.initialize({
           client_id: realClientId,
@@ -176,11 +176,13 @@ export class AuthModal {
         });
 
         if (this.dom.gsiContainer) {
+          this.dom.gsiContainer.style.display = 'block';
           window.google.accounts.id.renderButton(this.dom.gsiContainer, {
             theme: 'filled_black',
             size: 'large',
             text: 'signin_with',
-            shape: 'rectangular'
+            shape: 'rectangular',
+            logo_alignment: 'left'
           });
           if (this.dom.btnMockGoogleSignIn) {
             this.dom.btnMockGoogleSignIn.style.display = 'none';

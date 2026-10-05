@@ -31,7 +31,7 @@ export class AuthService {
   constructor(options = {}) {
     this.secret = options.secret || process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex');
     this.profileStore = options.profileStore || profileStore;
-    this.googleClientId = options.googleClientId || process.env.GOOGLE_CLIENT_ID || null;
+    this.googleClientId = options.googleClientId || process.env.GOOGLE_CLIENT_ID || '1051560828434-1ahgmrf87g5ebvpjaoit688sq000jreo.apps.googleusercontent.com';
     this.tokenTtlMs = options.tokenTtlMs || 30 * 24 * 60 * 60 * 1000; // 30 days default
   }
 
