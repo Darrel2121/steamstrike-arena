@@ -1382,27 +1382,32 @@ kbd {
   justify-content: center;
   align-items: center;
   gap: 5px;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   background: linear-gradient(180deg, #2b3340 0%, #161a22 100%);
-  border: 1.5px solid var(--color-brass-primary);
+  border: 2px solid var(--color-brass-primary);
   border-radius: 4px;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 0 6px rgba(197, 155, 39, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7), inset 0 0 6px rgba(197, 155, 39, 0.25);
   padding: 8px;
   touch-action: manipulation;
+  position: relative;
+  z-index: 10005;
+  pointer-events: auto;
 }
-.btn-hamburger:active {
-  transform: scale(0.92);
+.btn-hamburger:active, .btn-hamburger.open {
+  background: linear-gradient(180deg, #3d4758 0%, #202632 100%);
   border-color: var(--color-brass-glow);
+  box-shadow: 0 0 10px rgba(255, 207, 72, 0.6);
 }
 .hamburger-bar {
   display: block;
-  width: 22px;
-  height: 2.5px;
+  width: 24px;
+  height: 3px;
   background: var(--color-brass-bright);
   border-radius: 2px;
-  box-shadow: 0 0 4px rgba(255, 207, 72, 0.4);
+  box-shadow: 0 0 4px rgba(255, 207, 72, 0.5);
+  pointer-events: none;
 }
 
 /* Mobile Navigation Drawer */
@@ -1412,9 +1417,14 @@ kbd {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 9999;
-  display: flex;
+  z-index: 99999;
+  display: none;
   flex-direction: column;
+  pointer-events: none;
+}
+.mobile-nav-drawer.open {
+  display: flex !important;
+  pointer-events: auto !important;
 }
 .mobile-nav-backdrop {
   position: absolute;

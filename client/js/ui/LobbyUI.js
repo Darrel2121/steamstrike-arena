@@ -89,38 +89,27 @@ export class LobbyUI {
     };
   }
 
+  addTapAndClick(el, handler) {
+    if (!el) return;
+    const fn = (e) => {
+      if (e && e.type === 'touchend') {
+        e.preventDefault();
+      }
+      handler(e);
+    };
+    el.addEventListener('click', fn);
+    el.addEventListener('touchend', fn, { passive: false });
+  }
+
   attachEvents() {
-    if (this.dom.btnJoinRoom) {
-      this.dom.btnJoinRoom.addEventListener('click', () => this.handleJoinRoom());
-    }
-
-    if (this.dom.btnCreateRoom) {
-      this.dom.btnCreateRoom.addEventListener('click', () => this.handleCreateRoom());
-    }
-
-    if (this.dom.btnToggleReady) {
-      this.dom.btnToggleReady.addEventListener('click', () => this.handleToggleReady());
-    }
-
-    if (this.dom.btnStartMatch) {
-      this.dom.btnStartMatch.addEventListener('click', () => this.handleStartMatch());
-    }
-
-    if (this.dom.btnCopyRoomCode) {
-      this.dom.btnCopyRoomCode.addEventListener('click', () => this.handleCopyRoomCode());
-    }
-
-    if (this.dom.btnCopyRoomLink) {
-      this.dom.btnCopyRoomLink.addEventListener('click', () => this.handleCopyRoomLink());
-    }
-
-    if (this.dom.btnLobbyRefreshRooms) {
-      this.dom.btnLobbyRefreshRooms.addEventListener('click', () => this.fetchAndRenderRooms());
-    }
-
-    if (this.dom.btnHomeRefreshRooms) {
-      this.dom.btnHomeRefreshRooms.addEventListener('click', () => this.fetchAndRenderRooms());
-    }
+    this.addTapAndClick(this.dom.btnJoinRoom, () => this.handleJoinRoom());
+    this.addTapAndClick(this.dom.btnCreateRoom, () => this.handleCreateRoom());
+    this.addTapAndClick(this.dom.btnToggleReady, () => this.handleToggleReady());
+    this.addTapAndClick(this.dom.btnStartMatch, () => this.handleStartMatch());
+    this.addTapAndClick(this.dom.btnCopyRoomCode, () => this.handleCopyRoomCode());
+    this.addTapAndClick(this.dom.btnCopyRoomLink, () => this.handleCopyRoomLink());
+    this.addTapAndClick(this.dom.btnLobbyRefreshRooms, () => this.fetchAndRenderRooms());
+    this.addTapAndClick(this.dom.btnHomeRefreshRooms, () => this.fetchAndRenderRooms());
 
     if (this.dom.lobbyGameModeSelect) {
       this.dom.lobbyGameModeSelect.addEventListener('change', () => {
@@ -149,43 +138,34 @@ export class LobbyUI {
       });
     }
 
-    if (this.dom.btnSelectTeam1) {
-      this.dom.btnSelectTeam1.addEventListener('click', () => {
-        this.networkClient.changeTeam('team1');
-      });
-    }
+    this.addTapAndClick(this.dom.btnSelectTeam1, () => {
+      this.networkClient.changeTeam('team1');
+    });
 
-    if (this.dom.btnSelectTeam2) {
-      this.dom.btnSelectTeam2.addEventListener('click', () => {
-        this.networkClient.changeTeam('team2');
-      });
-    }
+    this.addTapAndClick(this.dom.btnSelectTeam2, () => {
+      this.networkClient.changeTeam('team2');
+    });
 
-    if (this.dom.btnHomeJoinRoom) {
-      this.dom.btnHomeJoinRoom.addEventListener('click', () => {
-        const homeInput = document.getElementById('homeRoomInput');
-        const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
-        const room = homeInput?.value?.trim() || 'Sector_Omega';
-        const password = homePwdInput?.value?.trim() || null;
-        this.handleJoinRoom(room, password);
-        if (typeof this.options.onSwitchToLobby === 'function') {
-          this.options.onSwitchToLobby();
-        }
-      });
-    }
+    this.addTapAndClick(this.dom.btnHomeJoinRoom, () => {
+      const homeInput = document.getElementById('homeRoomInput');
+      const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
+      const room = homeInput?.value?.trim() || 'Sector_Omega';
+      const password = homePwdInput?.value?.trim() || null;
+      this.handleJoinRoom(room, password);
+      if (typeof this.options.onSwitchToLobby === 'function') {
+        this.options.onSwitchToLobby();
+      }
+    });
 
-    if (this.dom.btnHomeCreateRoom) {
-      this.dom.btnHomeCreateRoom.addEventListener('click', () => {
-        const homeInput = document.getElementById('homeRoomInput');
-        const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
-        const room = homeInput?.value?.trim() || 'Sector_Omega';
-        const password = homePwdInput?.value?.trim() || null;
-        this.handleCreateRoom(room, password);
-        if (typeof this.options.onSwitchToLobby === 'function') {
-          this.options.onSwitchToLobby();
-        }
-      });
-    }
+    this.addTapAndClick(this.dom.btnHomeCreateRoom, () => {
+      const homeInput = document.getElementById('homeRoomInput');
+      const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
+      const room = homeInput?.value?.trim() || 'Sector_Omega';
+      const password = homePwdInput?.value?.trim() || null;
+      this.handleCreateRoom(room, password);
+      if (typeof this.options.onSwitchToLobby === 'function') {
+        this.options.onSwitchToLobby();
+      }
   }
 
   bindNetworkEvents() {
@@ -271,6 +251,7 @@ export class LobbyUI {
   }
 
   resetAllActionButtons() {
+    this.resetButtonBusy(this.dom.btnStartMatch, '⚔ Почати бій');
     this.resetButtonBusy(this.dom.btnCreateRoom, '⚙ Створити кімнату');
     this.resetButtonBusy(this.dom.btnHomeCreateRoom, '⚙ Створити');
     this.resetButtonBusy(this.dom.btnJoinRoom, '⚡ Приєднатися');
@@ -707,7 +688,13 @@ export class LobbyUI {
   }
 
   handleStartMatch() {
-    this.networkClient.startMatch();
+    if (this.dom.btnStartMatch) {
+      this.setButtonBusy(this.dom.btnStartMatch, '⚙ Запуск бою...');
+    }
+    if (typeof this.options.onRequestLandscape === 'function') {
+      this.options.onRequestLandscape();
+    }
+    this.networkClient.startMatch({ fillBots: true });
   }
 
   renderLobbyState(state) {

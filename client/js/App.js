@@ -139,7 +139,8 @@ export class App {
       progressionManager: this.progressionManager,
       onMatchStart: (matchData) => this.startLiveMatch(matchData),
       onRequestCustomMap: () => (this.editor?.map ? this.editor.map : null),
-      onSwitchToLobby: () => this.switchView('lobby')
+      onSwitchToLobby: () => this.switchView('lobby'),
+      onRequestLandscape: () => this.requestLandscapeOrientation()
     });
 
     // Auto-connect on startup for instant zero-latency lobby and room operations
@@ -281,6 +282,7 @@ export class App {
     // Mobile Navigation ("Бутерброд") Drawer Controls
     const openMobileDrawer = () => {
       if (this.mobileNavDrawer) {
+        this.mobileNavDrawer.style.display = 'flex';
         this.mobileNavDrawer.classList.add('open');
         this.btnHamburgerToggle?.classList.add('open');
         this.btnHamburgerToggle?.setAttribute('aria-expanded', 'true');
@@ -289,14 +291,28 @@ export class App {
     const closeMobileDrawer = () => {
       if (this.mobileNavDrawer) {
         this.mobileNavDrawer.classList.remove('open');
+        this.mobileNavDrawer.style.display = 'none';
         this.btnHamburgerToggle?.classList.remove('open');
         this.btnHamburgerToggle?.setAttribute('aria-expanded', 'false');
       }
     };
 
+    const addTap = (el, handler) => {
+      if (!el) return;
+      const fn = (e) => {
+        if (e && e.type === 'touchend') {
+          e.preventDefault();
+        }
+        handler(e);
+      };
+      el.addEventListener('click', fn);
+      el.addEventListener('touchend', fn, { passive: false });
+    };
+
     if (this.btnHamburgerToggle) {
-      this.btnHamburgerToggle.addEventListener('click', () => {
-        const isOpen = this.mobileNavDrawer?.classList.contains('open');
+      addTap(this.btnHamburgerToggle, (e) => {
+        if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+        const isOpen = this.mobileNavDrawer?.classList.contains('open') && this.mobileNavDrawer?.style.display !== 'none';
         if (isOpen) {
           closeMobileDrawer();
         } else {
@@ -305,56 +321,38 @@ export class App {
       });
     }
 
-    if (this.btnCloseMobileNav) {
-      this.btnCloseMobileNav.addEventListener('click', closeMobileDrawer);
-    }
-    if (this.mobileNavBackdrop) {
-      this.mobileNavBackdrop.addEventListener('click', closeMobileDrawer);
-    }
+    addTap(this.btnCloseMobileNav, closeMobileDrawer);
+    addTap(this.mobileNavBackdrop, closeMobileDrawer);
 
     if (this.mNavButtons) {
-      if (this.mNavButtons.home) {
-        this.mNavButtons.home.addEventListener('click', () => {
-          this.switchView('home');
-          closeMobileDrawer();
-        });
-      }
-      if (this.mNavButtons.lobby) {
-        this.mNavButtons.lobby.addEventListener('click', () => {
-          this.switchView('lobby');
-          closeMobileDrawer();
-        });
-      }
-      if (this.mNavButtons.editor) {
-        this.mNavButtons.editor.addEventListener('click', () => {
-          this.switchView('editor');
-          closeMobileDrawer();
-        });
-      }
-      if (this.mNavButtons.game) {
-        this.mNavButtons.game.addEventListener('click', () => {
-          this.switchView('game');
-          closeMobileDrawer();
-        });
-      }
-      if (this.mNavButtons.workshop) {
-        this.mNavButtons.workshop.addEventListener('click', () => {
-          this.switchView('workshop');
-          closeMobileDrawer();
-        });
-      }
-      if (this.mNavButtons.auth) {
-        this.mNavButtons.auth.addEventListener('click', () => {
-          this.authModal.open();
-          closeMobileDrawer();
-        });
-      }
-      if (this.mNavButtons.fullscreen) {
-        this.mNavButtons.fullscreen.addEventListener('click', () => {
-          this.toggleFullscreen();
-          closeMobileDrawer();
-        });
-      }
+      addTap(this.mNavButtons.home, () => {
+        this.switchView('home');
+        closeMobileDrawer();
+      });
+      addTap(this.mNavButtons.lobby, () => {
+        this.switchView('lobby');
+        closeMobileDrawer();
+      });
+      addTap(this.mNavButtons.editor, () => {
+        this.switchView('editor');
+        closeMobileDrawer();
+      });
+      addTap(this.mNavButtons.game, () => {
+        this.switchView('game');
+        closeMobileDrawer();
+      });
+      addTap(this.mNavButtons.workshop, () => {
+        this.switchView('workshop');
+        closeMobileDrawer();
+      });
+      addTap(this.mNavButtons.auth, () => {
+        this.authModal.open();
+        closeMobileDrawer();
+      });
+      addTap(this.mNavButtons.fullscreen, () => {
+        this.toggleFullscreen();
+        closeMobileDrawer();
+      });
     }
 
     // Home / Landing Page Interactive Controls
@@ -413,8 +411,10 @@ export class App {
         }
 
         if (this.heroMode === 'solo') {
+          this.requestLandscapeOrientation();
           this.launchSoloTraining(selectedMap);
         } else {
+          this.requestLandscapeOrientation();
           const room = (this.homeRoomInput?.value || 'Sector_Omega').trim();
           const pwd = (document.getElementById('homeRoomPasswordInput')?.value || '').trim();
           if (this.lobbyUI?.dom?.roomInput) this.lobbyUI.dom.roomInput.value = room;
@@ -477,14 +477,15 @@ export class App {
       this.btnEnterEditor.addEventListener('click', () => this.switchView('editor'));
     }
     if (this.btnQuickPlay) {
-      this.btnQuickPlay.addEventListener('click', () => {
+      addTap(this.btnQuickPlay, () => {
+        this.requestLandscapeOrientation();
         const defaultMap = this.editor?.map ? this.editor.map : createDefaultMap();
         this.launchSoloTraining(defaultMap);
       });
     }
 
     if (this.btnReturnToEditor) {
-      this.btnReturnToEditor.addEventListener('click', () => {
+      addTap(this.btnReturnToEditor, () => {
         this.isMatchOver = false;
         this.activeMatchMap = null;
         if (this.gameRenderer) {
@@ -496,14 +497,15 @@ export class App {
       });
     }
     if (this.btnReturnToLobby) {
-      this.btnReturnToLobby.addEventListener('click', () => {
+      addTap(this.btnReturnToLobby, () => {
         this.returnToLobbyFromMatch();
       });
     }
 
     // Idle Overlay Actions
     if (this.btnIdleSoloPlay) {
-      this.btnIdleSoloPlay.addEventListener('click', () => {
+      addTap(this.btnIdleSoloPlay, () => {
+        this.requestLandscapeOrientation();
         if (this.gameIdleOverlay) {
           this.gameIdleOverlay.style.display = 'none';
         }
@@ -512,10 +514,10 @@ export class App {
       });
     }
     if (this.btnIdleGoLobby) {
-      this.btnIdleGoLobby.addEventListener('click', () => this.switchView('lobby'));
+      addTap(this.btnIdleGoLobby, () => this.switchView('lobby'));
     }
     if (this.btnIdleGoHome) {
-      this.btnIdleGoHome.addEventListener('click', () => this.switchView('home'));
+      addTap(this.btnIdleGoHome, () => this.switchView('home'));
     }
 
     // Fullscreen Mode Controls
@@ -626,6 +628,15 @@ export class App {
   async requestLandscapeOrientation() {
     if (typeof window === 'undefined') return;
     try {
+      // Mobile browsers (Chrome on Android) strictly require fullscreen mode to permit orientation lock
+      const isMobileOrTouch = Boolean(
+        (window.matchMedia && window.matchMedia('(max-width: 900px)').matches) ||
+        ('ontouchstart' in window) ||
+        (navigator.maxTouchPoints > 0)
+      );
+      if (isMobileOrTouch && !document.fullscreenElement && document.documentElement && typeof document.documentElement.requestFullscreen === 'function') {
+        await document.documentElement.requestFullscreen().catch(() => {});
+      }
       if (screen && screen.orientation && typeof screen.orientation.lock === 'function') {
         await screen.orientation.lock('landscape').catch(() => {});
       }
