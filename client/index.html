@@ -238,6 +238,10 @@
             <div class="control-desc">Постріл з поточної зброї (або дотик на екрані)</div>
           </div>
           <div class="control-row">
+            <div class="keys-badge"><kbd>E</kbd></div>
+            <div class="control-desc">Активація бойового вміння класу (Форсаж, Сонар, Бастіон, Дим)</div>
+          </div>
+          <div class="control-row">
             <div class="keys-badge"><kbd>R</kbd></div>
             <div class="control-desc">Перезаряджання боєзапасу</div>
           </div>
@@ -652,11 +656,14 @@
             <div id="touchJoystickThumb" class="touch-joystick-thumb"></div>
           </div>
           <div class="touch-action-buttons">
+            <button type="button" id="btnTouchAbility" class="touch-btn touch-btn-ability" title="Бойове вміння (E)" style="background: rgba(46, 196, 182, 0.25); border-color: #2ec4b6;">
+              <span>⚡</span><small>ВМІННЯ</small>
+            </button>
             <button type="button" id="btnTouchReload" class="touch-btn touch-btn-reload" title="Перезарядка (R)">
-              <span>🔄</span><small>RELOAD</small>
+              <span>🔄</span><small>ЗАРЯД</small>
             </button>
             <button type="button" id="btnTouchSprint" class="touch-btn touch-btn-sprint" title="Прискорення (Shift)">
-              <span>⚡</span><small>SPRINT</small>
+              <span>💨</span><small>СПРИНТ</small>
             </button>
           </div>
         </div>
@@ -755,6 +762,26 @@
 
       <!-- Tab Content 1: Character Foundry -->
       <div id="tabContentCharacter" class="workshop-tab-content active">
+        <!-- Tactical Hero Classes Section -->
+        <div class="steampunk-panel class-selection-panel" style="margin-bottom: 20px; padding: 16px 20px; border: 1px solid var(--color-copper-warm); border-radius: 8px; background: rgba(22, 18, 14, 0.9);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-family: var(--font-header); font-size: 16px; color: var(--color-brass-bright); letter-spacing: 0.5px;">
+                🎖️ Тактичні класи автоматонів та бойові вміння
+              </div>
+              <div style="font-size: 12px; color: var(--color-text-dim); margin-top: 2px;">
+                Оберіть спеціалізацію для бою. Кожен клас має власні модифікатори, активне вміння (<kbd>E</kbd>) та пасивний бонус.
+              </div>
+            </div>
+            <div id="activeClassBadge" style="font-family: var(--font-mono); font-size: 12px; color: #ffcf48; padding: 4px 10px; background: rgba(0,0,0,0.5); border: 1px solid #c59b27; border-radius: 4px;">
+              Клас: Авангард
+            </div>
+          </div>
+          <div class="hero-classes-grid" id="heroClassesGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px;">
+            <!-- Rendered dynamically by WorkshopUI.js -->
+          </div>
+        </div>
+
         <div class="foundry-dials-grid">
           <!-- Boiler / Health Dial -->
           <div class="dial-card">

@@ -3,6 +3,9 @@
  * Single source of truth for XP level curves, attribute tiers, weapon workshop upgrades, and match reward math.
  */
 
+import { CHARACTER_CLASSES, DEFAULT_CLASS_ID, getClassDefinition } from './CharacterClasses.js';
+export { CHARACTER_CLASSES, DEFAULT_CLASS_ID, getClassDefinition };
+
 export const MAX_UPGRADE_TIER = 5;
 
 // Base Character Attributes
@@ -288,6 +291,26 @@ export function calculateCharacterStats(tiers = {}) {
 }
 
 /**
+ * Calculates effective character stats factoring in the chosen Steampunk Class.
+ * Preserves 100% backward compatibility when classId is vanguard or omitted.
+ * @param {Object} tiers
+ * @param {string} [classId='vanguard']
+ * @returns {{ maxHp: number, moveSpeed: number, lanternRange: number, classId: string, className: string, classDef: Object }}
+ */
+export function calculateEffectiveCharacterStats(tiers = {}, classId = DEFAULT_CLASS_ID) {
+  const baseStats = calculateCharacterStats(tiers);
+  const cls = getClassDefinition(classId);
+  return {
+    maxHp: Math.round(baseStats.maxHp * cls.hpMultiplier),
+    moveSpeed: Math.round(baseStats.moveSpeed * cls.speedMultiplier),
+    lanternRange: Math.round(baseStats.lanternRange * cls.lanternMultiplier),
+    classId: cls.id,
+    className: cls.name,
+    classDef: cls
+  };
+}
+
+/**
  * Alias for calculateCharacterStats
  */
 export function getModifiedPlayerStats(tiers = {}) {
@@ -449,6 +472,7 @@ export function createDefaultProfile(options = {}) {
       gatling_cannon: { unlocked: false, damageTier: 0, fireRateTier: 0, reloadTier: 0, capacityTier: 0, damageLevel: 0, fireRateLevel: 0, reloadLevel: 0, capacityLevel: 0 }
     },
     equippedWeapon: options.equippedWeapon || 'revolver',
+    equippedClass: options.equippedClass || DEFAULT_CLASS_ID,
     matchHistory: [],
     careerStats: {
       matchesPlayed: 0,

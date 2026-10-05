@@ -477,11 +477,16 @@ export class Bot extends Player {
         this.reload();
       }
 
+      // Maintain combat engagement distance (100px - 250px)
+      const dist = Math.hypot(target.x - this.x, target.y - this.y);
+
       // Tactical decision from behavioral policy neural agent
       const decision = tacticalNeuralAgent.evaluateBot(this, target, room, dt);
 
-      // Maintain combat engagement distance (100px - 250px)
-      const dist = Math.hypot(target.x - this.x, target.y - this.y);
+      // Tactical ability deployment during active engagement
+      if (this.abilityCooldownTimer <= 0 && (this.hp < this.maxHp * 0.70 || this.isReloading || dist < 140)) {
+        this.activateAbility();
+      }
       let moveDir = 0;
       if (dist > 250) {
         moveDir = 1; // Advance

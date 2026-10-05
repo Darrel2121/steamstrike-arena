@@ -12,6 +12,7 @@ import {
   PLAYER_STAMINA_DRAIN_RUN,
   PLAYER_STAMINA_RECOVER
 } from '../../shared/Constants.js';
+import { getClassDefinition, DEFAULT_CLASS_ID } from '../../shared/CharacterClasses.js';
 
 export class Player {
   /**
@@ -80,6 +81,19 @@ export class Player {
     this.fireCooldown = 0;
     this.invulnerableTimer = options.invulnerableTimer ?? 0;
 
+    // Character Class & Tactical Ability
+    this.classId = options.classId || DEFAULT_CLASS_ID;
+    const clsDef = getClassDefinition(this.classId);
+    this.classDef = clsDef;
+    this.ability = clsDef.ability;
+    this.passive = clsDef.passive;
+    this.abilityCooldownTimer = 0;
+    this.abilityActiveTimer = 0;
+    this.shieldHp = 0;
+    this.overdriveActive = false;
+    this.sonarActive = false;
+    this.smokeActive = false;
+
     // Network Sync Metadata
     this.lastProcessedSeq = 0;
     this.pendingInputs = [];
@@ -101,9 +115,42 @@ export class Player {
   }
 
   /**
+   * Triggers the character class active ability.
+   * @returns {{ ok: boolean, classId?: string, abilityId?: string, duration?: number, cooldown?: number, reason?: string }}
+   */
+  activateAbility() {
+    if (!this.isAlive || this.abilityCooldownTimer > 0) {
+      return { ok: false, reason: 'cooldown_or_dead' };
+    }
+    this.abilityCooldownTimer = this.ability.cooldown;
+    this.abilityActiveTimer = this.ability.duration;
+
+    if (this.classId === 'vanguard') {
+      this.overdriveActive = true;
+      this.ammo = this.maxAmmo;
+      this.isReloading = false;
+    } else if (this.classId === 'sharpshooter') {
+      this.sonarActive = true;
+    } else if (this.classId === 'juggernaut') {
+      this.shieldHp = 80;
+    } else if (this.classId === 'infiltrator') {
+      this.smokeActive = true;
+    }
+
+    return {
+      ok: true,
+      classId: this.classId,
+      abilityId: this.ability.id,
+      duration: this.ability.duration,
+      cooldown: this.ability.cooldown
+    };
+  }
+
+  /**
    * Applies damage, clamps health >= 0, and eliminates entity when HP reaches 0.
+   * Respects Juggernaut Bastion shield absorption and Vanguard armored plating.
    * @param {number} amount
-   * @returns {number} Actual damage dealt
+   * @returns {number} Actual damage dealt to HP
    */
   takeDamage(amount) {
     if (!this.isAlive || typeof amount !== 'number' || amount <= 0) {
@@ -113,8 +160,26 @@ export class Player {
       return 0;
     }
 
+    let dmg = amount;
+
+    // Vanguard passive during overdrive: reinforced steam absorption (-20% damage)
+    if (this.overdriveActive) {
+      dmg = dmg * 0.8;
+    }
+
+    // Juggernaut active shield absorbs damage first
+    if (this.shieldHp > 0) {
+      if (this.shieldHp >= dmg) {
+        this.shieldHp -= dmg;
+        return 0; // Shield absorbed all damage
+      } else {
+        dmg -= this.shieldHp;
+        this.shieldHp = 0;
+      }
+    }
+
     const prevHp = this.hp;
-    this.hp = Math.max(0, this.hp - amount);
+    this.hp = Math.max(0, this.hp - dmg);
     if (this.hp === 0) {
       this.isAlive = false;
     }
@@ -246,6 +311,20 @@ export class Player {
     } else {
       this.stamina = Math.min(this.maxStamina, this.stamina + (PLAYER_STAMINA_RECOVER ?? 20) * dt);
     }
+
+    // 4. Tactical Ability Timers
+    if (this.abilityCooldownTimer > 0) {
+      this.abilityCooldownTimer = Math.max(0, this.abilityCooldownTimer - dt);
+    }
+    if (this.abilityActiveTimer > 0) {
+      this.abilityActiveTimer = Math.max(0, this.abilityActiveTimer - dt);
+      if (this.abilityActiveTimer === 0) {
+        this.overdriveActive = false;
+        this.sonarActive = false;
+        this.smokeActive = false;
+        this.shieldHp = 0;
+      }
+    }
   }
 
   /**
@@ -267,6 +346,12 @@ export class Player {
     this.fireCooldown = 0;
     this.invulnerableTimer = 2.5;
     this.respawnTimer = 0;
+    this.abilityCooldownTimer = 0;
+    this.abilityActiveTimer = 0;
+    this.shieldHp = 0;
+    this.overdriveActive = false;
+    this.sonarActive = false;
+    this.smokeActive = false;
   }
 
   /**
@@ -296,7 +381,16 @@ export class Player {
       isHost: this.isHost,
       isBot: Boolean(this.isBot),
       lanternOn: this.lanternOn !== false,
-      lastProcessedSeq: this.lastProcessedSeq || 0
+      lastProcessedSeq: this.lastProcessedSeq || 0,
+      classId: this.classId || 'vanguard',
+      abilityId: this.ability?.id || 'steam_overdrive',
+      abilityCooldown: Math.max(0, Number((this.abilityCooldownTimer || 0).toFixed(1))),
+      abilityActive: (this.abilityActiveTimer || 0) > 0,
+      abilityDuration: this.ability?.duration || 4.5,
+      shieldHp: this.shieldHp || 0,
+      sonarActive: Boolean(this.sonarActive),
+      smokeActive: Boolean(this.smokeActive),
+      overdriveActive: Boolean(this.overdriveActive)
     };
   }
 }

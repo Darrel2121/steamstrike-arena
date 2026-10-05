@@ -5,7 +5,7 @@
  */
 
 import { UPGRADE_TIERS } from '../ProgressionManager.js';
-import { WEAPON_DEFINITIONS, MAX_UPGRADE_TIER, WEAPON_CAPACITY_STEPS } from '../../../shared/ProgressionSchema.js';
+import { WEAPON_DEFINITIONS, MAX_UPGRADE_TIER, WEAPON_CAPACITY_STEPS, CHARACTER_CLASSES, DEFAULT_CLASS_ID } from '../../../shared/ProgressionSchema.js';
 
 export const UKRAINIAN_RANKS = {
   1: 'Ранг 1: Учень-механік',
@@ -105,7 +105,11 @@ export class WorkshopUI {
       workbenchWeaponDesc: document.getElementById('workbenchWeaponDesc'),
       workbenchWeaponStatusBadge: document.getElementById('workbenchWeaponStatusBadge'),
       btnEquipWeapon: document.getElementById('btnEquipWeapon'),
-      btnUnlockWeapon: document.getElementById('btnUnlockWeapon')
+      btnUnlockWeapon: document.getElementById('btnUnlockWeapon'),
+
+      // Tactical Hero Classes
+      heroClassesGrid: document.getElementById('heroClassesGrid'),
+      activeClassBadge: document.getElementById('activeClassBadge')
     };
   }
 
@@ -195,6 +199,17 @@ export class WorkshopUI {
         }
       }
     });
+
+    // Hero Class Selection Delegator
+    this.dom.heroClassesGrid?.addEventListener('click', (e) => {
+      const btn = e.target.closest('.btn-select-class');
+      if (btn) {
+        const classId = btn.dataset.classId;
+        if (classId && this.prog) {
+          this.prog.setEquippedClass(classId);
+        }
+      }
+    });
   }
 
   switchTab(tabName) {
@@ -246,11 +261,98 @@ export class WorkshopUI {
       }
     }
 
-    // 2. Render Character Foundry
+    // 2. Render Tactical Hero Classes & Character Foundry
+    this.renderHeroClasses(profile);
     this.renderCharacterFoundry(profile);
 
     // 3. Render Weapon Armory
     this.renderWeaponArmory(profile);
+  }
+
+  /**
+   * Renders the 4 Tactical Steampunk Hero Classes with Active Abilities & Passives.
+   * @param {Object} profile
+   */
+  renderHeroClasses(profile) {
+    if (!this.dom.heroClassesGrid) return;
+
+    const equippedClass = this.prog?.getEquippedClass?.() || profile.equippedClass || DEFAULT_CLASS_ID;
+    const currentClassDef = CHARACTER_CLASSES[equippedClass] || CHARACTER_CLASSES[DEFAULT_CLASS_ID];
+
+    if (this.dom.activeClassBadge) {
+      this.dom.activeClassBadge.innerHTML = `Клас: <strong style="color: #ffcf48;">${currentClassDef.name}</strong> (${currentClassDef.role})`;
+    }
+
+    const cardsHtml = Object.values(CHARACTER_CLASSES).map(cls => {
+      const isEquipped = cls.id === equippedClass;
+      const borderCol = isEquipped ? 'var(--color-brass-primary)' : 'rgba(197, 155, 39, 0.25)';
+      const bgCol = isEquipped ? 'rgba(44, 28, 14, 0.95)' : 'rgba(16, 20, 26, 0.85)';
+      const shadow = isEquipped ? 'box-shadow: 0 0 12px rgba(255, 207, 72, 0.35);' : '';
+
+      const hpMod = cls.hpMultiplier !== 1.0 ? `${cls.hpMultiplier > 1 ? '+' : ''}${Math.round((cls.hpMultiplier - 1) * 100)}% HP` : '100% HP';
+      const spdMod = cls.speedMultiplier !== 1.0 ? `${cls.speedMultiplier > 1 ? '+' : ''}${Math.round((cls.speedMultiplier - 1) * 100)}% Шв` : '100% Шв';
+      const lanMod = cls.lanternMultiplier !== 1.0 ? `${cls.lanternMultiplier > 1 ? '+' : ''}${Math.round((cls.lanternMultiplier - 1) * 100)}% Огляд` : '100% Огляд';
+
+      return `
+        <div class="hero-class-card" style="display: flex; flex-direction: column; justify-content: space-between; padding: 14px; border: 1.5px solid ${borderCol}; border-radius: 6px; background: ${bgCol}; ${shadow} transition: all 0.2s ease;">
+          <div>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+              <span style="font-size: 26px;">${cls.icon}</span>
+              <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; background: ${isEquipped ? '#c59b27' : 'rgba(255,255,255,0.1)'}; color: ${isEquipped ? '#0f1116' : '#9d9685'};">
+                ${isEquipped ? 'АКТИВНИЙ' : cls.englishName}
+              </span>
+            </div>
+
+            <div style="font-family: var(--font-header); font-size: 15px; color: #ffcf48; font-weight: bold;">
+              ${cls.name}
+            </div>
+            <div style="font-size: 11px; color: var(--color-copper-light); margin-bottom: 8px;">
+              ${cls.role}
+            </div>
+
+            <p style="font-size: 11px; color: var(--color-text-dim); line-height: 1.4; margin: 0 0 10px 0;">
+              ${cls.description}
+            </p>
+
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; font-size: 10px; font-family: var(--font-mono);">
+              <span style="padding: 2px 5px; background: rgba(46, 196, 182, 0.15); color: #2ec4b6; border-radius: 3px; border: 1px solid rgba(46,196,182,0.3);">${hpMod}</span>
+              <span style="padding: 2px 5px; background: rgba(255, 207, 72, 0.15); color: #ffcf48; border-radius: 3px; border: 1px solid rgba(255,207,72,0.3);">${spdMod}</span>
+              <span style="padding: 2px 5px; background: rgba(255, 170, 43, 0.15); color: #ffaa2b; border-radius: 3px; border: 1px solid rgba(255,170,43,0.3);">${lanMod}</span>
+            </div>
+
+            <!-- Active Ability Details -->
+            <div style="background: rgba(0,0,0,0.4); border-left: 2px solid #2ec4b6; padding: 6px 8px; border-radius: 0 4px 4px 0; margin-bottom: 8px;">
+              <div style="font-size: 11px; font-weight: bold; color: #2ec4b6; display: flex; align-items: center; justify-content: space-between;">
+                <span>${cls.ability.icon} ${cls.ability.name}</span>
+                <span style="font-family: var(--font-mono); font-size: 10px; color: #8e9aa8;">[${cls.ability.key}] ${cls.ability.cooldown}s CD</span>
+              </div>
+              <div style="font-size: 10px; color: #b0b8c4; line-height: 1.3; margin-top: 2px;">
+                ${cls.ability.description}
+              </div>
+            </div>
+
+            <!-- Passive Trait -->
+            <div style="background: rgba(0,0,0,0.3); border-left: 2px solid #c59b27; padding: 6px 8px; border-radius: 0 4px 4px 0; margin-bottom: 12px;">
+              <div style="font-size: 11px; font-weight: bold; color: #ffcf48;">
+                ⚙ Пасивно: ${cls.passive.name}
+              </div>
+              <div style="font-size: 10px; color: #9d9685; line-height: 1.3; margin-top: 2px;">
+                ${cls.passive.description}
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 6px;">
+            ${isEquipped
+              ? `<button type="button" class="btn-steampunk btn-brass" disabled style="width: 100%; font-size: 12px; padding: 6px 0; opacity: 0.85; cursor: default;">✓ Обраний клас</button>`
+              : `<button type="button" class="btn-steampunk btn-copper btn-select-class" data-class-id="${cls.id}" style="width: 100%; font-size: 12px; padding: 6px 0;">Оснастити клас</button>`
+            }
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    this.dom.heroClassesGrid.innerHTML = cardsHtml;
   }
 
   renderCharacterFoundry(profile) {

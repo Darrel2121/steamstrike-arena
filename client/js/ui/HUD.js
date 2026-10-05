@@ -160,6 +160,9 @@ export class HUD {
     // 2. Bottom-Center: Brass Steam Pressure Gauge (Dynamic Manometer with Jitter & Low Pressure Warning)
     this.renderSteamGauge(ctx, width / 2, height - 55, stamina, PLAYER_STAMINA_MAX, Boolean(player.isSprinting));
 
+    // 2.5 Bottom-Right: Steampunk Tactical Class Ability Dial
+    this.renderAbilityDial(ctx, width - 175, height - 65, player);
+
     // 3. Bottom-Right: Revolving Ammo Cylinder
     this.renderAmmoCylinder(ctx, width - 85, height - 65, ammo, maxAmmo, isReloading);
 
@@ -492,6 +495,135 @@ export class HUD {
     ctx.textAlign = 'center';
     const text = isReloading ? 'RELOAD' : `${ammo}/${maxAmmo}`;
     ctx.fillText(text, cx, cy + cylinderRadius + 16);
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders Tactical Class Ability Dial with Steampunk Cog Bezel,
+   * Radial Cooldown Sweep, and Active Glow Indicator.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} cx
+   * @param {number} cy
+   * @param {Object} player
+   */
+  renderAbilityDial(ctx, cx, cy, player) {
+    ctx.save();
+
+    const classId = player.classId || 'vanguard';
+    const cooldown = typeof player.abilityCooldown === 'number' ? player.abilityCooldown : 0;
+    const isActive = Boolean(player.abilityActive || player.overdriveActive || player.sonarActive || player.smokeActive || (player.shieldHp > 0));
+    const shieldHp = player.shieldHp || 0;
+
+    let icon = '⚡';
+    let label = 'ФОРСАЖ';
+    let baseCooldown = 12.0;
+
+    if (classId === 'sharpshooter') {
+      icon = '🎯';
+      label = 'СОНАР';
+      baseCooldown = 14.0;
+    } else if (classId === 'juggernaut') {
+      icon = '⚙️';
+      label = 'БАСТІОН';
+      baseCooldown = 16.0;
+    } else if (classId === 'infiltrator') {
+      icon = '🗡️';
+      label = 'ДИМ';
+      baseCooldown = 12.0;
+    }
+
+    const radius = 28;
+
+    // 1. Outer brass cog / ring
+    ctx.fillStyle = '#141820';
+    ctx.strokeStyle = isActive ? '#2ec4b6' : (cooldown > 0 ? '#5a6270' : '#c59b27');
+    ctx.lineWidth = 2.5;
+
+    // Active pulse glow
+    if (isActive) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.pulseTimer * 10);
+      ctx.shadowColor = '#2ec4b6';
+      ctx.shadowBlur = 10 + pulse * 6;
+    } else if (cooldown <= 0) {
+      ctx.shadowColor = 'rgba(197, 155, 39, 0.4)';
+      ctx.shadowBlur = 6;
+    }
+
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Reset shadow
+    ctx.shadowBlur = 0;
+
+    // Cog teeth details (8 decorative notches around perimeter)
+    const numCogs = 8;
+    ctx.fillStyle = isActive ? '#2ec4b6' : (cooldown > 0 ? '#48505e' : '#c59b27');
+    for (let i = 0; i < numCogs; i++) {
+      const a = (i / numCogs) * Math.PI * 2 + (isActive ? this.pulseTimer * 2 : 0);
+      const cogX = cx + Math.cos(a) * (radius + 2);
+      const cogY = cy + Math.sin(a) * (radius + 2);
+      ctx.beginPath();
+      ctx.arc(cogX, cogY, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 2. Ability Icon
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(icon, cx, cy - 2);
+
+    // 3. Cooldown Sweep (dark mask that recedes clockwise)
+    if (cooldown > 0) {
+      const maxCd = player.abilityDuration ? (baseCooldown || 12.0) : 12.0;
+      const progress = Math.min(1.0, Math.max(0.0, cooldown / maxCd));
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (Math.PI * 2 * progress);
+
+      ctx.fillStyle = 'rgba(10, 12, 16, 0.80)';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, radius - 1, startAngle, endAngle, false);
+      ctx.closePath();
+      ctx.fill();
+
+      // Cooldown seconds readout
+      ctx.fillStyle = '#ffcf48';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`${cooldown.toFixed(1)}s`, cx, cy + 1);
+    } else if (isActive) {
+      // Active label overlay
+      ctx.fillStyle = '#2ec4b6';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(shieldHp > 0 ? `🛡${Math.round(shieldHp)}` : 'АКТИВНО', cx, cy + 10);
+    }
+
+    // 4. Hotkey Badge [E]
+    const badgeW = 22;
+    const badgeH = 14;
+    const badgeY = cy - radius - 6;
+
+    ctx.fillStyle = cooldown > 0 ? '#1f242d' : (isActive ? '#1b8a82' : '#703816');
+    ctx.strokeStyle = cooldown > 0 ? '#5a6270' : (isActive ? '#2ec4b6' : '#ffcf48');
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(cx - badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 3);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = cooldown > 0 ? '#8e9aa8' : '#ffcf48';
+    ctx.font = 'bold 9px monospace';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('[E]', cx, badgeY);
+
+    // 5. Ability Name Label below
+    ctx.fillStyle = isActive ? '#2ec4b6' : (cooldown > 0 ? '#7a8594' : '#c59b27');
+    ctx.font = 'bold 9px monospace';
+    ctx.textBaseline = 'top';
+    ctx.fillText(label, cx, cy + radius + 4);
 
     ctx.restore();
   }

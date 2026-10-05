@@ -13,6 +13,7 @@ import {
   WEAPON_UNLOCK_COSTS,
   WEAPON_DEFINITIONS,
   calculateCharacterStats,
+  calculateEffectiveCharacterStats,
   calculateEffectiveWeaponStats,
   calculateLevelFromTotalXp,
   createDefaultProfile,
@@ -58,8 +59,8 @@ export const UPGRADE_TIERS = {
  * @returns {string}
  */
 export function generateSteampunkCallsign() {
-  const prefixes = ['Brass', 'Steam', 'Clockwork', 'Aether', 'Foundry', 'Copper', 'Iron', 'Piston', 'Gear', 'Boiler'];
-  const titles = ['Ranger', 'Mechanic', 'Artisan', 'Smith', 'Vanguard', 'Gunner', 'Engineer', 'Sentinel', 'Pilot', 'Sapper'];
+  const prefixes = ['Латунний', 'Паровий', 'Годинниковий', 'Ефірний', 'Ливарний', 'Мідний', 'Залізний', 'Поршневий', 'Шестеренний', 'Котельний'];
+  const titles = ['Рейнджер', 'Механік', 'Артизан', 'Коваль', 'Авангард', 'Стрілець', 'Інженер', 'Вартовий', 'Пілот', 'Сапер'];
   const num = Math.floor(100 + Math.random() * 900);
   const p = prefixes[Math.floor(Math.random() * prefixes.length)];
   const t = titles[Math.floor(Math.random() * titles.length)];
@@ -251,7 +252,8 @@ export class ProgressionManager {
    */
   getCalculatedStats() {
     const stats = this.profile?.characterStats || {};
-    const charStats = calculateCharacterStats(stats);
+    const equippedClass = this.profile?.equippedClass || 'vanguard';
+    const charStats = calculateEffectiveCharacterStats(stats, equippedClass);
     const equipped = this.profile?.equippedWeapon || 'revolver';
     const weaponData = this.getCalculatedWeaponStats(equipped);
 
@@ -261,6 +263,8 @@ export class ProgressionManager {
       sprintMultiplier: 1.5,
       lanternRange: charStats.lanternRange,
       equippedWeapon: equipped,
+      equippedClass: equippedClass,
+      classDef: charStats.classDef,
       weapon: weaponData
     };
   }
@@ -462,6 +466,18 @@ export class ProgressionManager {
       return true;
     }
     return false;
+  }
+
+  setEquippedClass(classId) {
+    if (!this.profile) return false;
+    this.profile.equippedClass = classId;
+    this.saveLocalProfile();
+    this.emit('profileUpdated', this.profile);
+    return true;
+  }
+
+  getEquippedClass() {
+    return this.profile?.equippedClass || 'vanguard';
   }
 
   addRewards(rewards = {}) {

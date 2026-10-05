@@ -14,7 +14,7 @@ import { Pickup } from './entities/Pickup.js';
 import { solveProjectileHit } from './physics/Collision.js';
 import { createProjectileSpecs, getWeapon } from './combat/WeaponDefinitions.js';
 import { profileStore } from './db/ProfileStore.js';
-import { calculateMatchRewards, calculateCharacterStats, calculateEffectiveWeaponStats } from '../shared/ProgressionSchema.js';
+import { calculateMatchRewards, calculateCharacterStats, calculateEffectiveCharacterStats, calculateEffectiveWeaponStats } from '../shared/ProgressionSchema.js';
 import { tacticalNeuralAgent } from './ai/TacticalNeuralAgent.js';
 
 export class Room {
@@ -202,10 +202,12 @@ export class Room {
     let maxSpeed = 180;
     let lanternRange = 420;
     let weaponId = 'revolver';
+    let classId = 'vanguard';
 
     const playerProfile = profile || socket?.meta?.profile || socket?.profile || null;
     if (playerProfile) {
-      const cStats = calculateCharacterStats(playerProfile.characterStats || {});
+      classId = playerProfile.equippedClass || 'vanguard';
+      const cStats = calculateEffectiveCharacterStats(playerProfile.characterStats || {}, classId);
       maxHp = cStats.maxHp;
       maxSpeed = cStats.moveSpeed;
       lanternRange = cStats.lanternRange;
@@ -234,7 +236,8 @@ export class Room {
       team,
       maxHp,
       maxSpeed,
-      weaponId
+      weaponId,
+      classId
     });
     player.lanternRange = lanternRange;
     player.profile = playerProfile;
@@ -629,11 +632,32 @@ export class Room {
       }
     }
 
+    if (input.ability || input.useAbility) {
+      if (typeof player.activateAbility === 'function') {
+        const act = player.activateAbility();
+        if (act && act.ok) {
+          const sndRadius = player.classId === 'infiltrator' ? 80 : 160;
+          this.soundEvents.push({
+            id: 'snd_abil_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            sourceId: player.id,
+            x: player.x,
+            y: player.y,
+            type: 'ability',
+            radius: 40,
+            maxRadius: sndRadius,
+            intensity: 0.9,
+            createdAt: Date.now()
+          });
+        }
+      }
+    }
+
     if (input.firing) {
       if (player.fireCooldown <= 0) {
         const shotFired = player.fire(true);
         if (shotFired) {
           // Dynamic movement spread bloom: standing x1.0, walking x1.8, sprinting x3.2
+          // Overdrive active reduces spread bloom by 40%
           let spreadMult = 1.0;
           const inputMag = Math.hypot(input.moveX || 0, input.moveY || 0);
           const wantsSprint = Boolean(input.sprint && (player.stamina ?? 100) > 0);
@@ -641,6 +665,9 @@ export class Room {
             spreadMult = 3.2; // 320% spread bloom during sprint
           } else if (inputMag > 0.1) {
             spreadMult = 1.8; // 180% spread bloom while walking
+          }
+          if (player.overdriveActive) {
+            spreadMult *= 0.6; // Reduced bloom during steam overdrive
           }
 
           const specs = createProjectileSpecs(
@@ -696,9 +723,12 @@ export class Room {
       let intendedDx = 0;
       let intendedDy = 0;
 
+      const abilitySpeedBoost = player.overdriveActive ? 1.5 : 1.0;
+      const baseMaxSpeed = (player.maxSpeed || 180) * abilitySpeedBoost;
+
       // Check if input is a normalized direction vector (<= 1.05) or spoofed displacement
       if (inputMagnitude <= 1.05) {
-        const speed = (player.maxSpeed || 180) * (wantsSprint ? (player.sprintMultiplier || 1.5) : 1.0);
+        const speed = baseMaxSpeed * (wantsSprint ? (player.sprintMultiplier || 1.5) : 1.0);
         intendedDx = moveX * speed * dtSec;
         intendedDy = moveY * speed * dtSec;
       } else {
@@ -707,7 +737,7 @@ export class Room {
       }
 
       // Anticheat speed-hack clamping: clamp displacement against maxAllowedDisplacement
-      const maxAllowedDisplacement = (player.maxSpeed || 180) * dtSec * (player.sprintMultiplier || 1.5);
+      const maxAllowedDisplacement = baseMaxSpeed * dtSec * (player.sprintMultiplier || 1.5);
       const dispLen = Math.hypot(intendedDx, intendedDy);
 
       if (dispLen > maxAllowedDisplacement) {
@@ -721,14 +751,20 @@ export class Room {
 
       // Register acoustic footstep event on sprint
       if (wantsSprint) {
+        let stepRadius = 45;
+        let stepMaxRadius = 90;
+        if (player.classId === 'sharpshooter') {
+          stepRadius = Math.round(stepRadius * 0.6);
+          stepMaxRadius = Math.round(stepMaxRadius * 0.6);
+        }
         const footstep = {
           id: 'snd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
           sourceId: player.id,
           x: player.x,
           y: player.y,
           type: 'footstep',
-          radius: 45,
-          maxRadius: 90,
+          radius: stepRadius,
+          maxRadius: stepMaxRadius,
           intensity: 0.8,
           createdAt: Date.now()
         };

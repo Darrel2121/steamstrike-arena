@@ -16,6 +16,7 @@ export class InputManager {
     this.isMouseDown = false;
     this.isSpaceDown = false;
     this.reloadRequested = false;
+    this.abilityRequested = false;
     this.lastPollTime = performance.now();
 
     // Mobile touch controls & dual thumbsticks
@@ -48,6 +49,7 @@ export class InputManager {
     if (typeof document === 'undefined') return;
     const btnReload = document.getElementById('btnTouchReload');
     const btnSprint = document.getElementById('btnTouchSprint');
+    const btnAbility = document.getElementById('btnTouchAbility');
 
     if (btnReload) {
       const handleReload = (e) => {
@@ -67,10 +69,23 @@ export class InputManager {
       btnSprint.addEventListener('pointerdown', handleSprint);
       btnSprint.addEventListener('click', handleSprint);
     }
+
+    if (btnAbility) {
+      const handleAbility = (e) => {
+        if (e.stopPropagation) e.stopPropagation();
+        this.triggerAbility();
+      };
+      btnAbility.addEventListener('pointerdown', handleAbility);
+      btnAbility.addEventListener('click', handleAbility);
+    }
   }
 
   triggerReload() {
     this.reloadRequested = true;
+  }
+
+  triggerAbility() {
+    this.abilityRequested = true;
   }
 
   setSprint(active) {
@@ -126,6 +141,9 @@ export class InputManager {
     this.keys.add(e.code);
     if (e.code === 'KeyR') {
       this.reloadRequested = true;
+    }
+    if (e.code === 'KeyE') {
+      this.abilityRequested = true;
     }
     if (e.code === 'Space') {
       this.isSpaceDown = true;
@@ -319,6 +337,8 @@ export class InputManager {
     const firing = this.isMouseDown || this.isSpaceDown;
     const reload = this.reloadRequested;
     this.reloadRequested = false;
+    const ability = this.abilityRequested;
+    this.abilityRequested = false;
 
     // Calculate aim angle from player screen position to mouse cursor
     const aimAngle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
@@ -330,6 +350,7 @@ export class InputManager {
       aimAngle: Math.round(aimAngle * 1000) / 1000,
       firing,
       reload,
+      ability,
       dt
     };
   }
