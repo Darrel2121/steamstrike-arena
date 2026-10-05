@@ -1156,12 +1156,25 @@ export class App {
           this.lastDeathAngle = localPlayerPredicted.angle;
 
           // Sound triggers on local actions
-          if (input.firing && !this.lastInputWasFiring && (localPlayerPredicted.ammo ?? 6) > 0) {
+          const currentAmmo = localPlayerPredicted.ammo ?? 6;
+          const isReloading = Boolean(localPlayerPredicted.isReloading);
+
+          // Gunfire audio on ammo consumption or initial trigger
+          if (typeof this.lastLocalAmmo === 'number' && currentAmmo < this.lastLocalAmmo && !isReloading) {
+            soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
+          } else if (input.firing && !this.lastInputWasFiring && currentAmmo > 0 && !isReloading) {
             soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
           }
-          if (input.reload && !localPlayerPredicted.isReloading && (localPlayerPredicted.ammo ?? 6) < (localPlayerPredicted.maxAmmo ?? 6)) {
+          this.lastLocalAmmo = currentAmmo;
+
+          // Reload audio on state change or manual trigger
+          if (isReloading && !this.lastLocalIsReloading) {
+            soundFX.playReload();
+          } else if (input.reload && !isReloading && currentAmmo < (localPlayerPredicted.maxAmmo ?? 6)) {
             soundFX.playReload();
           }
+          this.lastLocalIsReloading = isReloading;
+
           if (input.ability && !localPlayerPredicted.abilityActive && (localPlayerPredicted.abilityCooldown || 0) <= 0) {
             soundFX.playAbility(localPlayerPredicted.classId || 'vanguard');
           }

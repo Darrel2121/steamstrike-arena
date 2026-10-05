@@ -117,215 +117,394 @@ export class SoundFX {
   }
 
   /**
-   * Weapon Gunshot SFX.
+   * Weapon Gunshot SFX - Visceral, punchy multi-layer acoustic synthesis.
+   * Layer 1: Sub-bass concussive kick (sine pitch envelope)
+   * Layer 2: Explosive gunpowder/steam blast (shaped noise burst with bandpass & sweep)
+   * Layer 3: Mechanical chamber crack & hammer snap (high-frequency transient)
+   * Layer 4: Arena reverberation tail (decaying diffuse room envelope)
    */
   playGunshot(weaponId = 'revolver', worldX = null, worldY = null) {
+    if (!this.ctx || this.isMuted) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const out = this.createSpatialChain(worldX, worldY, 0.85);
+    if (!out) return;
+
+    if (weaponId === 'blunderbuss') {
+      // Massive concussive cannon blast + wide shrapnel roar
+      // 1. Sub-bass shockwave
+      const subOsc = this.ctx.createOscillator();
+      const subGain = this.ctx.createGain();
+      subOsc.type = 'triangle';
+      subOsc.frequency.setValueAtTime(190, now);
+      subOsc.frequency.exponentialRampToValueAtTime(26, now + 0.35);
+
+      subGain.gain.setValueAtTime(1.0, now);
+      subGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+
+      subOsc.connect(subGain);
+      subGain.connect(out);
+      subOsc.start(now);
+      subOsc.stop(now + 0.36);
+
+      // 2. Heavy explosive noise blast
+      const noiseBuf = this.createNoiseBuffer(0.42);
+      if (noiseBuf) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuf;
+
+        const lpFilter = this.ctx.createBiquadFilter();
+        lpFilter.type = 'lowpass';
+        lpFilter.frequency.setValueAtTime(1600, now);
+        lpFilter.frequency.exponentialRampToValueAtTime(180, now + 0.42);
+
+        const bpFilter = this.ctx.createBiquadFilter();
+        bpFilter.type = 'bandpass';
+        bpFilter.frequency.setValueAtTime(800, now);
+        bpFilter.Q.setValueAtTime(1.4, now);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(1.1, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.42);
+
+        noise.connect(lpFilter);
+        lpFilter.connect(bpFilter);
+        bpFilter.connect(nGain);
+        nGain.connect(out);
+        noise.start(now);
+      }
+
+      // 3. Resonant brass barrel ring
+      const ringOsc = this.ctx.createOscillator();
+      const ringGain = this.ctx.createGain();
+      ringOsc.type = 'sine';
+      ringOsc.frequency.setValueAtTime(460, now);
+      ringOsc.frequency.exponentialRampToValueAtTime(120, now + 0.38);
+
+      ringGain.gain.setValueAtTime(0.35, now);
+      ringGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+      ringOsc.connect(ringGain);
+      ringGain.connect(out);
+      ringOsc.start(now);
+      ringOsc.stop(now + 0.39);
+    } else if (weaponId === 'needle_gun') {
+      // Supersonic sniper whip crack + resonant whistle
+      // 1. Ultra-sharp attack impulse
+      const crackOsc = this.ctx.createOscillator();
+      const crackGain = this.ctx.createGain();
+      crackOsc.type = 'sawtooth';
+      crackOsc.frequency.setValueAtTime(3200, now);
+      crackOsc.frequency.exponentialRampToValueAtTime(220, now + 0.04);
+
+      crackGain.gain.setValueAtTime(0.9, now);
+      crackGain.gain.exponentialRampToValueAtTime(0.01, now + 0.04);
+
+      crackOsc.connect(crackGain);
+      crackGain.connect(out);
+      crackOsc.start(now);
+      crackOsc.stop(now + 0.045);
+
+      // 2. High-velocity pneumatic hiss & echo
+      const noiseBuf = this.createNoiseBuffer(0.28);
+      if (noiseBuf) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuf;
+
+        const bpFilter = this.ctx.createBiquadFilter();
+        bpFilter.type = 'bandpass';
+        bpFilter.frequency.setValueAtTime(2600, now);
+        bpFilter.Q.setValueAtTime(3.2, now);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.7, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.28);
+
+        noise.connect(bpFilter);
+        bpFilter.connect(nGain);
+        nGain.connect(out);
+        noise.start(now);
+      }
+
+      // 3. Crystalline harmonic ring
+      const chimeOsc = this.ctx.createOscillator();
+      const chimeGain = this.ctx.createGain();
+      chimeOsc.type = 'sine';
+      chimeOsc.frequency.setValueAtTime(1680, now);
+      chimeOsc.frequency.exponentialRampToValueAtTime(840, now + 0.40);
+
+      chimeGain.gain.setValueAtTime(0.3, now);
+      chimeGain.gain.exponentialRampToValueAtTime(0.001, now + 0.40);
+
+      chimeOsc.connect(chimeGain);
+      chimeGain.connect(out);
+      chimeOsc.start(now);
+      chimeOsc.stop(now + 0.41);
+    } else if (weaponId === 'carbine') {
+      // Rapid automatic steam carbine: punchy piston snap + metallic chamber slap
+      // 1. Piston thump
+      const punchOsc = this.ctx.createOscillator();
+      const punchGain = this.ctx.createGain();
+      punchOsc.type = 'triangle';
+      punchOsc.frequency.setValueAtTime(320, now);
+      punchOsc.frequency.exponentialRampToValueAtTime(45, now + 0.07);
+
+      punchGain.gain.setValueAtTime(0.8, now);
+      punchGain.gain.exponentialRampToValueAtTime(0.01, now + 0.07);
+
+      punchOsc.connect(punchGain);
+      punchGain.connect(out);
+      punchOsc.start(now);
+      punchOsc.stop(now + 0.075);
+
+      // 2. Sharp combustion crack
+      const noiseBuf = this.createNoiseBuffer(0.14);
+      if (noiseBuf) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuf;
+
+        const bpFilter = this.ctx.createBiquadFilter();
+        bpFilter.type = 'bandpass';
+        bpFilter.frequency.setValueAtTime(1900, now);
+        bpFilter.Q.setValueAtTime(2.0, now);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.85, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+
+        noise.connect(bpFilter);
+        bpFilter.connect(nGain);
+        nGain.connect(out);
+        noise.start(now);
+      }
+    } else {
+      // Classic Steampunk Cylinder Revolver: heavy gunshot with solid punch & chamber crack
+      // 1. Concussive Sub-Bass Kick
+      const kickOsc = this.ctx.createOscillator();
+      const kickGain = this.ctx.createGain();
+      kickOsc.type = 'triangle';
+      kickOsc.frequency.setValueAtTime(290, now);
+      kickOsc.frequency.exponentialRampToValueAtTime(36, now + 0.10);
+
+      kickGain.gain.setValueAtTime(1.0, now);
+      kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
+
+      kickOsc.connect(kickGain);
+      kickGain.connect(out);
+      kickOsc.start(now);
+      kickOsc.stop(now + 0.11);
+
+      // 2. Gunpowder Detonation Blast
+      const noiseBuf = this.createNoiseBuffer(0.24);
+      if (noiseBuf) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = noiseBuf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2800, now);
+        filter.frequency.exponentialRampToValueAtTime(320, now + 0.24);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.95, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(out);
+        noise.start(now);
+      }
+
+      // 3. High-Frequency Hammer / Ignition Snap
+      const snapOsc = this.ctx.createOscillator();
+      const snapGain = this.ctx.createGain();
+      snapOsc.type = 'sawtooth';
+      snapOsc.frequency.setValueAtTime(1800, now);
+      snapOsc.frequency.exponentialRampToValueAtTime(400, now + 0.025);
+
+      snapGain.gain.setValueAtTime(0.5, now);
+      snapGain.gain.exponentialRampToValueAtTime(0.01, now + 0.025);
+
+      snapOsc.connect(snapGain);
+      snapGain.connect(out);
+      snapOsc.start(now);
+      snapOsc.stop(now + 0.028);
+    }
+  }
+
+  /**
+   * Wall Ricochet Ping SFX - Metallic supersonic resonance.
+   */
+  playRicochet(worldX = null, worldY = null) {
+    if (!this.ctx || this.isMuted) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const out = this.createSpatialChain(worldX, worldY, 0.65);
+    if (!out) return;
+
+    // Resonant supersonic ping
+    const baseFreq = 2200 + Math.random() * 800;
+    const osc = this.ctx.createOscillator();
+    const oscGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.45, now + 0.20);
+
+    oscGain.gain.setValueAtTime(0.6, now);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+
+    osc.connect(oscGain);
+    oscGain.connect(out);
+    osc.start(now);
+    osc.stop(now + 0.21);
+  }
+
+  /**
+   * Bullet Impact SFX (Wall masonry crunch vs Entity automaton armor).
+   */
+  playImpact(isEntity = false, worldX = null, worldY = null) {
+    if (!this.ctx || this.isMuted) return;
+    this.init();
+    const now = this.ctx.currentTime;
+    const out = this.createSpatialChain(worldX, worldY, isEntity ? 0.85 : 0.55);
+    if (!out) return;
+
+    if (isEntity) {
+      // Automaton metal armor impact: Heavy metallic clang & kinetic crunch
+      const osc = this.ctx.createOscillator();
+      const oscGain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(440, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.12);
+
+      oscGain.gain.setValueAtTime(0.7, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+
+      osc.connect(oscGain);
+      oscGain.connect(out);
+      osc.start(now);
+      osc.stop(now + 0.13);
+
+      const buf = this.createNoiseBuffer(0.14);
+      if (buf) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1100, now);
+        filter.Q.setValueAtTime(2.5, now);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.75, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(out);
+        noise.start(now);
+      }
+    } else {
+      // Solid wall hit: kinetic impact thud + masonry crumble
+      const thudOsc = this.ctx.createOscillator();
+      const thudGain = this.ctx.createGain();
+      thudOsc.type = 'triangle';
+      thudOsc.frequency.setValueAtTime(140, now);
+      thudOsc.frequency.exponentialRampToValueAtTime(38, now + 0.08);
+
+      thudGain.gain.setValueAtTime(0.65, now);
+      thudGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+
+      thudOsc.connect(thudGain);
+      thudGain.connect(out);
+      thudOsc.start(now);
+      thudOsc.stop(now + 0.085);
+
+      const buf = this.createNoiseBuffer(0.10);
+      if (buf) {
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, now);
+
+        const nGain = this.ctx.createGain();
+        nGain.gain.setValueAtTime(0.5, now);
+        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
+
+        noise.connect(filter);
+        filter.connect(nGain);
+        nGain.connect(out);
+        noise.start(now);
+      }
+    }
+  }
+
+  /**
+   * Weapon Reload SFX - Steampunk cylinder ratchet sequence.
+   * Stage 1: Chamber slide out (metallic friction)
+   * Stage 2: Brass shell insertion (resonant ping)
+   * Stage 3: Heavy cylinder lock (tactical mechanical snap)
+   */
+  playReload(worldX = null, worldY = null) {
     if (!this.ctx || this.isMuted) return;
     this.init();
     const now = this.ctx.currentTime;
     const out = this.createSpatialChain(worldX, worldY, 0.75);
     if (!out) return;
 
-    if (weaponId === 'blunderbuss') {
-      // Heavy deep cannon blast with wide dispersion noise
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(140, now);
-      osc.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+    // 1. Chamber slide out (t = 0.00s)
+    const slideBuf = this.createNoiseBuffer(0.10);
+    if (slideBuf) {
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = slideBuf;
+      const bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.setValueAtTime(1600, now);
+      bp.frequency.exponentialRampToValueAtTime(650, now + 0.10);
+      bp.Q.setValueAtTime(2.2, now);
 
-      oscGain.gain.setValueAtTime(0.9, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      const nGain = this.ctx.createGain();
+      nGain.gain.setValueAtTime(0.6, now);
+      nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.10);
 
-      osc.connect(oscGain);
-      oscGain.connect(out);
-      osc.start(now);
-      osc.stop(now + 0.36);
-
-      const noiseBuf = this.createNoiseBuffer(0.38);
-      if (noiseBuf) {
-        const noiseSource = this.ctx.createBufferSource();
-        noiseSource.buffer = noiseBuf;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(1200, now);
-        filter.frequency.exponentialRampToValueAtTime(160, now + 0.38);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.8, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
-
-        noiseSource.connect(filter);
-        filter.connect(nGain);
-        nGain.connect(out);
-        noiseSource.start(now);
-      }
-    } else if (weaponId === 'needle_gun') {
-      // Supersonic sharp metallic needle crack
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(1200, now);
-      osc.frequency.exponentialRampToValueAtTime(180, now + 0.18);
-
-      oscGain.gain.setValueAtTime(0.6, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.18);
-
-      osc.connect(oscGain);
-      oscGain.connect(out);
-      osc.start(now);
-      osc.stop(now + 0.19);
-    } else if (weaponId === 'carbine') {
-      // Rapid mechanical snap with steam release
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(280, now);
-      osc.frequency.exponentialRampToValueAtTime(60, now + 0.14);
-
-      oscGain.gain.setValueAtTime(0.5, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.14);
-
-      osc.connect(oscGain);
-      oscGain.connect(out);
-      osc.start(now);
-      osc.stop(now + 0.15);
-    } else {
-      // Classic Cylinder Revolver pop
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(240, now);
-      osc.frequency.exponentialRampToValueAtTime(45, now + 0.22);
-
-      oscGain.gain.setValueAtTime(0.8, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-
-      osc.connect(oscGain);
-      oscGain.connect(out);
-      osc.start(now);
-      osc.stop(now + 0.23);
-
-      const noiseBuf = this.createNoiseBuffer(0.12);
-      if (noiseBuf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = noiseBuf;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(1400, now);
-        filter.Q.setValueAtTime(2.0, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.6, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
-
-        noise.connect(filter);
-        filter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
+      noise.connect(bp);
+      bp.connect(nGain);
+      nGain.connect(out);
+      noise.start(now);
     }
-  }
 
-  /**
-   * Wall Ricochet Ping SFX (High-Q resonant metallic clink).
-   */
-  playRicochet(worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.45);
-    if (!out) return;
+    // 2. Brass shell insertion chimes (t = 0.15s, 0.24s)
+    [0.15, 0.24].forEach((delay, idx) => {
+      const chimeTime = now + delay;
+      const chimeOsc = this.ctx.createOscillator();
+      const chimeGain = this.ctx.createGain();
+      chimeOsc.type = 'sine';
+      chimeOsc.frequency.setValueAtTime(1350 + idx * 280, chimeTime);
 
-    const osc = this.ctx.createOscillator();
-    const oscGain = this.ctx.createGain();
-    const baseFreq = 1800 + Math.random() * 600;
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(baseFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.65, now + 0.22);
+      chimeGain.gain.setValueAtTime(0.45, chimeTime);
+      chimeGain.gain.exponentialRampToValueAtTime(0.001, chimeTime + 0.07);
 
-    oscGain.gain.setValueAtTime(0.45, now);
-    oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-
-    osc.connect(oscGain);
-    oscGain.connect(out);
-    osc.start(now);
-    osc.stop(now + 0.23);
-  }
-
-  /**
-   * Bullet Impact SFX (Wall concrete vs Entity metal/chassis).
-   */
-  playImpact(isEntity = false, worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, isEntity ? 0.65 : 0.4);
-    if (!out) return;
-
-    if (isEntity) {
-      // Heavy metal chassis clank & hydraulic crunch
-      const osc = this.ctx.createOscillator();
-      const oscGain = this.ctx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(160, now);
-      osc.frequency.exponentialRampToValueAtTime(40, now + 0.16);
-
-      oscGain.gain.setValueAtTime(0.7, now);
-      oscGain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
-
-      osc.connect(oscGain);
-      oscGain.connect(out);
-      osc.start(now);
-      osc.stop(now + 0.17);
-    } else {
-      // Brick / masonry wall hit
-      const buf = this.createNoiseBuffer(0.08);
-      if (buf) {
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buf;
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.setValueAtTime(650, now);
-
-        const nGain = this.ctx.createGain();
-        nGain.gain.setValueAtTime(0.4, now);
-        nGain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
-
-        noise.connect(filter);
-        filter.connect(nGain);
-        nGain.connect(out);
-        noise.start(now);
-      }
-    }
-  }
-
-  /**
-   * Weapon Reload Ratchet SFX (Rapid double mechanical click).
-   */
-  playReload(worldX = null, worldY = null) {
-    if (!this.ctx || this.isMuted) return;
-    this.init();
-    const now = this.ctx.currentTime;
-    const out = this.createSpatialChain(worldX, worldY, 0.4);
-    if (!out) return;
-
-    [0, 0.09, 0.20].forEach(delay => {
-      const clickTime = now + delay;
-      const osc = this.ctx.createOscillator();
-      const clickGain = this.ctx.createGain();
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(800 + Math.random() * 300, clickTime);
-      osc.frequency.exponentialRampToValueAtTime(250, clickTime + 0.035);
-
-      clickGain.gain.setValueAtTime(0.3, clickTime);
-      clickGain.gain.exponentialRampToValueAtTime(0.001, clickTime + 0.035);
-
-      osc.connect(clickGain);
-      clickGain.connect(out);
-      osc.start(clickTime);
-      osc.stop(clickTime + 0.04);
+      chimeOsc.connect(chimeGain);
+      chimeGain.connect(out);
+      chimeOsc.start(chimeTime);
+      chimeOsc.stop(chimeTime + 0.075);
     });
+
+    // 3. Heavy ratchet cylinder lock & snap (t = 0.36s)
+    const lockTime = now + 0.36;
+    const lockOsc = this.ctx.createOscillator();
+    const lockGain = this.ctx.createGain();
+    lockOsc.type = 'square';
+    lockOsc.frequency.setValueAtTime(750, lockTime);
+    lockOsc.frequency.exponentialRampToValueAtTime(180, lockTime + 0.06);
+
+    lockGain.gain.setValueAtTime(0.7, lockTime);
+    lockGain.gain.exponentialRampToValueAtTime(0.01, lockTime + 0.06);
+
+    lockOsc.connect(lockGain);
+    lockGain.connect(out);
+    lockOsc.start(lockTime);
+    lockOsc.stop(lockTime + 0.065);
   }
 
   /**

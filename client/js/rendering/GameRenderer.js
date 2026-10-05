@@ -272,6 +272,17 @@ export class GameRenderer {
         if (!this.processedSoundIds.has(sndId)) {
           this.processedSoundIds.add(sndId);
           this.soundWaveRenderer.addSound(snd);
+
+          // Spatial audio playback for remote combatants (bots / other players)
+          if (localPlayer && snd.sourceId !== localPlayer.id) {
+            if (snd.type === 'gunfire') {
+              soundFX.playGunshot('revolver', snd.x, snd.y);
+            } else if (snd.type === 'reload') {
+              soundFX.playReload(snd.x, snd.y);
+            } else if (snd.type === 'ability') {
+              soundFX.playAbility('vanguard', snd.x, snd.y);
+            }
+          }
         }
       }
       if (this.processedSoundIds.size > 200) {
@@ -350,7 +361,7 @@ export class GameRenderer {
   }
 
   /**
-   * Spawns rich bullet impact visual particles and floating combat numbers.
+   * Spawns rich bullet impact visual particles, floating combat numbers, and impact sound.
    * @param {Object} hit - { id, x, y, type: 'wall'|'entity', damage, vx, vy, targetId, shooterId }
    */
   addHitImpact(hit) {
@@ -369,7 +380,7 @@ export class GameRenderer {
     const isLocalTarget = Boolean(this.lastLocalPlayer && hit.targetId === this.lastLocalPlayer.id);
     const isLocalShooter = Boolean(this.lastLocalPlayer && hit.shooterId === this.lastLocalPlayer.id);
 
-    // 1. Play spatial sound effect
+    // Audio cue for bullet impact
     if (isEntity) {
       soundFX.playImpact(true, hx, hy);
     } else {
@@ -388,22 +399,22 @@ export class GameRenderer {
       const bVy = hit.vy || 0;
       const baseAngle = Math.atan2(-bVy, -bVx);
 
-      const sparkCount = 14 + Math.floor(Math.random() * 6);
+      const sparkCount = 20 + Math.floor(Math.random() * 8);
       for (let i = 0; i < sparkCount; i++) {
-        const spread = (Math.random() - 0.5) * Math.PI * 0.9;
+        const spread = (Math.random() - 0.5) * Math.PI * 1.1;
         const angle = baseAngle + spread;
-        const speed = 80 + Math.random() * 240;
-        const colors = ['#ffffff', '#ffcf48', '#ff9f1c', '#ffe082'];
+        const speed = 100 + Math.random() * 320;
+        const colors = ['#ffffff', '#fff275', '#ffcf48', '#ff9f1c', '#ff5722'];
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 1.2 + Math.random() * 2.2,
+          size: 2.2 + Math.random() * 3.0,
           color: colors[Math.floor(Math.random() * colors.length)],
           alpha: 1.0,
-          life: 0.22 + Math.random() * 0.20,
-          maxLife: 0.42,
+          life: 0.35 + Math.random() * 0.30,
+          maxLife: 0.65,
           isSpark: true
         });
       }
@@ -412,33 +423,33 @@ export class GameRenderer {
       this.impactParticles.push({
         x: hx,
         y: hy,
-        vx: (Math.random() - 0.5) * 15,
-        vy: (Math.random() - 0.5) * 15,
-        size: 4,
-        maxSize: 18 + Math.random() * 8,
-        color: '#b0b8c4',
-        alpha: 0.55,
-        life: 0.35,
-        maxLife: 0.35,
+        vx: (Math.random() - 0.5) * 25,
+        vy: (Math.random() - 0.5) * 25,
+        size: 6,
+        maxSize: 26 + Math.random() * 12,
+        color: '#cfd8dc',
+        alpha: 0.70,
+        life: 0.50,
+        maxLife: 0.50,
         isSmoke: true
       });
     } else {
       // Entity Impact: Copper automaton shrapnel + incandescent sparks + dark machine oil
-      const sparkCount = 18 + Math.floor(Math.random() * 8);
+      const sparkCount = 24 + Math.floor(Math.random() * 10);
       for (let i = 0; i < sparkCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 60 + Math.random() * 200;
-        const colors = ['#ff5a5f', '#e28743', '#ffcf48', '#ff9f1c', '#1a1612'];
+        const speed = 80 + Math.random() * 260;
+        const colors = ['#ffffff', '#ff4757', '#e28743', '#ffcf48', '#ff9f1c', '#2c3437'];
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 1.8 + Math.random() * 2.5,
+          size: 2.5 + Math.random() * 3.2,
           color: colors[Math.floor(Math.random() * colors.length)],
           alpha: 1.0,
-          life: 0.30 + Math.random() * 0.25,
-          maxLife: 0.55,
+          life: 0.40 + Math.random() * 0.35,
+          maxLife: 0.75,
           isSpark: true
         });
       }
@@ -446,13 +457,13 @@ export class GameRenderer {
       // Floating damage number popup
       const dmg = hit.damage || 35;
       this.floatingDamageNumbers.push({
-        x: hx + (Math.random() - 0.5) * 14,
-        y: hy - 14,
+        x: hx + (Math.random() - 0.5) * 16,
+        y: hy - 16,
         text: `-${dmg}`,
-        vy: -55,
+        vy: -60,
         alpha: 1.0,
-        life: 0.95,
-        maxLife: 0.95,
+        life: 1.20,
+        maxLife: 1.20,
         isLocalTarget,
         isLocalShooter
       });
