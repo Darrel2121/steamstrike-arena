@@ -14,6 +14,7 @@ import { ProgressionManager, generateSteampunkCallsign } from './ProgressionMana
 import { getEmblemDefinition } from '../../shared/ProgressionSchema.js';
 import { WorkshopUI } from './ui/WorkshopUI.js';
 import { AuthModal } from './ui/AuthModal.js';
+import { soundFX } from './audio/SoundFX.js';
 
 export class App {
   constructor() {
@@ -26,9 +27,23 @@ export class App {
     this.animationFrameId = null;
     this.isMatchOver = false;
     this.soloWarmupTimer = null;
+    this.lastInputWasFiring = false;
     this.landscapePromptDismissed = Boolean(
       typeof sessionStorage !== 'undefined' && sessionStorage.getItem('steamstrike_dismiss_rotate')
     );
+
+    // One-time user gesture listener to unlock Web Audio API across all browsers
+    if (typeof window !== 'undefined') {
+      const unlockAudio = () => {
+        soundFX.init();
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('keydown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+      };
+      window.addEventListener('pointerdown', unlockAudio, { passive: true });
+      window.addEventListener('keydown', unlockAudio, { passive: true });
+      window.addEventListener('touchstart', unlockAudio, { passive: true });
+    }
 
     const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
@@ -107,6 +122,8 @@ export class App {
     this.btnGlobalFullscreen = document.getElementById('btnGlobalFullscreen');
     this.btnGameFullscreen = document.getElementById('btnGameFullscreen');
     this.btnEditorFullscreen = document.getElementById('btnEditorFullscreen');
+    this.btnSoundToggle = document.getElementById('btnSoundToggle');
+    this.mBtnSoundToggle = document.getElementById('mBtnSoundToggle');
 
     this.gameMapNameDisplay = document.getElementById('gameMapNameDisplay');
     this.editorCanvas = document.getElementById('editorCanvas');
@@ -285,6 +302,32 @@ export class App {
     }
     if (this.navButtons.auth) {
       this.navButtons.auth.addEventListener('click', () => this.authModal.open());
+    }
+
+    const updateSoundButtons = () => {
+      const isMuted = soundFX.isMuted;
+      if (this.btnSoundToggle) {
+        this.btnSoundToggle.textContent = isMuted ? '🔇 Звук: Вимк' : '🔊 Звук';
+      }
+      if (this.mBtnSoundToggle) {
+        this.mBtnSoundToggle.textContent = isMuted ? '🔇 Звукові ефекти: Вимк' : '🔊 Звукові ефекти: Увімк';
+      }
+    };
+    updateSoundButtons();
+
+    if (this.btnSoundToggle) {
+      this.btnSoundToggle.addEventListener('click', () => {
+        soundFX.init();
+        soundFX.toggleMute();
+        updateSoundButtons();
+      });
+    }
+    if (this.mBtnSoundToggle) {
+      this.mBtnSoundToggle.addEventListener('click', () => {
+        soundFX.init();
+        soundFX.toggleMute();
+        updateSoundButtons();
+      });
     }
 
     // Mobile Navigation ("Бутерброд") Drawer Controls
@@ -909,6 +952,17 @@ export class App {
     }
 
     this.isMatchOver = false;
+
+    // Restore mobile touch controls & joystick
+    const mobileTouchControls = document.getElementById('mobileTouchControls');
+    if (mobileTouchControls) {
+      mobileTouchControls.style.display = '';
+    }
+    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
+    if (virtualJoystickContainer) {
+      virtualJoystickContainer.style.display = '';
+    }
+
     this.switchView('game');
     this.resizeGameCanvas();
     this.startGameLoop();
@@ -1100,7 +1154,19 @@ export class App {
           input.aimAngle = this.lastDeathAngle ?? localPlayerPredicted.angle ?? 0;
         } else if (localPlayerPredicted) {
           this.lastDeathAngle = localPlayerPredicted.angle;
+
+          // Sound triggers on local actions
+          if (input.firing && !this.lastInputWasFiring && (localPlayerPredicted.ammo ?? 6) > 0) {
+            soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
+          }
+          if (input.reload && !localPlayerPredicted.isReloading && (localPlayerPredicted.ammo ?? 6) < (localPlayerPredicted.maxAmmo ?? 6)) {
+            soundFX.playReload();
+          }
+          if (input.ability && !localPlayerPredicted.abilityActive && (localPlayerPredicted.abilityCooldown || 0) <= 0) {
+            soundFX.playAbility(localPlayerPredicted.classId || 'vanguard');
+          }
         }
+        this.lastInputWasFiring = Boolean(input.firing);
 
         if (this.networkClient.isConnected) {
           this.networkClient.sendInput(input);
@@ -1111,12 +1177,13 @@ export class App {
       const state = this.networkClient.getInterpolatedState();
       const localPlayer = state.localPlayer || localPlayerPredicted;
 
-      // 4. Update renderer (camera tracking, acoustic wave decay, HUD gauge updates)
+      // 4. Update renderer (camera tracking, acoustic wave decay, HUD updates, bullet hit impacts)
       if (this.gameRenderer) {
         this.gameRenderer.update(dt, {
           localPlayer,
           players: state.players,
-          soundEvents: state.soundEvents
+          soundEvents: state.soundEvents,
+          hitEvents: state.hitEvents
         });
 
         // 5. Render frame using canonical options object
@@ -1147,6 +1214,22 @@ export class App {
     this.isMatchOver = true;
     const isWinner = outcome.winnerId && outcome.winnerId === this.localPlayerId;
 
+    // Completely hide mobile touch controls & joystick when match is over
+    const mobileTouchControls = document.getElementById('mobileTouchControls');
+    if (mobileTouchControls) {
+      mobileTouchControls.style.display = 'none';
+    }
+    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
+    if (virtualJoystickContainer) {
+      virtualJoystickContainer.style.display = 'none';
+    }
+
+    if (isWinner) {
+      soundFX.playVictory();
+    } else if (!outcome.draw) {
+      soundFX.playDefeat();
+    }
+
     if (outcome.results && Array.isArray(outcome.results)) {
       const myResult = outcome.results.find(r => r.playerId === this.localPlayerId);
       if (myResult && this.progressionManager) {
@@ -1175,6 +1258,17 @@ export class App {
 
   restartCurrentMatch() {
     this.isMatchOver = false;
+
+    // Restore mobile touch controls & joystick
+    const mobileTouchControls = document.getElementById('mobileTouchControls');
+    if (mobileTouchControls) {
+      mobileTouchControls.style.display = '';
+    }
+    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
+    if (virtualJoystickContainer) {
+      virtualJoystickContainer.style.display = '';
+    }
+
     if (this.gameRenderer) {
       this.gameRenderer.clearMatchOutcome();
       this.gameRenderer.clearWrecks();
@@ -1198,6 +1292,17 @@ export class App {
     this.resetHeroPlayButton();
     this.isMatchOver = false;
     this.activeMatchMap = null;
+
+    // Restore mobile touch controls & joystick
+    const mobileTouchControls = document.getElementById('mobileTouchControls');
+    if (mobileTouchControls) {
+      mobileTouchControls.style.display = '';
+    }
+    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
+    if (virtualJoystickContainer) {
+      virtualJoystickContainer.style.display = '';
+    }
+
     if (this.gameRenderer) {
       this.gameRenderer.clearMatchOutcome();
       this.gameRenderer.clearWrecks();
@@ -1211,6 +1316,9 @@ export class App {
     const { victimId, killerId, victimName, killerName, respawnTimer } = payload;
     const isVictimLocal = victimId === this.localPlayerId;
     const isKillerLocal = killerId === this.localPlayerId;
+
+    // Resonant bronze elimination gong
+    soundFX.playElimination();
 
     if (this.gameRenderer) {
       const state = this.networkClient.getInterpolatedState();
@@ -1244,8 +1352,11 @@ export class App {
 
   handleDamage(payload) {
     if (!payload) return;
-    if (payload.targetId === this.localPlayerId && payload.remainingHp <= 30 && payload.remainingHp > 0) {
-      this.gameRenderer?.addNotification('⚠️ Критичний рівень пари та тиску!', { type: 'warn', color: '#ff9f1c', duration: 2.0 });
+    if (payload.targetId === this.localPlayerId) {
+      soundFX.playImpact(true);
+      if (payload.remainingHp <= 30 && payload.remainingHp > 0) {
+        this.gameRenderer?.addNotification('⚠️ Критичний рівень пари та тиску!', { type: 'warn', color: '#ff9f1c', duration: 2.0 });
+      }
     }
   }
 

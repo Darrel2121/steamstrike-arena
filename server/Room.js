@@ -54,6 +54,7 @@ export class Room {
     this.bots = new Map();
     this.projectiles = [];
     this.soundEvents = [];
+    this.hitEvents = [];
     this.smokeZones = [];
     this.pickups = [];
     this.tickNumber = 0;
@@ -167,49 +168,94 @@ export class Room {
   }
 
   /**
-   * Finds a distinct spawn coordinate for player or bot.
+   * Finds a distinct spawn coordinate for player or bot, maximizing distance from active opponents.
    * @param {'player'|'bot'} type
    * @param {number} slotIndex
+   * @param {string|null} [candidateTeam=null]
    * @returns {{ x: number, y: number, angle: number }}
    */
-  getSpawnPosition(type, slotIndex = 0) {
+  getSpawnPosition(type, slotIndex = 0, candidateTeam = null) {
     const tileSize = this.map.tileSize || TILE_SIZE || 40;
     const spawns = this.map.spawns || [];
 
-    // Filter matching spawns
-    const matching = spawns.filter(s => s.type === type);
-    if (matching.length > 0) {
-      const sp = matching[slotIndex % matching.length];
-      const x = typeof sp.x === 'number' ? sp.x : (sp.col * tileSize + tileSize / 2);
-      const y = typeof sp.y === 'number' ? sp.y : (sp.row * tileSize + tileSize / 2);
-      return { x, y, angle: sp.angle || 0 };
+    // Gather living opponents to calculate distance
+    const livingOpponents = [];
+    for (const p of this.players.values()) {
+      if (p.isAlive && p.hp > 0) {
+        if (!candidateTeam || !p.team || p.team !== candidateTeam) {
+          livingOpponents.push({ x: p.x, y: p.y });
+        }
+      }
+    }
+    for (const b of this.bots.values()) {
+      if (b.isAlive && b.hp > 0) {
+        if (!candidateTeam || !b.team || b.team !== candidateTeam) {
+          livingOpponents.push({ x: b.x, y: b.y });
+        }
+      }
     }
 
-    // Try any other spawn
-    if (spawns.length > 0) {
-      const sp = spawns[slotIndex % spawns.length];
-      const x = typeof sp.x === 'number' ? sp.x : (sp.col * tileSize + tileSize / 2);
-      const y = typeof sp.y === 'number' ? sp.y : (sp.row * tileSize + tileSize / 2);
-      return { x, y, angle: sp.angle || 0 };
+    // Candidate spawn positions
+    const candidates = [];
+    const getCoords = (sp) => {
+      const sx = typeof sp.x === 'number' ? sp.x : (sp.col * tileSize + tileSize / 2);
+      const sy = typeof sp.y === 'number' ? sp.y : (sp.row * tileSize + tileSize / 2);
+      return { x: sx, y: sy, angle: sp.angle || 0 };
+    };
+
+    // Add matching typed spawns
+    for (const sp of spawns) {
+      if (sp.type === type) candidates.push(getCoords(sp));
+    }
+    // If not enough, add all spawns
+    if (candidates.length === 0) {
+      for (const sp of spawns) {
+        candidates.push(getCoords(sp));
+      }
     }
 
-    // Find any floor tile
+    // Also add distributed walkable floor tiles if needed
     if (this.map.tiles && this.map.width && this.map.height) {
-      for (let r = 0; r < this.map.height; r++) {
-        for (let c = 0; c < this.map.width; c++) {
+      const step = Math.max(3, Math.floor(Math.min(this.map.width, this.map.height) / 4));
+      for (let r = 1; r < this.map.height - 1; r += step) {
+        for (let c = 1; c < this.map.width - 1; c += step) {
           if (this.map.tiles[r * this.map.width + c] === TILE_TYPES.FLOOR || this.map.tiles[r * this.map.width + c] === 0) {
-            return {
+            candidates.push({
               x: c * tileSize + tileSize / 2,
               y: r * tileSize + tileSize / 2,
               angle: 0
-            };
+            });
           }
         }
       }
     }
 
-    // Fallback default
-    return { x: 100 + slotIndex * 50, y: 100, angle: 0 };
+    if (candidates.length === 0) {
+      return { x: 100 + slotIndex * 50, y: 100, angle: 0 };
+    }
+
+    // If no opponents on map yet, pick by slotIndex
+    if (livingOpponents.length === 0) {
+      return candidates[slotIndex % candidates.length];
+    }
+
+    // Select the candidate spawn that MAXIMIZES the minimum distance to any living opponent
+    let bestCandidate = candidates[0];
+    let maxMinDist = -1;
+
+    for (const cand of candidates) {
+      let minDistToEnemy = Infinity;
+      for (const opp of livingOpponents) {
+        const d = Math.hypot(cand.x - opp.x, cand.y - opp.y);
+        if (d < minDistToEnemy) minDistToEnemy = d;
+      }
+      if (minDistToEnemy > maxMinDist) {
+        maxMinDist = minDistToEnemy;
+        bestCandidate = cand;
+      }
+    }
+
+    return bestCandidate;
   }
 
   /**
@@ -709,6 +755,7 @@ export class Room {
    * @param {Object} input
    */
   handlePlayerInput(id, input) {
+    if (this.state === 'GAME_OVER' || this.state === 'ENDED') return;
     const player = this.players.get(id);
     if (!player || !player.isAlive || !input) return;
 
@@ -955,6 +1002,20 @@ export class Room {
         proj.x = hit.point.x;
         proj.y = hit.point.y;
 
+        const hitType = (hit.type === 'player' && hit.target) ? 'entity' : 'wall';
+        const hitEvent = {
+          id: 'hit_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          x: Math.round(hit.point.x * 10) / 10,
+          y: Math.round(hit.point.y * 10) / 10,
+          type: hitType,
+          damage: proj.damage || 35,
+          shooterId: proj.shooterId,
+          targetId: hit.target ? hit.target.id : null,
+          vx: proj.vx || 0,
+          vy: proj.vy || 0
+        };
+        this.hitEvents.push(hitEvent);
+
         if (hit.type === 'player' && hit.target) {
           this.applyDamage(hit.target.id, proj.shooterId, proj.damage || 35);
         }
@@ -973,6 +1034,12 @@ export class Room {
 
     this.cleanupDisconnected();
 
+    // If match has concluded, freeze simulation in background and broadcast final state
+    if (this.state === 'GAME_OVER' || this.state === 'ENDED') {
+      this.broadcastSnapshot();
+      return;
+    }
+
     // Advance player states and observe human combat maneuvers for neural AI imitation
     for (const player of this.players.values()) {
       player.update(dtSec, player.isSprinting);
@@ -988,7 +1055,7 @@ export class Room {
           player.respawnTimer -= dtSec;
           if (player.respawnTimer <= 0) {
             player.respawnTimer = 0;
-            const spawn = this.getSpawnPosition('player', Math.floor(Math.random() * 8));
+            const spawn = this.getSpawnPosition('player', Math.floor(Math.random() * 8), player.team);
             player.respawn(spawn.x, spawn.y, spawn.angle);
             this.broadcast(PROTOCOL_MSG_TYPES.S2C_RESPAWN_EVENT, {
               entityId: player.id,
@@ -1006,7 +1073,7 @@ export class Room {
           bot.respawnTimer -= dtSec;
           if (bot.respawnTimer <= 0) {
             bot.respawnTimer = 0;
-            const spawn = this.getSpawnPosition('bot', Math.floor(Math.random() * 8));
+            const spawn = this.getSpawnPosition('bot', Math.floor(Math.random() * 8), bot.team);
             bot.respawn(spawn.x, spawn.y, spawn.angle);
             this.broadcast(PROTOCOL_MSG_TYPES.S2C_RESPAWN_EVENT, {
               entityId: bot.id,
@@ -1143,9 +1210,12 @@ export class Room {
       players: snapshotPlayers,
       projectiles: (this.projectiles || []).map(p => (typeof p.toJSON === 'function' ? p.toJSON() : p)),
       soundEvents: this.soundEvents || [],
+      hitEvents: this.hitEvents || [],
       smokeZones: this.smokeZones || [],
       pickups: (this.pickups || []).filter(pk => pk.isActive).map(pk => (typeof pk.toSnapshot === 'function' ? pk.toSnapshot() : pk))
     };
+
+    this.hitEvents = [];
 
     this.broadcast(PROTOCOL_MSG_TYPES.S2C_WORLD_SNAPSHOT, payload);
   }
@@ -1422,6 +1492,9 @@ export class Room {
     if (!wasAlreadyGameOver || (this.lastMatchOutcome && this.lastMatchOutcome.draw !== draw)) {
       this.lastMatchOutcome = outcome;
       this.broadcast(PROTOCOL_MSG_TYPES.S2C_MATCH_OVER, outcome);
+      if (typeof tacticalNeuralAgent?.saveWeights === 'function') {
+        tacticalNeuralAgent.saveWeights();
+      }
     }
 
     return outcome;

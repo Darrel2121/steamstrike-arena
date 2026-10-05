@@ -248,6 +248,14 @@ export class HUD {
     // Enforce normal opaque composite operation (avoid bleed from visibility lighter pass)
     ctx.globalCompositeOperation = 'source-over';
 
+    // If match has concluded, render ONLY the match outcome overlay and return
+    // (Completely hides health vial, manometer, dials, ammo cylinder, leaderboard, and kill feed)
+    if (this.matchOutcome) {
+      this.renderMatchOver(ctx, width, height, player);
+      ctx.restore();
+      return;
+    }
+
     const maxHp = player.maxHp || PLAYER_MAX_HP || 100;
     const hp = Math.max(0, Math.min(maxHp, player.hp ?? maxHp));
     const stamina = Math.max(0, Math.min(PLAYER_STAMINA_MAX, player.stamina ?? PLAYER_STAMINA_MAX));
@@ -1164,12 +1172,15 @@ export class HUD {
     ctx.save();
 
     // 1. Darkened atmospheric vignette backdrop
-    ctx.fillStyle = 'rgba(6, 8, 14, 0.82)';
+    ctx.fillStyle = 'rgba(6, 8, 14, 0.88)';
     ctx.fillRect(0, 0, width, height);
 
-    // 2. Central Steampunk Plaque Bounds
-    const boxW = Math.min(540, Math.max(340, width - 40));
-    const boxH = Math.min(440, Math.max(360, height - 40));
+    // 2. Central Steampunk Plaque Bounds - Adaptive sizing for mobile landscape
+    const isCompact = height < 520;
+    const boxW = Math.min(540, Math.max(280, width - (isCompact ? 20 : 40)));
+    const boxH = isCompact
+      ? Math.min(height - 16, 275)
+      : Math.min(440, Math.max(340, height - 40));
     const bx = (width - boxW) / 2;
     const by = (height - boxH) / 2;
 
@@ -1184,37 +1195,32 @@ export class HUD {
 
     // Brass outer frame
     ctx.strokeStyle = isWinner ? '#ffcf48' : isDraw ? '#ff9f1c' : '#c59b27';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = isCompact ? 2 : 3;
     ctx.stroke();
 
     // Inset border
     ctx.strokeStyle = 'rgba(255, 207, 72, 0.25)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.roundRect(bx + 5, by + 5, boxW - 10, boxH - 10, 5);
+    ctx.roundRect(bx + 4, by + 4, boxW - 8, boxH - 8, 5);
     ctx.stroke();
 
     // Corner decorative rivets
     ctx.fillStyle = '#ffcf48';
     const rivetOffsets = [
-      [bx + 12, by + 12],
-      [bx + boxW - 12, by + 12],
-      [bx + 12, by + boxH - 12],
-      [bx + boxW - 12, by + boxH - 12]
+      [bx + 10, by + 10],
+      [bx + boxW - 10, by + 10],
+      [bx + 10, by + boxH - 10],
+      [bx + boxW - 10, by + boxH - 10]
     ];
     for (const [rx, ry] of rivetOffsets) {
       ctx.beginPath();
-      ctx.arc(rx, ry, 3.5, 0, Math.PI * 2);
+      ctx.arc(rx, ry, isCompact ? 2.5 : 3.5, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#703816';
-      ctx.beginPath();
-      ctx.arc(rx, ry, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffcf48';
     }
 
     // 4. Header Banner Plate
-    const headerH = 64;
+    const headerH = isCompact ? 38 : 64;
     const headerGrad = ctx.createLinearGradient(bx, by, bx, by + headerH);
     if (isWinner) {
       headerGrad.addColorStop(0, '#36290f');
@@ -1229,46 +1235,56 @@ export class HUD {
 
     ctx.fillStyle = headerGrad;
     ctx.beginPath();
-    ctx.roundRect(bx + 8, by + 8, boxW - 16, headerH, 6);
+    ctx.roundRect(bx + 6, by + 6, boxW - 12, headerH, 5);
     ctx.fill();
     ctx.strokeStyle = isWinner ? '#ffcf48' : isDraw ? '#ff9f1c' : '#e71d36';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
     // Header Title
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = isCompact ? 4 : 8;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    const titleY = isCompact ? by + 20 : by + 32;
+    const subTitleY = by + 52;
+    const titleFont = isCompact ? 'bold 15px Georgia, serif' : 'bold 22px Georgia, serif';
+
     if (isWinner) {
       ctx.shadowColor = '#ffcf48';
       ctx.fillStyle = '#ffcf48';
-      ctx.font = 'bold 22px Georgia, serif';
-      ctx.fillText('★ ПЕРЕМОГА: ВИ ВИЖИЛИ! ★', width / 2, by + 32);
+      ctx.font = titleFont;
+      ctx.fillText('★ ПЕРЕМОГА: ВИ ВИЖИЛИ! ★', width / 2, titleY);
 
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ded7c4';
-      ctx.font = '12px Georgia, serif';
-      ctx.fillText('Арену зачищено • Ви єдиний вцілілий механік', width / 2, by + 54);
+      if (!isCompact) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ded7c4';
+        ctx.font = '12px Georgia, serif';
+        ctx.fillText('Арену зачищено • Ви єдиний вцілілий механік', width / 2, subTitleY);
+      }
     } else if (isDraw) {
       ctx.shadowColor = '#ff9f1c';
       ctx.fillStyle = '#ff9f1c';
-      ctx.font = 'bold 22px Georgia, serif';
-      ctx.fillText('⚔ НІЧИЯ: ВЗАЄМНЕ ЗНИЩЕННЯ ⚔', width / 2, by + 32);
+      ctx.font = titleFont;
+      ctx.fillText('⚔ НІЧИЯ: ВЗАЄМНЕ ЗНИЩЕННЯ ⚔', width / 2, titleY);
 
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ded7c4';
-      ctx.font = '12px Georgia, serif';
-      ctx.fillText('Обидва супротивники полягли в бою', width / 2, by + 54);
+      if (!isCompact) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ded7c4';
+        ctx.font = '12px Georgia, serif';
+        ctx.fillText('Обидва супротивники полягли в бою', width / 2, subTitleY);
+      }
     } else {
       ctx.shadowColor = '#e71d36';
       ctx.fillStyle = '#ff5a5f';
-      ctx.font = 'bold 22px Georgia, serif';
-      ctx.fillText('☠ ПОРАЗКА: ВАС ЛІКВІДОВАНО ☠', width / 2, by + 32);
+      ctx.font = titleFont;
+      ctx.fillText('☠ ПОРАЗКА: ВАС ЛІКВІДОВАНО ☠', width / 2, titleY);
 
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#f5c6cb';
-      ctx.font = '12px Georgia, serif';
-      ctx.fillText('Корпус автоматона розбито • Модернізуйте спорядження', width / 2, by + 54);
+      if (!isCompact) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#f5c6cb';
+        ctx.font = '12px Georgia, serif';
+        ctx.fillText('Корпус автоматона розбито • Модернізуйте спорядження', width / 2, subTitleY);
+      }
     }
     ctx.shadowBlur = 0;
 
@@ -1284,9 +1300,9 @@ export class HUD {
     const scrap = myResult?.scrapEarned ?? (isWinner ? 100 : 35);
     const cores = myResult?.coresEarned ?? (isWinner ? 1 : 0);
 
-    const statsY = by + 90;
-    const statBoxW = (boxW - 48) / 3;
-    const statBoxH = 60;
+    const statsY = isCompact ? by + 48 : by + 90;
+    const statBoxW = (boxW - (isCompact ? 28 : 48)) / 3;
+    const statBoxH = isCompact ? 44 : 60;
 
     const statsData = [
       { label: '⚔ ЛІКВІДАЦІЇ', val: `${kills}`, col: '#ffcf48' },
@@ -1295,7 +1311,7 @@ export class HUD {
     ];
 
     statsData.forEach((st, idx) => {
-      const sx = bx + 16 + idx * (statBoxW + 8);
+      const sx = bx + (isCompact ? 8 : 16) + idx * (statBoxW + (isCompact ? 6 : 8));
       ctx.fillStyle = '#171b24';
       ctx.strokeStyle = '#2d3340';
       ctx.lineWidth = 1;
@@ -1305,34 +1321,34 @@ export class HUD {
       ctx.stroke();
 
       ctx.fillStyle = '#9d9685';
-      ctx.font = 'bold 9px monospace';
+      ctx.font = isCompact ? 'bold 8px monospace' : 'bold 9px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(st.label, sx + statBoxW / 2, statsY + 18);
+      ctx.fillText(st.label, sx + statBoxW / 2, statsY + (isCompact ? 13 : 18));
 
       ctx.fillStyle = st.col;
-      ctx.font = 'bold 20px monospace';
-      ctx.fillText(st.val, sx + statBoxW / 2, statsY + 44);
+      ctx.font = isCompact ? 'bold 15px monospace' : 'bold 20px monospace';
+      ctx.fillText(st.val, sx + statBoxW / 2, statsY + (isCompact ? 32 : 44));
     });
 
     // 6. Rewards Plate
-    const rewY = statsY + statBoxH + 16;
-    const rewW = boxW - 32;
-    const rewH = 74;
+    const rewY = statsY + statBoxH + (isCompact ? 6 : 16);
+    const rewW = boxW - (isCompact ? 16 : 32);
+    const rewH = isCompact ? 46 : 74;
     ctx.fillStyle = '#191d26';
     ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = isCompact ? 1 : 1.5;
     ctx.beginPath();
-    ctx.roundRect(bx + 16, rewY, rewW, rewH, 5);
+    ctx.roundRect(bx + (isCompact ? 8 : 16), rewY, rewW, rewH, 5);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = '#c59b27';
-    ctx.font = 'bold 11px monospace';
+    ctx.font = isCompact ? 'bold 9px monospace' : 'bold 11px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText('★ НАГОРОДИ ЗА МАТЧ ★', width / 2, rewY + 20);
+    ctx.fillText('★ НАГОРОДИ ЗА МАТЧ ★', width / 2, rewY + (isCompact ? 13 : 20));
 
     // Currency Badges
-    const badgeY = rewY + 45;
+    const badgeY = rewY + (isCompact ? 30 : 45);
     const rewBadges = [
       { text: `⚡ +${xp} XP`, col: '#ffcf48', bg: '#2b230f' },
       { text: `⚙ +${scrap} Scrap`, col: '#e28743', bg: '#291b10' }
@@ -1341,7 +1357,9 @@ export class HUD {
       rewBadges.push({ text: `🔮 +${cores} Core`, col: '#2ec4b6', bg: '#0d2524' });
     }
 
-    const totalBadgesWidth = rewBadges.length * 115;
+    const badgeWidth = isCompact ? 80 : 105;
+    const badgeGap = isCompact ? 86 : 115;
+    const totalBadgesWidth = rewBadges.length * badgeGap;
     let badgeStartX = width / 2 - totalBadgesWidth / 2;
 
     rewBadges.forEach(b => {
@@ -1349,25 +1367,25 @@ export class HUD {
       ctx.strokeStyle = b.col;
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(badgeStartX, badgeY - 14, 105, 26, 4);
+      ctx.roundRect(badgeStartX, badgeY - (isCompact ? 9 : 14), badgeWidth, isCompact ? 18 : 26, 4);
       ctx.fill();
       ctx.stroke();
 
       ctx.fillStyle = b.col;
-      ctx.font = 'bold 12px monospace';
+      ctx.font = isCompact ? 'bold 9px monospace' : 'bold 12px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(b.text, badgeStartX + 52, badgeY + 3);
+      ctx.fillText(b.text, badgeStartX + badgeWidth / 2, badgeY + (isCompact ? 2 : 3));
 
-      badgeStartX += 115;
+      badgeStartX += badgeGap;
     });
 
     // 7. Interactive Canvas Action Buttons
-    const btnY = by + boxH - 72;
-    const btnW = Math.min(210, (boxW - 48) / 2);
-    const btnH = 40;
+    const btnH = isCompact ? 32 : 40;
+    const btnY = by + boxH - (isCompact ? 40 : 72);
+    const btnW = Math.min(210, (boxW - (isCompact ? 24 : 48)) / 2);
 
-    const btnRestartX = width / 2 - btnW - 8;
-    const btnLobbyX = width / 2 + 8;
+    const btnRestartX = width / 2 - btnW - 5;
+    const btnLobbyX = width / 2 + 5;
 
     this.buttonBounds = {
       restart: { x: btnRestartX, y: btnY, w: btnW, h: btnH },
@@ -1385,7 +1403,7 @@ export class HUD {
     ctx.stroke();
 
     ctx.fillStyle = isRestartHovered ? '#fff' : '#ffcf48';
-    ctx.font = 'bold 13px Georgia, serif';
+    ctx.font = isCompact ? 'bold 11px Georgia, serif' : 'bold 13px Georgia, serif';
     ctx.textAlign = 'center';
     ctx.fillText('🔄 Грати знову (Space)', btnRestartX + btnW / 2, btnY + btnH / 2 + 1);
 
@@ -1400,15 +1418,17 @@ export class HUD {
     ctx.stroke();
 
     ctx.fillStyle = isLobbyHovered ? '#fff' : '#ded7c4';
-    ctx.font = 'bold 13px Georgia, serif';
+    ctx.font = isCompact ? 'bold 11px Georgia, serif' : 'bold 13px Georgia, serif';
     ctx.textAlign = 'center';
-    ctx.fillText('🏠 В лобі / Меню (Esc)', btnLobbyX + btnW / 2, btnY + btnH / 2 + 1);
+    ctx.fillText('🏠 В лобі (Esc)', btnLobbyX + btnW / 2, btnY + btnH / 2 + 1);
 
-    // Subtle hint below buttons
-    ctx.fillStyle = '#7a828e';
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('Натисніть кнопку або клавішу для продовження', width / 2, by + boxH - 14);
+    if (!isCompact) {
+      // Subtle hint below buttons
+      ctx.fillStyle = '#7a828e';
+      ctx.font = '11px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('Натисніть кнопку або клавішу для продовження', width / 2, by + boxH - 14);
+    }
 
     ctx.restore();
   }

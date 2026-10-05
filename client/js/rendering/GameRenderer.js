@@ -21,6 +21,7 @@ import {
 } from '../../../shared/Constants.js';
 import { TILE_TYPES } from '../../../shared/MapSchema.js';
 import { assetManager } from './AssetManager.js';
+import { soundFX } from '../audio/SoundFX.js';
 
 export class GameRenderer {
   /**
@@ -55,7 +56,13 @@ export class GameRenderer {
     this.cameraInitialized = false;
     this.lastLocalPlayer = null;
     this.processedSoundIds = new Set();
+    this.processedHitIds = new Set();
     this.wreckedEntities = new Map();
+
+    // Bullet impact particles & floating damage numbers
+    this.impactParticles = [];
+    this.floatingDamageNumbers = [];
+    this.screenShake = 0;
 
     // Subsystems
     this.visibilityRenderer = new VisibilityRenderer(options.visibility || {});
@@ -252,6 +259,9 @@ export class GameRenderer {
         if (Math.abs(clampedX - this.camera.x) < 0.25) this.camera.x = clampedX;
         if (Math.abs(clampedY - this.camera.y) < 0.25) this.camera.y = clampedY;
       }
+
+      // Update sound listener position for 2D spatial audio
+      soundFX.setListenerPosition(localPlayer.renderX ?? localPlayer.x, localPlayer.renderY ?? localPlayer.y);
     }
 
     // 2. Ingest any new acoustic sound events from snapshot state
@@ -269,8 +279,52 @@ export class GameRenderer {
       }
     }
 
+    // 2.5 Ingest bullet impact events (wall ricochets vs combatant hits)
+    if (Array.isArray(state.hitEvents)) {
+      for (const hit of state.hitEvents) {
+        this.addHitImpact(hit);
+      }
+    }
+
     // 3. Update acoustic sound waves simulation
     this.soundWaveRenderer.update(dt);
+
+    // 3.5 Update bullet impact particles & floating combat text
+    if (this.impactParticles && this.impactParticles.length > 0) {
+      for (let i = this.impactParticles.length - 1; i >= 0; i--) {
+        const p = this.impactParticles[i];
+        p.x += (p.vx || 0) * dt;
+        p.y += (p.vy || 0) * dt;
+        p.vx = (p.vx || 0) * 0.91;
+        p.vy = (p.vy || 0) * 0.91;
+        if (p.isSmoke && typeof p.size === 'number' && typeof p.maxSize === 'number') {
+          p.size += (p.maxSize - p.size) * dt * 8.0;
+        }
+        p.life -= dt;
+        p.alpha = Math.max(0, p.life / p.maxLife);
+        if (p.life <= 0) {
+          this.impactParticles.splice(i, 1);
+        }
+      }
+    }
+
+    if (this.floatingDamageNumbers && this.floatingDamageNumbers.length > 0) {
+      for (let i = this.floatingDamageNumbers.length - 1; i >= 0; i--) {
+        const d = this.floatingDamageNumbers[i];
+        d.y += (d.vy || 0) * dt;
+        d.vy = (d.vy || 0) * 0.92;
+        d.life -= dt;
+        d.alpha = Math.max(0, d.life / d.maxLife);
+        if (d.life <= 0) {
+          this.floatingDamageNumbers.splice(i, 1);
+        }
+      }
+    }
+
+    // Camera screen shake decay
+    if (this.screenShake > 0) {
+      this.screenShake = Math.max(0, this.screenShake - dt * 22);
+    }
 
     // 4. Update tactical HUD animations
     if (localPlayer) {
@@ -292,6 +346,116 @@ export class GameRenderer {
         if (p.x < -10) p.x = w + 10;
         if (p.x > w + 10) p.x = -10;
       }
+    }
+  }
+
+  /**
+   * Spawns rich bullet impact visual particles and floating combat numbers.
+   * @param {Object} hit - { id, x, y, type: 'wall'|'entity', damage, vx, vy, targetId, shooterId }
+   */
+  addHitImpact(hit) {
+    if (!hit || typeof hit.x !== 'number' || typeof hit.y !== 'number') return;
+    if (hit.id) {
+      if (this.processedHitIds.has(hit.id)) return;
+      this.processedHitIds.add(hit.id);
+      if (this.processedHitIds.size > 300) {
+        this.processedHitIds.clear();
+      }
+    }
+
+    const hx = hit.x;
+    const hy = hit.y;
+    const isEntity = hit.type === 'entity';
+    const isLocalTarget = Boolean(this.lastLocalPlayer && hit.targetId === this.lastLocalPlayer.id);
+    const isLocalShooter = Boolean(this.lastLocalPlayer && hit.shooterId === this.lastLocalPlayer.id);
+
+    // 1. Play spatial sound effect
+    if (isEntity) {
+      soundFX.playImpact(true, hx, hy);
+    } else {
+      soundFX.playRicochet(hx, hy);
+      soundFX.playImpact(false, hx, hy);
+    }
+
+    // 2. Shake camera on local player damage
+    if (isLocalTarget) {
+      this.screenShake = Math.max(this.screenShake, 7.5);
+    }
+
+    if (!isEntity) {
+      // Wall Impact: High-speed golden ricochet sparks + smoke puff
+      const bVx = hit.vx || 0;
+      const bVy = hit.vy || 0;
+      const baseAngle = Math.atan2(-bVy, -bVx);
+
+      const sparkCount = 14 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < sparkCount; i++) {
+        const spread = (Math.random() - 0.5) * Math.PI * 0.9;
+        const angle = baseAngle + spread;
+        const speed = 80 + Math.random() * 240;
+        const colors = ['#ffffff', '#ffcf48', '#ff9f1c', '#ffe082'];
+        this.impactParticles.push({
+          x: hx,
+          y: hy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 1.2 + Math.random() * 2.2,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1.0,
+          life: 0.22 + Math.random() * 0.20,
+          maxLife: 0.42,
+          isSpark: true
+        });
+      }
+
+      // Expanding smoke puff
+      this.impactParticles.push({
+        x: hx,
+        y: hy,
+        vx: (Math.random() - 0.5) * 15,
+        vy: (Math.random() - 0.5) * 15,
+        size: 4,
+        maxSize: 18 + Math.random() * 8,
+        color: '#b0b8c4',
+        alpha: 0.55,
+        life: 0.35,
+        maxLife: 0.35,
+        isSmoke: true
+      });
+    } else {
+      // Entity Impact: Copper automaton shrapnel + incandescent sparks + dark machine oil
+      const sparkCount = 18 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 60 + Math.random() * 200;
+        const colors = ['#ff5a5f', '#e28743', '#ffcf48', '#ff9f1c', '#1a1612'];
+        this.impactParticles.push({
+          x: hx,
+          y: hy,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 1.8 + Math.random() * 2.5,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          alpha: 1.0,
+          life: 0.30 + Math.random() * 0.25,
+          maxLife: 0.55,
+          isSpark: true
+        });
+      }
+
+      // Floating damage number popup
+      const dmg = hit.damage || 35;
+      this.floatingDamageNumbers.push({
+        x: hx + (Math.random() - 0.5) * 14,
+        y: hy - 14,
+        text: `-${dmg}`,
+        vy: -55,
+        alpha: 1.0,
+        life: 0.95,
+        maxLife: 0.95,
+        isLocalTarget,
+        isLocalShooter
+      });
     }
   }
 
@@ -450,13 +614,16 @@ export class GameRenderer {
     // Clear frame
     ctx.clearRect(0, 0, width, height);
 
-    // Camera transform into World Coordinates with dynamic tactical zoom
+    // Camera transform into World Coordinates with dynamic tactical zoom & screen shake
     const zoom = this.camera.zoom || 1.0;
+    const shakeX = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake : 0;
+    const shakeY = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake : 0;
+
     ctx.save();
     if (typeof ctx.scale === 'function') {
       ctx.scale(zoom, zoom);
     }
-    ctx.translate(-this.camera.x, -this.camera.y);
+    ctx.translate(-this.camera.x + shakeX, -this.camera.y + shakeY);
 
     // ========================================================================
     // LAYER 1: Arena Floor & Terrain
@@ -491,6 +658,11 @@ export class GameRenderer {
     // LAYER 4.7: Tactical Ability FX & Sonar X-Ray Detection (Over Darkness)
     // ========================================================================
     this.renderTacticalAbilitiesOverDarkness(ctx, state);
+
+    // ========================================================================
+    // LAYER 4.8: Bullet Impact Sparks, Smoke Puffs & Damage Numbers
+    // ========================================================================
+    this.renderImpactParticlesAndDamage(ctx);
 
     // ========================================================================
     // LAYER 5: Visual Acoustic Sound Waves (Visible OVER Darkness)
@@ -1134,6 +1306,89 @@ export class GameRenderer {
 
         ctx.restore();
       }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Layer 4.8: Renders incandescent ricochet sparks, smoke puffs, and floating combat damage numbers.
+   */
+  renderImpactParticlesAndDamage(ctx) {
+    if ((!this.impactParticles || this.impactParticles.length === 0) &&
+        (!this.floatingDamageNumbers || this.floatingDamageNumbers.length === 0)) {
+      return;
+    }
+
+    const zoom = this.camera.zoom || 1.0;
+    const shakeX = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake : 0;
+    const shakeY = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake : 0;
+
+    ctx.save();
+    if (typeof ctx.scale === 'function') {
+      ctx.scale(zoom, zoom);
+    }
+    ctx.translate(-this.camera.x + shakeX, -this.camera.y + shakeY);
+
+    // 1. Draw Impact Particles (sparks & smoke puffs)
+    for (const p of this.impactParticles) {
+      if (p.isSmoke) {
+        ctx.fillStyle = p.color || '#b0b8c4';
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha * 0.6));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // High-velocity sparks with tail streak
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
+        ctx.strokeStyle = p.color || '#ffcf48';
+        ctx.lineWidth = Math.max(1, p.size);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x - (p.vx || 0) * 0.035, p.y - (p.vy || 0) * 0.035);
+        ctx.stroke();
+
+        // White core spark
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 2. Draw Floating Damage Popups
+    ctx.font = 'bold 15px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    for (const d of this.floatingDamageNumbers) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, d.alpha));
+      ctx.translate(d.x, d.y);
+
+      // Pop-in scale bounce
+      const progress = 1 - (d.life / d.maxLife);
+      const scale = progress < 0.15 ? 1.0 + (progress / 0.15) * 0.35 : 1.35 - (progress - 0.15) * 0.35;
+      ctx.scale(scale, scale);
+
+      // Dark shadow stroke for high contrast readability
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 3.2;
+      ctx.strokeText(d.text, 0, 0);
+
+      // Fill color: Red for local damage taken, Gold for damage dealt, Warm Orange for others
+      if (d.isLocalTarget) {
+        ctx.fillStyle = '#ff4757';
+      } else if (d.isLocalShooter) {
+        ctx.fillStyle = '#ffcf48';
+      } else {
+        ctx.fillStyle = '#ff9f1c';
+      }
+      ctx.fillText(d.text, 0, 0);
+
+      ctx.restore();
     }
 
     ctx.restore();

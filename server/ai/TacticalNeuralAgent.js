@@ -58,7 +58,14 @@ export class TacticalNeuralAgent {
     this.vb3 = [];
 
     this.playerObservationBuffer = [];
+    this.replayBuffer = [];
+    this.lastAmbushSampleTime = 0;
     this.saveTimer = 0;
+
+    // Cumulative learning metrics
+    this.totalUpdatesCount = 0;
+    this.totalEpisodesLearned = 0;
+    this.actionDistribution = [0, 0, 0, 0, 0, 0];
 
     this.initWeights();
     this.loadWeights();
@@ -92,11 +99,13 @@ export class TacticalNeuralAgent {
     this.W3 = initMatrix(this.h2Dim, this.outputDim);
     this.b3 = initVec(this.outputDim, 0);
 
-    // Seed tactical prior biases:
-    // Strafing (0, 1) and Cover (2) get higher prior logit activations
-    this.b3[TACTICAL_ACTIONS.STRAFE_LEFT] += 0.45;
-    this.b3[TACTICAL_ACTIONS.STRAFE_RIGHT] += 0.45;
-    this.b3[TACTICAL_ACTIONS.TAKE_COVER] += 0.35;
+    // Balanced prior biases across tactical maneuvers
+    this.b3[TACTICAL_ACTIONS.STRAFE_LEFT] = 0.35;
+    this.b3[TACTICAL_ACTIONS.STRAFE_RIGHT] = 0.35;
+    this.b3[TACTICAL_ACTIONS.TAKE_COVER] = 0.30;
+    this.b3[TACTICAL_ACTIONS.FLANK_ADVANCE] = 0.25;
+    this.b3[TACTICAL_ACTIONS.KITE_RETREAT] = 0.20;
+    this.b3[TACTICAL_ACTIONS.HOLD_AMBUSH] = 0.15;
 
     this.vW1 = initZeros(this.inputDim, this.h1Dim);
     this.vb1 = initVec(this.h1Dim, 0);
@@ -107,7 +116,7 @@ export class TacticalNeuralAgent {
   }
 
   /**
-   * Loads persisted weights if available.
+   * Loads persisted weights and cumulative learning metrics if valid.
    */
   loadWeights() {
     try {
@@ -115,24 +124,37 @@ export class TacticalNeuralAgent {
         const raw = fs.readFileSync(this.weightsFile, 'utf8');
         const data = JSON.parse(raw);
         if (data.W1 && data.W2 && data.W3) {
-          this.W1 = data.W1;
-          this.b1 = data.b1;
-          this.W2 = data.W2;
-          this.b2 = data.b2;
-          this.W3 = data.W3;
-          this.b3 = data.b3;
+          // Check if weights are not degenerate (e.g. check not all 0 or heavily skewed ambush bias)
+          const isAmbushSkewed = data.b3 && data.b3[TACTICAL_ACTIONS.HOLD_AMBUSH] > 4.0;
+          const isZeroed = data.W1[0] && data.W1[0].every(w => w === 0);
+
+          if (!isAmbushSkewed && !isZeroed) {
+            this.W1 = data.W1;
+            this.b1 = data.b1;
+            this.W2 = data.W2;
+            this.b2 = data.b2;
+            this.W3 = data.W3;
+            this.b3 = data.b3;
+            if (typeof data.totalUpdatesCount === 'number') this.totalUpdatesCount = data.totalUpdatesCount;
+            if (typeof data.totalEpisodesLearned === 'number') this.totalEpisodesLearned = data.totalEpisodesLearned;
+            if (Array.isArray(data.actionDistribution)) this.actionDistribution = data.actionDistribution;
+            return;
+          }
         }
       }
     } catch (_) {
       // Fallback silently to initialized weights
     }
+    // If not loaded or degenerate, save clean initial state
+    this.saveWeights();
   }
 
   /**
-   * Persists weights to JSON storage.
+   * Persists weights and cumulative learning progress to JSON storage.
    */
   saveWeights() {
     try {
+      this.totalEpisodesLearned++;
       const data = {
         W1: this.W1,
         b1: this.b1,
@@ -140,6 +162,9 @@ export class TacticalNeuralAgent {
         b2: this.b2,
         W3: this.W3,
         b3: this.b3,
+        totalUpdatesCount: this.totalUpdatesCount,
+        totalEpisodesLearned: this.totalEpisodesLearned,
+        actionDistribution: this.actionDistribution,
         savedAt: Date.now()
       };
       fs.writeFileSync(this.weightsFile, JSON.stringify(data, null, 2), 'utf8');
@@ -407,7 +432,7 @@ export class TacticalNeuralAgent {
     const hvy = humanPlayer.vy ?? ((humanPlayer.y - (humanPlayer.lastY ?? humanPlayer.y)) / dtSec) ?? 0;
     const hSpeed = Math.hypot(hvx, hvy);
 
-    let targetAction = TACTICAL_ACTIONS.HOLD_AMBUSH;
+    let targetAction = null;
 
     if (humanPlayer.isReloading && hSpeed > 30) {
       targetAction = TACTICAL_ACTIONS.TAKE_COVER;
@@ -428,13 +453,44 @@ export class TacticalNeuralAgent {
       } else {
         targetAction = TACTICAL_ACTIONS.FLANK_ADVANCE;
       }
+    } else {
+      // Stationary: only sample HOLD_AMBUSH if actively engaged (firing or close proximity)
+      // Throttled to avoid overwhelming the model with idle stationary frames
+      const now = Date.now();
+      const isEngaged = humanPlayer.isFiring || minOppDist < 200;
+      if (isEngaged && (now - this.lastAmbushSampleTime > 1200)) {
+        targetAction = TACTICAL_ACTIONS.HOLD_AMBUSH;
+        this.lastAmbushSampleTime = now;
+      }
     }
+
+    if (targetAction === null) return;
 
     // Extract human state vector
     const x = this.extractFeatures(humanPlayer, nearestOpponent, room);
 
+    // Record into experience replay buffer
+    this.replayBuffer.push({ x, action: targetAction });
+    if (this.replayBuffer.length > 150) {
+      this.replayBuffer.shift();
+    }
+
+    // Sample from replay buffer to perform balanced gradient step
+    let sample = { x, action: targetAction };
+    if (this.replayBuffer.length > 10 && Math.random() < 0.6) {
+      const minActionCount = Math.min(...this.actionDistribution);
+      const candidates = this.replayBuffer.filter(e => this.actionDistribution[e.action] <= minActionCount + 10);
+      if (candidates.length > 0) {
+        sample = candidates[Math.floor(Math.random() * candidates.length)];
+      } else {
+        sample = this.replayBuffer[Math.floor(Math.random() * this.replayBuffer.length)];
+      }
+    }
+
     // Perform an online behavioral cloning gradient step
-    this.trainStep(x, targetAction);
+    this.trainStep(sample.x, sample.action);
+    this.actionDistribution[sample.action]++;
+    this.totalUpdatesCount++;
 
     // Periodically save updated neural weights (every 45s)
     this.saveTimer += dtSec;
