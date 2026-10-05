@@ -142,6 +142,8 @@ export class HUD {
     if (!ctx) return;
 
     ctx.save();
+    // Enforce normal opaque composite operation (avoid bleed from visibility lighter pass)
+    ctx.globalCompositeOperation = 'source-over';
 
     const maxHp = player.maxHp || PLAYER_MAX_HP || 100;
     const hp = Math.max(0, Math.min(maxHp, player.hp ?? maxHp));
@@ -164,11 +166,19 @@ export class HUD {
     // 2. Bottom-Center: Brass Steam Pressure Gauge (Dynamic Manometer with Jitter & Low Pressure Warning)
     this.renderSteamGauge(ctx, width / 2, height - 55, stamina, PLAYER_STAMINA_MAX, Boolean(player.isSprinting));
 
-    // 2.5 Bottom-Right: Steampunk Tactical Class Ability Dial
-    this.renderAbilityDial(ctx, width - 175, height - 65, player);
+    // Detect if touch controls are actively being used (skip canvas dial & cylinder to prevent overlap with DOM buttons)
+    const isTouchActive = typeof document !== 'undefined' &&
+      (document.getElementById('mobileTouchControls')?.classList.contains('touch-active') ||
+       (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) ||
+       (typeof window !== 'undefined' && 'ontouchstart' in window && window.innerWidth <= 1024));
 
-    // 3. Bottom-Right: Revolving Ammo Cylinder
-    this.renderAmmoCylinder(ctx, width - 85, height - 65, ammo, maxAmmo, isReloading);
+    if (!isTouchActive) {
+      // 2.5 Bottom-Right: Steampunk Tactical Class Ability Dial
+      this.renderAbilityDial(ctx, width - 175, height - 65, player);
+
+      // 3. Bottom-Right: Revolving Ammo Cylinder
+      this.renderAmmoCylinder(ctx, width - 85, height - 65, ammo, maxAmmo, isReloading);
+    }
 
     // 4. Top-Left: Tactical Compass & Weapon Label
     this.renderWeaponCard(ctx, 20, 20, player);
@@ -176,8 +186,13 @@ export class HUD {
     // 5. Top-Center: Game Mode & Match Scoreboard
     this.renderGameModeScoreboard(ctx, width, height, player, matchContext);
 
+    // 5.5 Spectator Banner when eliminated in permadeath mode
+    if (!player.isAlive && (!player.respawnTimer || player.respawnTimer <= 0) && !this.matchOutcome) {
+      this.renderSpectatorBanner(ctx, width, height);
+    }
+
     // 6. In-Canvas Toast Notifications
-    this.renderNotifications(ctx, width, height);
+    this.renderNotifications(ctx, width, height, player);
 
     // 7. Respawn Countdown Overlay (when local player is waiting to respawn)
     if (!player.isAlive && player.respawnTimer > 0) {
@@ -677,16 +692,54 @@ export class HUD {
   }
 
   /**
+   * Renders the Spectator Mode banner when the local player is eliminated in permadeath mode.
+   */
+  renderSpectatorBanner(ctx, width, height) {
+    ctx.save();
+    const bannerW = Math.min(460, width - 30);
+    const bannerH = 34;
+    const bx = (width - bannerW) / 2;
+    const by = 72;
+
+    // Solid dark plaque with crimson border
+    ctx.fillStyle = 'rgba(22, 12, 14, 0.95)';
+    ctx.strokeStyle = '#e71d36';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bannerW, bannerH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = `bold 12px ${sansFont}`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Left accent strip
+    ctx.fillStyle = '#ff4d4d';
+    ctx.beginPath();
+    ctx.roundRect(bx + 2, by + 3, 4, bannerH - 6, 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#ff9999';
+    ctx.fillText('☠ ВИ ВИБУЛИ З БОЮ • СПОСТЕРЕЖЕННЯ (Бій триває • Вийти: [✕ Лобі])', width / 2, by + bannerH / 2);
+
+    ctx.restore();
+  }
+
+  /**
    * Renders active in-canvas notifications at top-center.
    * @param {CanvasRenderingContext2D} ctx
    * @param {number} width
    * @param {number} height
+   * @param {Object} [player={}]
    */
-  renderNotifications(ctx, width, height) {
+  renderNotifications(ctx, width, height, player = {}) {
     if (!this.notifications || this.notifications.length === 0) return;
 
     ctx.save();
-    let currentY = 76;
+    const isSpectating = player && !player.isAlive && (!player.respawnTimer || player.respawnTimer <= 0) && !this.matchOutcome;
+    let currentY = isSpectating ? 114 : 76;
 
     for (const notif of this.notifications) {
       if (notif.alpha <= 0.01) continue;
@@ -695,22 +748,24 @@ export class HUD {
       ctx.globalAlpha = Math.min(1.0, notif.alpha);
 
       // Clean typography: Modern readable font without fuzzy shadow blur
-      const font = 'bold 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      const font = 'bold 14px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.font = font;
       const textMetrics = ctx.measureText(notif.text);
-      const toastHeight = 36;
-      const toastWidth = Math.max(280, Math.min(width - 40, textMetrics.width + 56));
+      const toastHeight = 38;
+      const toastWidth = Math.max(290, Math.min(width - 40, textMetrics.width + 56));
       const toastX = (width - toastWidth) / 2;
 
       // 1. Heavy drop shadow so it detaches cleanly from background/lights
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-      ctx.shadowBlur = 10;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 12;
       ctx.shadowOffsetY = 4;
 
       // 2. 100% Solid Opaque Steampunk Backing Plate (NO light bleed-through!)
-      ctx.fillStyle = '#0f131a';
-      ctx.strokeStyle = notif.color || '#c59b27';
-      ctx.lineWidth = 1.5;
+      const isDeath = notif.type === 'death';
+      const isKill = notif.type === 'kill';
+      ctx.fillStyle = isDeath ? '#1c0f12' : (isKill ? '#1f190e' : '#0f131a');
+      ctx.strokeStyle = notif.color || (isDeath ? '#ff4d4d' : (isKill ? '#ffcf48' : '#c59b27'));
+      ctx.lineWidth = 1.8;
       ctx.beginPath();
       ctx.roundRect(toastX, currentY, toastWidth, toastHeight, 6);
       ctx.fill();
@@ -721,7 +776,7 @@ export class HUD {
       ctx.shadowOffsetY = 0;
 
       // 3. Colored status accent strip on the left
-      const accentColor = notif.color || '#ffcf48';
+      const accentColor = notif.color || (isDeath ? '#ff4d4d' : (isKill ? '#ffcf48' : '#2ec4b6'));
       ctx.fillStyle = accentColor;
       ctx.beginPath();
       ctx.roundRect(toastX + 2, currentY + 3, 5, toastHeight - 6, 2);
@@ -736,18 +791,18 @@ export class HUD {
       ctx.arc(toastX + toastWidth - 7, currentY + toastHeight - 7, 1.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // 5. Crisp, high-contrast text with dark outline for maximum legibility
+      // 5. Crisp, high-contrast text with dark stroke for maximum legibility
       ctx.font = font;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
       // Subtle crisp dark stroke outline
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2.5;
       ctx.strokeText(notif.text, width / 2, currentY + toastHeight / 2);
 
       // Bright white crisp text fill
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = isDeath ? '#fff0f0' : (isKill ? '#fffbe8' : '#ffffff');
       ctx.fillText(notif.text, width / 2, currentY + toastHeight / 2);
 
       ctx.restore();

@@ -1171,9 +1171,14 @@ export class Room {
           bot.updateTargetStatus(target);
         }
       }
+      const victimName = target.name || (this.matchStats?.get(targetId)?.name) || 'Боєць';
+      const killerName = attacker?.name || (attackerId ? this.matchStats?.get(attackerId)?.name : null) || null;
+
       this.broadcast(PROTOCOL_MSG_TYPES.S2C_ELIMINATION_EVENT, {
         victimId: targetId,
         killerId: attackerId,
+        victimName,
+        killerName,
         respawnTimer: target.respawnTimer || 0
       });
     }

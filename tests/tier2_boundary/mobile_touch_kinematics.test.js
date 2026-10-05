@@ -47,6 +47,7 @@ export const tests = [
       assert.ok(html.includes('id="touchAbilityCooldownOverlay"'), 'index.html must include #touchAbilityCooldownOverlay');
       assert.ok(html.includes('id="btnTouchSprint"'), 'index.html must include #btnTouchSprint');
       assert.ok(html.includes('id="btnTouchFullscreen"'), 'index.html must include #btnTouchFullscreen');
+      assert.ok(html.includes('id="btnTouchExitMatch"'), 'index.html must include #btnTouchExitMatch');
 
       // Verify Landscape Orientation Prompt Modal
       assert.ok(html.includes('id="landscapeRotatePrompt"'), 'index.html must include #landscapeRotatePrompt');
@@ -239,6 +240,28 @@ export const tests = [
       assert.ok(css.includes('.game-loading-overlay'), 'steampunk.css must style .game-loading-overlay');
       assert.ok(css.includes('overflow-x: hidden !important'), 'steampunk.css must enforce zero horizontal scroll');
       assert.ok(css.includes('.mode-selector-grid'), 'steampunk.css must responsive format mode selector');
+    }
+  },
+
+  {
+    id: 'T2.16.8',
+    name: 'Mobile Combat UX: In-Game Header Suppression, Non-Overlapping Touch Cluster & Elimination Details',
+    fn: async () => {
+      const cssPath = path.join(ROOT_DIR, 'client/css/steampunk.css');
+      const css = fs.readFileSync(cssPath, 'utf8');
+
+      // 1. In-game header suppression
+      assert.ok(css.includes('body.in-game header.steampunk-header'), 'Must suppress site header when in-game');
+      assert.ok(css.includes('body.in-game #view-game .steampunk-header'), 'Must suppress combat header on small screens');
+
+      // 2. Non-overlapping cluster: .touch-util-btn-exit must exist
+      assert.ok(css.includes('.touch-util-btn-exit'), 'Must include exit button styling for mobile touch bar');
+
+      // 3. Elimination details payload in server Room.js
+      const roomJsPath = path.join(ROOT_DIR, 'server/Room.js');
+      const roomJs = fs.readFileSync(roomJsPath, 'utf8');
+      assert.ok(roomJs.includes('victimName'), 'Room.js must broadcast victimName in elimination event');
+      assert.ok(roomJs.includes('killerName'), 'Room.js must broadcast killerName in elimination event');
     }
   }
 ];

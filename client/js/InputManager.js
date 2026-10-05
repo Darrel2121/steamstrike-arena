@@ -130,6 +130,20 @@ export class InputManager {
       btnFs.addEventListener('pointerdown', handleFs);
       btnFs.addEventListener('touchstart', handleFs, { passive: false });
     }
+
+    // EXIT TO LOBBY Utility Button
+    const btnExit = document.getElementById('btnTouchExitMatch');
+    if (btnExit) {
+      const handleExit = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        if (typeof window !== 'undefined' && window.app) {
+          window.app.returnToLobbyFromMatch();
+        }
+      };
+      btnExit.addEventListener('pointerdown', handleExit);
+      btnExit.addEventListener('touchstart', handleExit, { passive: false });
+    }
   }
 
   triggerReload() {

@@ -111,9 +111,28 @@ export class LobbyUI {
     this.addTapAndClick(this.dom.btnLobbyRefreshRooms, () => this.fetchAndRenderRooms());
     this.addTapAndClick(this.dom.btnHomeRefreshRooms, () => this.fetchAndRenderRooms());
 
+    if (this.dom.homeGameModeSelect) {
+      this.dom.homeGameModeSelect.addEventListener('change', () => {
+        const mode = this.dom.homeGameModeSelect.value;
+        if (this.dom.lobbyGameModeSelect) {
+          this.dom.lobbyGameModeSelect.value = mode;
+          const isDm = mode === 'ffa_dm' || mode === 'team_dm';
+          if (this.dom.lobbyTargetKillsGroup) {
+            this.dom.lobbyTargetKillsGroup.style.display = isDm ? 'block' : 'none';
+          }
+          if (this.dom.lobbyTargetKillsInput) {
+            this.dom.lobbyTargetKillsInput.value = mode === 'team_dm' ? '15' : '10';
+          }
+        }
+      });
+    }
+
     if (this.dom.lobbyGameModeSelect) {
       this.dom.lobbyGameModeSelect.addEventListener('change', () => {
         const mode = this.dom.lobbyGameModeSelect.value;
+        if (this.dom.homeGameModeSelect) {
+          this.dom.homeGameModeSelect.value = mode;
+        }
         const isDm = mode === 'ffa_dm' || mode === 'team_dm';
         if (this.dom.lobbyTargetKillsGroup) {
           this.dom.lobbyTargetKillsGroup.style.display = isDm ? 'block' : 'none';
@@ -620,7 +639,10 @@ export class LobbyUI {
 
     const selectedMap = this.getSelectedMap();
 
-    const gameMode = this.dom.lobbyGameModeSelect?.value || homeModeSelect?.value || 'solo_elim';
+    const isHomeContext = (typeof window !== 'undefined' && window.app && window.app.currentView === 'home');
+    const gameMode = isHomeContext
+      ? (homeModeSelect?.value || this.dom.lobbyGameModeSelect?.value || 'solo_elim')
+      : (this.dom.lobbyGameModeSelect?.value || homeModeSelect?.value || 'solo_elim');
     if (this.dom.lobbyGameModeSelect) this.dom.lobbyGameModeSelect.value = gameMode;
     if (homeModeSelect) homeModeSelect.value = gameMode;
 

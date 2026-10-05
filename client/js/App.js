@@ -409,6 +409,10 @@ export class App {
         if (this.lobbyUI?.dom?.lobbyMapSelect && this.homeMapSelect) {
           this.lobbyUI.dom.lobbyMapSelect.value = this.homeMapSelect.value;
         }
+        const selectedMode = document.getElementById('homeGameModeSelect')?.value || 'solo_elim';
+        if (this.lobbyUI?.dom?.lobbyGameModeSelect) {
+          this.lobbyUI.dom.lobbyGameModeSelect.value = selectedMode;
+        }
 
         if (this.heroMode === 'solo') {
           this.requestLandscapeOrientation();
@@ -498,6 +502,13 @@ export class App {
     }
     if (this.btnReturnToLobby) {
       addTap(this.btnReturnToLobby, () => {
+        this.returnToLobbyFromMatch();
+      });
+    }
+
+    const btnTouchExitMatch = document.getElementById('btnTouchExitMatch');
+    if (btnTouchExitMatch) {
+      addTap(btnTouchExitMatch, () => {
         this.returnToLobbyFromMatch();
       });
     }
@@ -742,6 +753,10 @@ export class App {
       this.stopGameLoop({ keepOverlayHidden: true });
     }
     this.currentView = viewName;
+
+    if (typeof document !== 'undefined' && document.body) {
+      document.body.classList.toggle('in-game', viewName === 'game');
+    }
 
     Object.keys(this.views).forEach(key => {
       if (this.views[key]) {
@@ -1154,7 +1169,7 @@ export class App {
 
   handleElimination(payload) {
     if (!payload) return;
-    const { victimId, killerId } = payload;
+    const { victimId, killerId, victimName, killerName, respawnTimer } = payload;
     const isVictimLocal = victimId === this.localPlayerId;
     const isKillerLocal = killerId === this.localPlayerId;
 
@@ -1163,12 +1178,19 @@ export class App {
       this.gameRenderer.registerWreckById(victimId, state?.players || []);
     }
 
+    const vName = victimName || (isVictimLocal ? 'Вас' : 'Бійця');
+    const kName = killerName || (isKillerLocal ? 'Ви' : 'Супротивник');
+
     if (isVictimLocal) {
-      this.gameRenderer?.addNotification('☠ Ваш паровий корпус розбито!', { type: 'death', color: '#e71d36', duration: 4.0 });
+      const isRespawn = typeof respawnTimer === 'number' && respawnTimer > 0;
+      const text = isRespawn
+        ? `☠ Вас ліквідував ${kName}! Відродження через 3с...`
+        : `☠ Вас ліквідував ${kName}! (Ви вибули з бою)`;
+      this.gameRenderer?.addNotification(text, { type: 'death', color: '#ff4d4d', duration: 4.5 });
     } else if (isKillerLocal) {
-      this.gameRenderer?.addNotification('⚡ Супротивника ліквідовано! (+XP, +Scrap)', { type: 'kill', color: '#ffcf48', duration: 3.5 });
+      this.gameRenderer?.addNotification(`⚡ Ви ліквідували ${vName}! (+XP, +Scrap)`, { type: 'kill', color: '#ffcf48', duration: 3.5 });
     } else {
-      this.gameRenderer?.addNotification('⚙ Супротивника знищено на арені', { type: 'info', color: '#9d9685', duration: 2.5 });
+      this.gameRenderer?.addNotification(`☠ ${kName} ліквідував ${vName}`, { type: 'info', color: '#cbd5e1', duration: 3.0 });
     }
   }
 

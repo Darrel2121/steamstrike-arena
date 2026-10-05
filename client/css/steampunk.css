@@ -401,9 +401,21 @@ body {
 }
 
 /* Game View Screen */
+body.in-game header.steampunk-header {
+  display: none !important;
+}
+
+@media (max-width: 900px), (max-height: 520px) {
+  body.in-game #view-game .steampunk-header {
+    display: none !important;
+  }
+}
+
 #view-game {
   flex-direction: column;
   background: #000;
+  height: 100vh;
+  width: 100vw;
 }
 
 .game-canvas-container {
@@ -1135,10 +1147,11 @@ kbd {
 
 /* Primary FIRE BUTTON - Large, glowing crimson trigger */
 .touch-btn-fire {
-  right: 6px;
-  bottom: 6px;
-  width: 82px;
-  height: 82px;
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 80px;
+  height: 80px;
   border: 3px solid #ff4d4d;
   background: radial-gradient(circle, #9a2215 0%, #540e06 70%, #200502 100%);
   box-shadow: 0 0 20px rgba(255, 77, 77, 0.6), inset 0 0 14px rgba(255, 200, 77, 0.4);
@@ -1165,6 +1178,7 @@ kbd {
 
 /* Reload Button with Ammo Count */
 .touch-btn-reload {
+  position: absolute;
   right: 106px;
   bottom: 10px;
   width: 58px;
@@ -1186,13 +1200,13 @@ kbd {
 
 /* Ability Button [E] */
 .touch-btn-ability {
-  right: 96px;
-  bottom: 86px;
+  position: absolute;
+  right: 98px;
+  bottom: 96px;
   width: 58px;
   height: 58px;
   border-color: #2ec4b6;
   background: radial-gradient(circle, rgba(46, 196, 182, 0.25) 0%, #152226 100%);
-  position: relative;
   overflow: hidden;
 }
 .touch-btn-ability.ability-active {
@@ -1221,10 +1235,11 @@ kbd {
 
 /* Sprint Button (Shift) */
 .touch-btn-sprint {
-  right: 12px;
-  bottom: 108px;
-  width: 54px;
-  height: 54px;
+  position: absolute;
+  right: 10px;
+  bottom: 106px;
+  width: 56px;
+  height: 56px;
 }
 .touch-btn-sprint.active {
   background: radial-gradient(circle, #703816 0%, #30180a 100%);
@@ -1249,20 +1264,25 @@ kbd {
   position: absolute;
   top: 14px;
   right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   pointer-events: auto;
   z-index: 55;
 }
 .touch-util-btn {
-  width: 44px;
+  min-width: 44px;
   height: 44px;
+  padding: 0 10px;
   border-radius: 8px;
   background: rgba(22, 26, 34, 0.88);
   border: 1.5px solid #846313;
   color: #ffcf48;
-  font-size: 18px;
+  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
@@ -1271,6 +1291,17 @@ kbd {
 .touch-util-btn:active {
   transform: scale(0.92);
   border-color: #ffcf48;
+}
+.touch-util-btn-exit {
+  background: rgba(40, 16, 16, 0.90);
+  border-color: #9a2215;
+  color: #ffcf48;
+  font-size: 13px;
+  font-weight: bold;
+}
+.touch-util-btn-exit:active {
+  background: rgba(70, 20, 20, 0.95);
+  border-color: #ff4d4d;
 }
 
 /* Non-Blocking Landscape Notification Banner */
