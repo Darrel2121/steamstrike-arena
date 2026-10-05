@@ -10,6 +10,7 @@
 
 import { TacticalNeuralAgent, TACTICAL_ACTIONS } from '../../server/ai/TacticalNeuralAgent.js';
 import { Room } from '../../server/Room.js';
+import { Player } from '../../server/entities/Player.js';
 import { HUD } from '../../client/js/ui/HUD.js';
 import { SoundFX } from '../../client/js/audio/SoundFX.js';
 import { GAME_MODES } from '../../shared/Constants.js';
@@ -245,6 +246,87 @@ export async function run() {
     const farRight = sfx.getSpatialGainAndPan(800, 300, 700);
     if (farRight.gain >= 1.0 || farRight.pan <= 0) {
       throw new Error(`Right spatial audio incorrect: gain=${farRight.gain}, pan=${farRight.pan}`);
+    }
+  });
+
+  // 7. Lantern 1.0-Second Extinguish Limit & Auto-Relight Mechanics
+  test('[FX.7] Lantern: Allows toggling lantern off for max 1.0s and auto-relights with 4.0s cooldown', () => {
+    const player = new Player({ id: 'stealth_operative', lanternOn: true });
+
+    if (!player.lanternOn) {
+      throw new Error('Player lantern should be on by default');
+    }
+
+    // Toggle off
+    const resOff = player.toggleLantern();
+    if (!resOff.ok || player.lanternOn !== false || player.lanternOffTimer !== 1.0) {
+      throw new Error(`Failed to toggle lantern off: ${JSON.stringify(resOff)}`);
+    }
+
+    // Advance 0.6 seconds - still off
+    player.update(0.6);
+    if (player.lanternOn !== false) {
+      throw new Error('Lantern should remain extinguished after 0.6s');
+    }
+    if (Math.abs(player.lanternOffTimer - 0.4) > 0.01) {
+      throw new Error(`Lantern off timer should be ~0.4s, got ${player.lanternOffTimer}`);
+    }
+
+    // Advance another 0.5 seconds (total 1.1s > 1.0s limit) -> auto-relights!
+    player.update(0.5);
+    if (player.lanternOn !== true) {
+      throw new Error('Lantern must automatically relight when 1.0s timer expires');
+    }
+    if (player.lanternCooldownTimer <= 0) {
+      throw new Error('Lantern must enter cooldown after auto-relight');
+    }
+
+    // Attempt to toggle off while on cooldown -> must be rejected!
+    const resBlocked = player.toggleLantern();
+    if (resBlocked.ok || resBlocked.reason !== 'cooldown') {
+      throw new Error(`Extinguish during cooldown must be rejected, got: ${JSON.stringify(resBlocked)}`);
+    }
+
+    // Advance 4.0 seconds -> cooldown clears
+    player.update(4.0);
+    if (player.lanternCooldownTimer > 0) {
+      throw new Error('Cooldown timer should be 0 after 4.0s');
+    }
+
+    // Now can toggle off again
+    const resOff2 = player.toggleLantern();
+    if (!resOff2.ok || player.lanternOn !== false) {
+      throw new Error('Should allow turning lantern off after cooldown expires');
+    }
+  });
+
+  // 8. Room input processing for lantern toggle
+  test('[FX.8] Room: Processes input.toggleLantern and rejects toggling while on cooldown', () => {
+    const room = new Room({ id: 'test_chamber_lantern' });
+    const p1 = room.addPlayer({ id: 'p_scout', name: 'Scout' });
+
+    if (!p1.lanternOn) throw new Error('Player lantern must start enabled');
+
+    // Send toggleLantern input
+    room.handlePlayerInput('p_scout', { toggleLantern: true });
+    if (p1.lanternOn !== false) {
+      throw new Error('Room failed to toggle lantern off upon input');
+    }
+
+    // Tick simulation for 1.2s (36 ticks at 30Hz) -> auto-relights
+    for (let i = 0; i < 36; i++) {
+      room.tick();
+    }
+    if (p1.lanternOn !== true) {
+      throw new Error('Room simulation must auto-relight player lantern after 1.0s');
+    }
+  });
+
+  // 9. SoundFX lantern audio buffer definitions
+  test('[FX.9] SoundFX: Provides distinct DSP audio for lantern extinguish and ignite', () => {
+    const sfx = new SoundFX();
+    if (typeof sfx.playLanternExtinguish !== 'function' || typeof sfx.playLanternIgnite !== 'function') {
+      throw new Error('SoundFX must export playLanternExtinguish and playLanternIgnite');
     }
   });
 

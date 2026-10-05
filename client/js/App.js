@@ -1178,6 +1178,25 @@ export class App {
           if (input.ability && !localPlayerPredicted.abilityActive && (localPlayerPredicted.abilityCooldown || 0) <= 0) {
             soundFX.playAbility(localPlayerPredicted.classId || 'vanguard');
           }
+
+          // Steam Lantern audio cues on state transition or input trigger
+          const currentLanternOn = localPlayerPredicted.lanternOn !== false;
+          if (this.lastLocalLanternOn !== undefined && this.lastLocalLanternOn !== currentLanternOn) {
+            if (!currentLanternOn) {
+              soundFX.playLanternExtinguish();
+            } else {
+              soundFX.playLanternIgnite();
+            }
+          }
+          this.lastLocalLanternOn = currentLanternOn;
+
+          if (input.toggleLantern) {
+            if (currentLanternOn && (localPlayerPredicted.lanternCooldownTimer || 0) <= 0) {
+              soundFX.playLanternExtinguish();
+            } else if (!currentLanternOn) {
+              soundFX.playLanternIgnite();
+            }
+          }
         }
         this.lastInputWasFiring = Boolean(input.firing);
 

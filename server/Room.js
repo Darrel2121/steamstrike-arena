@@ -265,7 +265,14 @@ export class Room {
    * @param {Object} [socket]
    * @returns {Player} Created player entity
    */
-  addPlayer(id, name, socket = null, profile = null) {
+  addPlayer(idOrOptions, name, socket = null, profile = null) {
+    let id = idOrOptions;
+    if (typeof idOrOptions === 'object' && idOrOptions !== null) {
+      id = idOrOptions.id;
+      name = idOrOptions.name || name;
+      socket = idOrOptions.socket || socket;
+      profile = idOrOptions.profile || profile;
+    }
     const slotIndex = this.players.size;
     const spawn = this.getSpawnPosition('player', slotIndex);
     const existingPlayer = this.players.get(id);
@@ -805,6 +812,13 @@ export class Room {
             createdAt: Date.now()
           });
         }
+      }
+    }
+
+    if (input.toggleLantern || input.lantern !== undefined) {
+      if (typeof player.toggleLantern === 'function') {
+        const forceState = typeof input.lantern === 'boolean' ? input.lantern : null;
+        player.toggleLantern(forceState);
       }
     }
 

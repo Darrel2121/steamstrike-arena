@@ -61,6 +61,10 @@ export class Player {
     this.stamina = options.stamina ?? this.maxStamina;
     this.isSprinting = options.isSprinting ?? false;
     this.lanternOn = options.lanternOn !== false;
+    this.lanternOffDuration = options.lanternOffDuration ?? 1.0;
+    this.lanternCooldown = options.lanternCooldown ?? 4.0;
+    this.lanternOffTimer = options.lanternOffTimer ?? 0;
+    this.lanternCooldownTimer = options.lanternCooldownTimer ?? 0;
 
     // Team & Competitive Stats
     this.team = options.team || null; // 'team1' | 'team2' | null
@@ -145,6 +149,43 @@ export class Player {
       duration: this.ability.duration,
       cooldown: this.ability.cooldown
     };
+  }
+
+  /**
+   * Toggles the steam lantern off for stealth / evasion (max 1.0s) or forces state.
+   * Auto-relights after 1.0s and enters a 4.0s cooldown.
+   * @param {boolean|null} [forceState=null]
+   * @returns {{ ok: boolean, lanternOn?: boolean, duration?: number, cooldown?: number, reason?: string }}
+   */
+  toggleLantern(forceState = null) {
+    if (!this.isAlive) {
+      return { ok: false, reason: 'dead' };
+    }
+
+    const targetOff = forceState === false || (forceState === null && this.lanternOn);
+
+    if (targetOff) {
+      if (!this.lanternOn) {
+        return { ok: false, reason: 'already_off' };
+      }
+      if (this.lanternCooldownTimer > 0) {
+        return { ok: false, reason: 'cooldown', cooldown: this.lanternCooldownTimer };
+      }
+
+      this.lanternOn = false;
+      this.lanternOffTimer = this.lanternOffDuration; // 1.0s
+      return { ok: true, lanternOn: false, duration: this.lanternOffDuration };
+    } else {
+      if (this.lanternOn) {
+        return { ok: false, reason: 'already_on' };
+      }
+
+      // Early manual relight
+      this.lanternOn = true;
+      this.lanternOffTimer = 0;
+      this.lanternCooldownTimer = this.lanternCooldown; // 4.0s
+      return { ok: true, lanternOn: true, cooldown: this.lanternCooldown };
+    }
   }
 
   /**
@@ -340,6 +381,19 @@ export class Player {
         this.shieldHp = 0;
       }
     }
+
+    // 5. Steam Lantern Extinguish Timer (Auto-Relight after 1.0s) & Cooldown
+    if (!this.lanternOn) {
+      this.lanternOffTimer -= dt;
+      if (this.lanternOffTimer <= 0) {
+        this.lanternOn = true;
+        this.lanternOffTimer = 0;
+        this.lanternCooldownTimer = this.lanternCooldown;
+      }
+    }
+    if (this.lanternCooldownTimer > 0) {
+      this.lanternCooldownTimer = Math.max(0, this.lanternCooldownTimer - dt);
+    }
   }
 
   /**
@@ -367,6 +421,9 @@ export class Player {
     this.overdriveActive = false;
     this.sonarActive = false;
     this.smokeActive = false;
+    this.lanternOn = true;
+    this.lanternOffTimer = 0;
+    this.lanternCooldownTimer = 0;
   }
 
   /**
@@ -397,6 +454,8 @@ export class Player {
       isHost: this.isHost,
       isBot: Boolean(this.isBot),
       lanternOn: this.lanternOn !== false,
+      lanternOffTimer: Math.max(0, Number((this.lanternOffTimer || 0).toFixed(2))),
+      lanternCooldownTimer: Math.max(0, Number((this.lanternCooldownTimer || 0).toFixed(1))),
       lastProcessedSeq: this.lastProcessedSeq || 0,
       emblem: this.emblem || 'gear',
       classId: this.classId || 'vanguard',

@@ -160,54 +160,56 @@ export class VisibilityRenderer {
       fCtx.closePath();
       fCtx.clip();
 
-      // Pass 1: Broad soft penumbra (feathered outer halo to soften cone edges)
-      const penumbraFovHalf = fovHalf * 1.22;
-      const penumbraGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
-      penumbraGrad.addColorStop(0, 'rgba(255, 235, 180, 0.28)');
-      penumbraGrad.addColorStop(0.30, 'rgba(255, 210, 80, 0.18)');
-      penumbraGrad.addColorStop(0.60, 'rgba(200, 130, 50, 0.08)');
-      penumbraGrad.addColorStop(0.85, 'rgba(140, 70, 20, 0.02)');
-      penumbraGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-      fCtx.fillStyle = penumbraGrad;
-      fCtx.beginPath();
-      fCtx.moveTo(px, py);
-      fCtx.arc(px, py, range * 0.98, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
-      fCtx.closePath();
-      fCtx.fill();
+      if (player.lanternOn !== false) {
+        // Pass 1: Broad soft penumbra (feathered outer halo to soften cone edges)
+        const penumbraFovHalf = fovHalf * 1.22;
+        const penumbraGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
+        penumbraGrad.addColorStop(0, 'rgba(255, 235, 180, 0.28)');
+        penumbraGrad.addColorStop(0.30, 'rgba(255, 210, 80, 0.18)');
+        penumbraGrad.addColorStop(0.60, 'rgba(200, 130, 50, 0.08)');
+        penumbraGrad.addColorStop(0.85, 'rgba(140, 70, 20, 0.02)');
+        penumbraGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+        fCtx.fillStyle = penumbraGrad;
+        fCtx.beginPath();
+        fCtx.moveTo(px, py);
+        fCtx.arc(px, py, range * 0.98, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
+        fCtx.closePath();
+        fCtx.fill();
 
-      // Pass 2: Mid warm diffusion with very smooth natural falloff
-      const midGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
-      midGrad.addColorStop(0, 'rgba(255, 240, 190, 0.52)');
-      midGrad.addColorStop(0.25, 'rgba(255, 215, 90, 0.40)');
-      midGrad.addColorStop(0.50, 'rgba(220, 155, 60, 0.24)');
-      midGrad.addColorStop(0.75, 'rgba(180, 105, 35, 0.10)');
-      midGrad.addColorStop(0.90, 'rgba(140, 70, 20, 0.02)');
-      midGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-      fCtx.fillStyle = midGrad;
-      fCtx.beginPath();
-      fCtx.moveTo(px, py);
-      fCtx.arc(px, py, range, aimAngle - fovHalf, aimAngle + fovHalf);
-      fCtx.closePath();
-      fCtx.fill();
+        // Pass 2: Mid warm diffusion with very smooth natural falloff
+        const midGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
+        midGrad.addColorStop(0, 'rgba(255, 240, 190, 0.52)');
+        midGrad.addColorStop(0.25, 'rgba(255, 215, 90, 0.40)');
+        midGrad.addColorStop(0.50, 'rgba(220, 155, 60, 0.24)');
+        midGrad.addColorStop(0.75, 'rgba(180, 105, 35, 0.10)');
+        midGrad.addColorStop(0.90, 'rgba(140, 70, 20, 0.02)');
+        midGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+        fCtx.fillStyle = midGrad;
+        fCtx.beginPath();
+        fCtx.moveTo(px, py);
+        fCtx.arc(px, py, range, aimAngle - fovHalf, aimAngle + fovHalf);
+        fCtx.closePath();
+        fCtx.fill();
 
-      // Pass 3: Concentrated core beam (warm alchemical lantern filament)
-      const coreFovHalf = fovHalf * 0.72;
-      const coreGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
-      coreGrad.addColorStop(0, 'rgba(255, 250, 220, 0.65)');
-      coreGrad.addColorStop(0.25, 'rgba(255, 225, 120, 0.48)');
-      coreGrad.addColorStop(0.50, 'rgba(230, 170, 70, 0.26)');
-      coreGrad.addColorStop(0.75, 'rgba(190, 115, 40, 0.08)');
-      coreGrad.addColorStop(0.90, 'rgba(140, 65, 20, 0.01)');
-      coreGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-      fCtx.fillStyle = coreGrad;
-      fCtx.beginPath();
-      fCtx.moveTo(px, py);
-      fCtx.arc(px, py, range * 0.94, aimAngle - coreFovHalf, aimAngle + coreFovHalf);
-      fCtx.closePath();
-      fCtx.fill();
+        // Pass 3: Concentrated core beam (warm alchemical lantern filament)
+        const coreFovHalf = fovHalf * 0.72;
+        const coreGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
+        coreGrad.addColorStop(0, 'rgba(255, 250, 220, 0.65)');
+        coreGrad.addColorStop(0.25, 'rgba(255, 225, 120, 0.48)');
+        coreGrad.addColorStop(0.50, 'rgba(230, 170, 70, 0.26)');
+        coreGrad.addColorStop(0.75, 'rgba(190, 115, 40, 0.08)');
+        coreGrad.addColorStop(0.90, 'rgba(140, 65, 20, 0.01)');
+        coreGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+        fCtx.fillStyle = coreGrad;
+        fCtx.beginPath();
+        fCtx.moveTo(px, py);
+        fCtx.arc(px, py, range * 0.94, aimAngle - coreFovHalf, aimAngle + coreFovHalf);
+        fCtx.closePath();
+        fCtx.fill();
+      }
 
-      // Proximity awareness circle: soft ambient glow around the combatant
-      const proxRadius = this.proximityRadius * 1.15;
+      // Proximity awareness circle: soft ambient glow around the combatant (dimmer when lantern is extinguished)
+      const proxRadius = (player.lanternOn !== false) ? (this.proximityRadius * 1.15) : (this.proximityRadius * 0.70);
       const proxGrad = fCtx.createRadialGradient(px, py, 0, px, py, proxRadius);
       proxGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
       proxGrad.addColorStop(0.25, 'rgba(255, 248, 220, 0.88)');
@@ -373,36 +375,38 @@ export class VisibilityRenderer {
       mainCtx.closePath();
       mainCtx.clip();
 
-      // Broad soft volumetric steam mist glow
-      const mistFovHalf = fovHalf * 1.18;
-      const mistGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
-      mistGrad.addColorStop(0, 'rgba(255, 205, 80, 0.10)');
-      mistGrad.addColorStop(0.35, 'rgba(215, 135, 45, 0.05)');
-      mistGrad.addColorStop(0.70, 'rgba(160, 85, 20, 0.012)');
-      mistGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-      mainCtx.fillStyle = mistGrad;
-      mainCtx.beginPath();
-      mainCtx.moveTo(px, py);
-      mainCtx.arc(px, py, range * 0.98, aimAngle - mistFovHalf, aimAngle + mistFovHalf);
-      mainCtx.closePath();
-      mainCtx.fill();
+      if (player.lanternOn !== false) {
+        // Broad soft volumetric steam mist glow
+        const mistFovHalf = fovHalf * 1.18;
+        const mistGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
+        mistGrad.addColorStop(0, 'rgba(255, 205, 80, 0.10)');
+        mistGrad.addColorStop(0.35, 'rgba(215, 135, 45, 0.05)');
+        mistGrad.addColorStop(0.70, 'rgba(160, 85, 20, 0.012)');
+        mistGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+        mainCtx.fillStyle = mistGrad;
+        mainCtx.beginPath();
+        mainCtx.moveTo(px, py);
+        mainCtx.arc(px, py, range * 0.98, aimAngle - mistFovHalf, aimAngle + mistFovHalf);
+        mainCtx.closePath();
+        mainCtx.fill();
 
-      // Core focused warm steam cone with smooth natural falloff
-      const glowGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
-      glowGrad.addColorStop(0, 'rgba(255, 220, 110, 0.18)');
-      glowGrad.addColorStop(0.28, 'rgba(240, 165, 55, 0.10)');
-      glowGrad.addColorStop(0.60, 'rgba(195, 105, 30, 0.035)');
-      glowGrad.addColorStop(0.85, 'rgba(130, 55, 15, 0.006)');
-      glowGrad.addColorStop(1.0, 'rgba(80, 30, 10, 0.0)');
-      mainCtx.fillStyle = glowGrad;
-      mainCtx.beginPath();
-      mainCtx.moveTo(px, py);
-      mainCtx.arc(px, py, range * 0.94, aimAngle - fovHalf * 0.85, aimAngle + fovHalf * 0.85);
-      mainCtx.closePath();
-      mainCtx.fill();
+        // Core focused warm steam cone with smooth natural falloff
+        const glowGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
+        glowGrad.addColorStop(0, 'rgba(255, 220, 110, 0.18)');
+        glowGrad.addColorStop(0.28, 'rgba(240, 165, 55, 0.10)');
+        glowGrad.addColorStop(0.60, 'rgba(195, 105, 30, 0.035)');
+        glowGrad.addColorStop(0.85, 'rgba(130, 55, 15, 0.006)');
+        glowGrad.addColorStop(1.0, 'rgba(80, 30, 10, 0.0)');
+        mainCtx.fillStyle = glowGrad;
+        mainCtx.beginPath();
+        mainCtx.moveTo(px, py);
+        mainCtx.arc(px, py, range * 0.94, aimAngle - fovHalf * 0.85, aimAngle + fovHalf * 0.85);
+        mainCtx.closePath();
+        mainCtx.fill();
+      }
 
       // Soft core lantern housing bloom
-      const bloomRadius = this.proximityRadius * 0.9;
+      const bloomRadius = (player.lanternOn !== false) ? (this.proximityRadius * 0.9) : (this.proximityRadius * 0.45);
       const coreGrad = mainCtx.createRadialGradient(px, py, 0, px, py, bloomRadius);
       coreGrad.addColorStop(0, 'rgba(255, 245, 185, 0.22)');
       coreGrad.addColorStop(0.35, 'rgba(255, 200, 75, 0.09)');

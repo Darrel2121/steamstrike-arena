@@ -246,6 +246,23 @@ export class SoundFX {
       }
       return Math.tanh(s * 1.4) * 0.75;
     }));
+
+    // 14. Lantern Extinguish (Damper Snap & Steam Cutoff Hiss)
+    this.audioBuffers.set('lantern_extinguish', this.createAudioBuffer(0.35, (t, w, p, br) => {
+      const snap = Math.exp(-t * 90) * w * 0.75;
+      const metalClick = Math.sin(2 * Math.PI * 1800 * t) * Math.exp(-t * 60) * 0.35;
+      const hiss = Math.exp(-t * 14) * p * 0.6;
+      return Math.tanh((snap + metalClick + hiss) * 1.5) * 0.80;
+    }));
+
+    // 15. Lantern Ignite (Flint Strike & Gas Flare Whoosh)
+    this.audioBuffers.set('lantern_ignite', this.createAudioBuffer(0.48, (t, w, p, br) => {
+      const flintSpark = Math.exp(-t * 120) * w * 0.85;
+      const flintPing = Math.sin(2 * Math.PI * 2400 * t) * Math.exp(-t * 80) * 0.40;
+      const flareWhoosh = t > 0.04 ? Math.exp(-(t - 0.04) * 10) * p * 0.75 : 0;
+      const warmHum = t > 0.04 ? Math.sin(2 * Math.PI * 180 * (t - 0.04)) * Math.exp(-(t - 0.04) * 6) * 0.3 : 0;
+      return Math.tanh((flintSpark + flintPing + flareWhoosh + warmHum) * 1.5) * 0.85;
+    }));
   }
 
   /**
@@ -376,6 +393,20 @@ export class SoundFX {
    */
   playAbility(classId = 'vanguard', worldX = null, worldY = null) {
     this.playBuffer('ability', worldX, worldY, 0.85, 0.03);
+  }
+
+  /**
+   * Tactical Steampunk Lantern Damper Extinguish Hiss.
+   */
+  playLanternExtinguish(worldX = null, worldY = null) {
+    this.playBuffer('lantern_extinguish', worldX, worldY, 0.85, 0.04);
+  }
+
+  /**
+   * Tactical Steampunk Lantern Flint Ignite Flare Whoosh.
+   */
+  playLanternIgnite(worldX = null, worldY = null) {
+    this.playBuffer('lantern_ignite', worldX, worldY, 0.90, 0.03);
   }
 
   /**

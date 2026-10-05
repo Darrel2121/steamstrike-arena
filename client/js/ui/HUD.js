@@ -952,6 +952,27 @@ export class HUD {
     strokeIfSupported(ctx, wName, x + 6, y + 28);
     ctx.fillText(wName, x + 6, y + 28);
 
+    // Steam Lantern tactical status
+    const isLanternOn = player.lanternOn !== false;
+    const offTimer = player.lanternOffTimer || 0;
+    const cdTimer = player.lanternCooldownTimer || 0;
+
+    let lanternText = '🏮 Ліхтар [F]: Світить';
+    let lanternColor = '#cbd5e1';
+
+    if (!isLanternOn) {
+      lanternText = `⚠️ Ліхтар [F]: Згаслий (${offTimer > 0 ? offTimer.toFixed(1) : '1.0'}s)`;
+      lanternColor = '#ff5a5f';
+    } else if (cdTimer > 0) {
+      lanternText = `⏳ Ліхтар [F]: Охолодження (${cdTimer.toFixed(1)}s)`;
+      lanternColor = '#f59e0b';
+    }
+
+    ctx.fillStyle = lanternColor;
+    ctx.font = 'bold 10px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    strokeIfSupported(ctx, lanternText, x + 6, y + 42);
+    ctx.fillText(lanternText, x + 6, y + 42);
+
     ctx.restore();
   }
 
@@ -1657,6 +1678,32 @@ export class HUD {
     const sprintBtn = document.getElementById('btnTouchSprint');
     if (sprintBtn && player.isSprinting !== undefined) {
       sprintBtn.classList.toggle('active', Boolean(player.isSprinting));
+    }
+
+    // Update Lantern Button visual state & cooldown overlay
+    const lanternBtn = document.getElementById('btnTouchLantern');
+    const lanternCdEl = document.getElementById('touchLanternCooldownOverlay');
+    if (lanternBtn) {
+      const isLanternOn = player.lanternOn !== false;
+      const offTimer = player.lanternOffTimer || 0;
+      const cdTimer = player.lanternCooldownTimer || 0;
+
+      lanternBtn.classList.toggle('lantern-extinguished', !isLanternOn);
+      lanternBtn.classList.toggle('lantern-cooldown', cdTimer > 0);
+
+      if (lanternCdEl) {
+        if (!isLanternOn && offTimer > 0) {
+          lanternCdEl.style.display = 'flex';
+          lanternCdEl.textContent = `${offTimer.toFixed(1)}s`;
+          lanternCdEl.style.color = '#ff5a5f';
+        } else if (cdTimer > 0) {
+          lanternCdEl.style.display = 'flex';
+          lanternCdEl.textContent = `${Math.ceil(cdTimer)}s`;
+          lanternCdEl.style.color = '#ff9f1c';
+        } else {
+          lanternCdEl.style.display = 'none';
+        }
+      }
     }
   }
 }

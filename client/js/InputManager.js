@@ -17,6 +17,7 @@ export class InputManager {
     this.isSpaceDown = false;
     this.reloadRequested = false;
     this.abilityRequested = false;
+    this.lanternRequested = false;
     this.lastPollTime = performance.now();
 
     // Mobile touch controls & dual thumbsticks
@@ -140,6 +141,24 @@ export class InputManager {
       btnAbility.addEventListener('touchstart', handleAbility, { passive: false });
     }
 
+    // LANTERN Button [F]
+    const btnLantern = document.getElementById('btnTouchLantern');
+    if (btnLantern) {
+      let lastLanternTime = 0;
+      const handleLantern = (e) => {
+        if (e.cancelable) e.preventDefault();
+        if (e.stopPropagation) e.stopPropagation();
+        const now = Date.now();
+        if (now - lastLanternTime < 250) return;
+        lastLanternTime = now;
+        this.triggerLanternToggle();
+        btnLantern.classList.add('active');
+        setTimeout(() => btnLantern.classList.remove('active'), 250);
+      };
+      btnLantern.addEventListener('pointerdown', handleLantern);
+      btnLantern.addEventListener('touchstart', handleLantern, { passive: false });
+    }
+
     // FULLSCREEN / LANDSCAPE Utility Button
     const btnFs = document.getElementById('btnTouchFullscreen');
     if (btnFs) {
@@ -184,6 +203,10 @@ export class InputManager {
 
   triggerAbility() {
     this.abilityRequested = true;
+  }
+
+  triggerLanternToggle() {
+    this.lanternRequested = true;
   }
 
   setSprint(active) {
@@ -252,6 +275,9 @@ export class InputManager {
     }
     if (e.code === 'KeyE' || keyLower === 'e' || keyLower === 'у') {
       this.abilityRequested = true;
+    }
+    if (e.code === 'KeyF' || keyLower === 'f' || keyLower === 'а') {
+      this.triggerLanternToggle();
     }
     if (e.code === 'Space') {
       this.isSpaceDown = true;
@@ -500,6 +526,8 @@ export class InputManager {
     this.reloadRequested = false;
     const ability = this.abilityRequested;
     this.abilityRequested = false;
+    const toggleLantern = this.lanternRequested;
+    this.lanternRequested = false;
 
     // Calculate aim angle
     let aimAngle;
@@ -528,6 +556,7 @@ export class InputManager {
       firing,
       reload,
       ability,
+      toggleLantern,
       dt
     };
   }

@@ -1604,6 +1604,27 @@ kbd {
   box-shadow: 0 0 14px rgba(255, 207, 72, 0.8);
 }
 
+/* Lantern Button (F) */
+.touch-btn-lantern {
+  position: absolute;
+  right: 76px;
+  bottom: 168px;
+  width: 52px;
+  height: 52px;
+  border-color: #ffaa2b;
+  background: radial-gradient(circle, rgba(255, 170, 43, 0.28) 0%, #22180e 100%);
+  overflow: hidden;
+}
+.touch-btn-lantern.lantern-extinguished {
+  border-color: #ff5a5f;
+  background: radial-gradient(circle, rgba(255, 90, 95, 0.35) 0%, #1c1012 100%);
+  box-shadow: 0 0 14px rgba(255, 90, 95, 0.7);
+}
+.touch-btn-lantern.lantern-cooldown {
+  opacity: 0.65;
+  filter: grayscale(30%);
+}
+
 .touch-btn .btn-icon {
   font-size: 18px;
   line-height: 1;
