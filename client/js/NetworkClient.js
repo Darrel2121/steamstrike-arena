@@ -632,9 +632,9 @@ export class NetworkClient {
         roomId: roomIdOrOptions || 'default',
         playerName: playerName || 'HostEngineer',
         mapName: mapName || map?.name || 'The Clockwork Foundry',
-        maxPlayers: maxPlayers || 4,
-        map: map || null,
-        autoFillBots: !!autoFillBots,
+        autoFillBots: autoFillBots !== undefined ? !!autoFillBots : true,
+        fillWithBots: (roomIdOrOptions && typeof roomIdOrOptions === 'object') ? (roomIdOrOptions.fillWithBots !== undefined ? roomIdOrOptions.fillWithBots : roomIdOrOptions.autoFillBots) : true,
+        botDifficulty: (roomIdOrOptions && typeof roomIdOrOptions === 'object' && roomIdOrOptions.botDifficulty) ? roomIdOrOptions.botDifficulty : 'normal',
         gameMode: gameMode || 'solo_elim',
         targetKills: targetKills || 10,
         equippedWeapon: this.equippedWeapon || 'revolver',
@@ -816,8 +816,13 @@ export class NetworkClient {
    * @param {string} gameMode
    * @param {number} [targetKills]
    */
-  changeGameMode(gameMode, targetKills = null) {
-    this.send(PROTOCOL_MSG_TYPES.C2S_CHANGE_GAME_MODE, { gameMode, targetKills });
+  changeGameMode(gameMode, targetKills = null, fillWithBots = null, botDifficulty = null) {
+    const payload = {};
+    if (gameMode) payload.gameMode = gameMode;
+    if (targetKills !== null && targetKills !== undefined) payload.targetKills = targetKills;
+    if (fillWithBots !== null && fillWithBots !== undefined) payload.fillWithBots = fillWithBots;
+    if (botDifficulty) payload.botDifficulty = botDifficulty;
+    this.send(PROTOCOL_MSG_TYPES.C2S_CHANGE_GAME_MODE, payload);
   }
 
   /**

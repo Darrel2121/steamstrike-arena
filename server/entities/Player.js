@@ -407,7 +407,8 @@ export class Player {
       shieldHp: this.shieldHp || 0,
       sonarActive: Boolean(this.sonarActive),
       smokeActive: Boolean(this.smokeActive),
-      overdriveActive: Boolean(this.overdriveActive)
+      overdriveActive: Boolean(this.overdriveActive),
+      difficulty: this.difficulty || null
     };
   }
 }

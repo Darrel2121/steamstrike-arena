@@ -92,7 +92,14 @@ export class LobbyUI {
       btnHomeCreateRoom: document.getElementById('btnHomeCreateRoom'),
       roomPasswordInput: document.getElementById('roomPasswordInput'),
       homeRoomPasswordInput: document.getElementById('homeRoomPasswordInput'),
-      lobbyLockBadge: document.getElementById('lobbyLockBadge')
+      lobbyLockBadge: document.getElementById('lobbyLockBadge'),
+      homeBotFillSelect: document.getElementById('homeBotFillSelect'),
+      homeBotDifficultySelect: document.getElementById('homeBotDifficultySelect'),
+      lobbyBotFillSelect: document.getElementById('lobbyBotFillSelect'),
+      lobbyBotDifficultySelect: document.getElementById('lobbyBotDifficultySelect'),
+      roomActiveBotFillSelect: document.getElementById('roomActiveBotFillSelect'),
+      roomActiveBotDifficultySelect: document.getElementById('roomActiveBotDifficultySelect'),
+      lobbyBotBadge: document.getElementById('lobbyBotBadge')
     };
   }
 
@@ -118,15 +125,47 @@ export class LobbyUI {
     this.addTapAndClick(this.dom.btnLobbyRefreshRooms, () => this.fetchAndRenderRooms());
     this.addTapAndClick(this.dom.btnHomeRefreshRooms, () => this.fetchAndRenderRooms());
 
-    // Host live room target kills update button
+    // Host live room config update button
     this.addTapAndClick(this.dom.btnUpdateRoomTargetKills, () => {
       if (this.currentLobbyState && this.isHost()) {
         const mode = this.currentLobbyState.gameMode || 'ffa_dm';
         const val = parseInt(this.dom.roomActiveTargetKillsInput?.value || 30, 10);
         const targetKills = Number.isFinite(val) && val > 0 ? val : 30;
-        this.networkClient.changeGameMode(mode, targetKills);
+        const fillWithBots = this.dom.roomActiveBotFillSelect ? (this.dom.roomActiveBotFillSelect.value === 'true') : true;
+        const botDifficulty = this.dom.roomActiveBotDifficultySelect ? this.dom.roomActiveBotDifficultySelect.value : 'normal';
+        this.networkClient.changeGameMode(mode, targetKills, fillWithBots, botDifficulty);
       }
     });
+
+    // Sync Home & Lobby Bot Selects
+    if (this.dom.homeBotFillSelect) {
+      this.dom.homeBotFillSelect.addEventListener('change', () => {
+        const val = this.dom.homeBotFillSelect.value;
+        if (this.dom.lobbyBotFillSelect) this.dom.lobbyBotFillSelect.value = val;
+        const diffWrap = document.getElementById('homeBotDifficultyWrapper');
+        if (diffWrap) diffWrap.style.display = val === 'false' ? 'none' : 'block';
+      });
+    }
+    if (this.dom.lobbyBotFillSelect) {
+      this.dom.lobbyBotFillSelect.addEventListener('change', () => {
+        const val = this.dom.lobbyBotFillSelect.value;
+        if (this.dom.homeBotFillSelect) this.dom.homeBotFillSelect.value = val;
+        const diffWrap = document.getElementById('lobbyBotDifficultyWrapper');
+        if (diffWrap) diffWrap.style.display = val === 'false' ? 'none' : 'block';
+      });
+    }
+    if (this.dom.homeBotDifficultySelect) {
+      this.dom.homeBotDifficultySelect.addEventListener('change', () => {
+        const val = this.dom.homeBotDifficultySelect.value;
+        if (this.dom.lobbyBotDifficultySelect) this.dom.lobbyBotDifficultySelect.value = val;
+      });
+    }
+    if (this.dom.lobbyBotDifficultySelect) {
+      this.dom.lobbyBotDifficultySelect.addEventListener('change', () => {
+        const val = this.dom.lobbyBotDifficultySelect.value;
+        if (this.dom.homeBotDifficultySelect) this.dom.homeBotDifficultySelect.value = val;
+      });
+    }
 
     // Sync Home mode select
     if (this.dom.homeGameModeSelect) {
@@ -701,6 +740,13 @@ export class LobbyUI {
     if (this.dom.lobbyGameModeSelect) this.dom.lobbyGameModeSelect.value = gameMode;
     if (homeModeSelect) homeModeSelect.value = gameMode;
 
+    const fillWithBots = isHomeContext
+      ? (this.dom.homeBotFillSelect?.value !== 'false')
+      : (this.dom.lobbyBotFillSelect?.value !== 'false');
+    const botDifficulty = isHomeContext
+      ? (this.dom.homeBotDifficultySelect?.value || 'normal')
+      : (this.dom.lobbyBotDifficultySelect?.value || 'normal');
+
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
     let targetKills = 30;
     if (isHomeContext) {
@@ -733,6 +779,8 @@ export class LobbyUI {
         map: selectedMap,
         gameMode,
         targetKills,
+        fillWithBots,
+        botDifficulty,
         equippedWeapon: prof?.equippedWeapon || 'revolver',
         equippedClass: prof?.equippedClass || 'vanguard',
         profile: prof,
@@ -780,7 +828,11 @@ export class LobbyUI {
     if (typeof this.options.onRequestLandscape === 'function') {
       this.options.onRequestLandscape();
     }
-    this.networkClient.startMatch({ fillBots: true });
+    const fillBots = this.currentLobbyState?.fillWithBots !== undefined
+      ? Boolean(this.currentLobbyState.fillWithBots)
+      : (this.dom.lobbyBotFillSelect?.value !== 'false');
+    const botDifficulty = this.currentLobbyState?.botDifficulty || this.dom.lobbyBotDifficultySelect?.value || 'normal';
+    this.networkClient.startMatch({ fillBots, botDifficulty });
   }
 
   renderLobbyState(state) {
@@ -800,6 +852,29 @@ export class LobbyUI {
 
     if (this.dom.lobbyLockBadge) {
       this.dom.lobbyLockBadge.style.display = (state.isLocked || state.hasPassword) ? 'inline-block' : 'none';
+    }
+
+    // Update Bot Badge
+    if (this.dom.lobbyBotBadge) {
+      const hasBots = state.fillWithBots !== false;
+      const diffMap = {
+        easy: 'Рекрут',
+        normal: 'Ветеран',
+        hard: 'Еліта',
+        nightmare: 'Титан'
+      };
+      const diffName = diffMap[state.botDifficulty || 'normal'] || 'Ветеран';
+      if (hasBots) {
+        this.dom.lobbyBotBadge.textContent = `🤖 Боти: ${diffName}`;
+        this.dom.lobbyBotBadge.style.background = 'rgba(46, 196, 182, 0.2)';
+        this.dom.lobbyBotBadge.style.color = '#2ec4b6';
+        this.dom.lobbyBotBadge.style.border = '1px solid #2ec4b6';
+      } else {
+        this.dom.lobbyBotBadge.textContent = '👥 Лише гравці (Без ботів)';
+        this.dom.lobbyBotBadge.style.background = 'rgba(255, 71, 87, 0.2)';
+        this.dom.lobbyBotBadge.style.color = '#ff6b81';
+        this.dom.lobbyBotBadge.style.border = '1px solid #ff4757';
+      }
     }
 
     // Update Mode Badge
@@ -825,13 +900,18 @@ export class LobbyUI {
       }
     }
 
-    // Host live room config (target kills adjustment)
-    const isDm = state.gameMode === 'ffa_dm' || state.gameMode === 'team_dm';
+    // Host live room config (target kills / bots / difficulty)
     if (this.dom.lobbyHostConfigRow) {
-      this.dom.lobbyHostConfigRow.style.display = (this.isHost() && isDm) ? 'block' : 'none';
+      this.dom.lobbyHostConfigRow.style.display = this.isHost() ? 'block' : 'none';
     }
     if (this.dom.roomActiveTargetKillsInput && state.targetKills) {
       this.dom.roomActiveTargetKillsInput.value = state.targetKills;
+    }
+    if (this.dom.roomActiveBotFillSelect && state.fillWithBots !== undefined) {
+      this.dom.roomActiveBotFillSelect.value = state.fillWithBots ? 'true' : 'false';
+    }
+    if (this.dom.roomActiveBotDifficultySelect && state.botDifficulty) {
+      this.dom.roomActiveBotDifficultySelect.value = state.botDifficulty;
     }
 
     // Show team selection buttons if in team mode

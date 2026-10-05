@@ -1026,10 +1026,12 @@ export class App {
         });
       }
 
+      const botDifficulty = document.getElementById('homeBotDifficultySelect')?.value || document.getElementById('lobbyBotDifficultySelect')?.value || 'normal';
+
       const onLobbyState = (state) => {
         if (state.roomId === soloRoomId) {
           this.networkClient.off('lobbyState', onLobbyState);
-          this.networkClient.startMatch({ fillBots: true });
+          this.networkClient.startMatch({ fillBots: true, botDifficulty });
         }
       };
       this.networkClient.on('lobbyState', onLobbyState);
@@ -1041,6 +1043,8 @@ export class App {
         maxPlayers: 4,
         map: targetMap,
         autoFillBots: true,
+        fillWithBots: true,
+        botDifficulty,
         gameMode,
         targetKills,
         equippedWeapon: prof?.equippedWeapon || 'revolver',

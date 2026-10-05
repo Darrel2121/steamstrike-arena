@@ -62,6 +62,24 @@ export class GameRenderer {
     this.soundWaveRenderer = new SoundWaveRenderer(options.sound || {});
     this.hud = new HUD(options.hud || {});
 
+    // Ambient atmospheric particle system (drifting embers & steam motes)
+    this.ambientParticles = [];
+    const pCount = 36;
+    const cW = canvas?.width || 800;
+    const cH = canvas?.height || 600;
+    for (let i = 0; i < pCount; i++) {
+      this.ambientParticles.push({
+        x: Math.random() * cW,
+        y: Math.random() * cH,
+        size: 1 + Math.random() * 2.2,
+        speedX: -0.25 + Math.random() * 0.5,
+        speedY: -0.35 - Math.random() * 0.65,
+        alpha: 0.25 + Math.random() * 0.55,
+        type: Math.random() > 0.4 ? 'ember' : 'steam',
+        pulse: Math.random() * Math.PI * 2
+      });
+    }
+
     // Texture pattern caching
     this.floorPattern = null;
     this.floorImage = null;
@@ -258,6 +276,23 @@ export class GameRenderer {
     if (localPlayer) {
       this.hud.update(dt, localPlayer);
     }
+
+    // 5. Update ambient floating embers and steam motes
+    if (Array.isArray(this.ambientParticles)) {
+      const w = this.camera.width || 800;
+      const h = this.camera.height || 600;
+      for (const p of this.ambientParticles) {
+        p.x += p.speedX;
+        p.y += p.speedY;
+        p.pulse += (dt || 0.016) * 3;
+        if (p.y < -10) {
+          p.y = h + 10;
+          p.x = Math.random() * w;
+        }
+        if (p.x < -10) p.x = w + 10;
+        if (p.x > w + 10) p.x = -10;
+      }
+    }
   }
 
   /**
@@ -453,9 +488,19 @@ export class GameRenderer {
     this.renderLayerProjectilesOverDarkness(ctx, state);
 
     // ========================================================================
+    // LAYER 4.7: Tactical Ability FX & Sonar X-Ray Detection (Over Darkness)
+    // ========================================================================
+    this.renderTacticalAbilitiesOverDarkness(ctx, state);
+
+    // ========================================================================
     // LAYER 5: Visual Acoustic Sound Waves (Visible OVER Darkness)
     // ========================================================================
     this.soundWaveRenderer.render(ctx, this.camera, width, height);
+
+    // ========================================================================
+    // LAYER 5.5: Cinematic Vignette & Ambient Atmospheric Motes
+    // ========================================================================
+    this.renderAtmosphericVfx(ctx, width, height);
 
     // ========================================================================
     // LAYER 6: Steampunk Tactical HUD (Screen-Space UI)
@@ -867,7 +912,10 @@ export class GameRenderer {
       this.renderDestroyedAvatar(ctx, wreck);
     }
 
-    // 4. Note: Projectiles are rendered in Layer 4.5 so their luminous tracers shine over darkness
+    // 4. Physical Infiltrator Smoke Zones (billowing steam & soot clouds)
+    if (Array.isArray(state.smokeZones) && state.smokeZones.length > 0) {
+      this.renderSmokeZones(ctx, state.smokeZones);
+    }
 
     // 5. Living Players and Bots (rendered on top of floor wrecks)
     for (const pl of players) {
@@ -895,6 +943,281 @@ export class GameRenderer {
       this.renderProjectile(ctx, b);
     }
     ctx.restore();
+  }
+
+  /**
+   * Layer 4.7: Renders active tactical ability visuals and holographic Sonar X-Ray reveals through darkness.
+   */
+  renderTacticalAbilitiesOverDarkness(ctx, state) {
+    const localPlayer = state.localPlayer || (state.players && state.players[0]);
+    const players = state.players || [];
+    const zoom = this.camera.zoom || 1.0;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    ctx.save();
+    if (typeof ctx.scale === 'function') {
+      ctx.scale(zoom, zoom);
+    }
+    ctx.translate(-this.camera.x, -this.camera.y);
+
+    // 1. Sharpshooter Sonar Pulses & Enemy X-Ray Detection
+    const hasActiveSonar = players.some(p => p.sonarActive && (p.id === localPlayer?.id || (p.team && p.team === localPlayer?.team)));
+
+    for (const pl of players) {
+      if (pl.sonarActive && pl.isAlive) {
+        const px = pl.renderX ?? pl.x;
+        const py = pl.renderY ?? pl.y;
+        for (let ring = 1; ring <= 3; ring++) {
+          const ringPhase = ((now * 0.0015 + ring * 0.33) % 1);
+          const r = ringPhase * 360;
+          const alpha = (1 - ringPhase) * 0.75;
+          ctx.strokeStyle = `rgba(95, 251, 241, ${alpha})`;
+          ctx.lineWidth = 2.5 - ringPhase * 1.5;
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Sonar Wallhack / X-Ray target indicators for enemies
+    if (hasActiveSonar && localPlayer) {
+      for (const pl of players) {
+        const isEnemy = pl.id !== localPlayer.id && (!pl.team || pl.team !== localPlayer.team);
+        if (isEnemy && pl.isAlive && (pl.hp === undefined || pl.hp > 0)) {
+          const ex = pl.renderX ?? pl.x;
+          const ey = pl.renderY ?? pl.y;
+
+          ctx.save();
+          ctx.translate(ex, ey);
+
+          const scanPulse = (Math.sin(now * 0.008) + 1) / 2;
+          ctx.strokeStyle = '#5ffbf1';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(0, 0, 18 + scanPulse * 4, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Tactical Target Brackets [ ]
+          const bSize = 22;
+          const bCorner = 6;
+          ctx.strokeStyle = '#5ffbf1';
+          ctx.lineWidth = 2;
+          // Top-left
+          ctx.beginPath();
+          ctx.moveTo(-bSize, -bSize + bCorner);
+          ctx.lineTo(-bSize, -bSize);
+          ctx.lineTo(-bSize + bCorner, -bSize);
+          ctx.stroke();
+          // Top-right
+          ctx.beginPath();
+          ctx.moveTo(bSize - bCorner, -bSize);
+          ctx.lineTo(bSize, -bSize);
+          ctx.lineTo(bSize, -bSize + bCorner);
+          ctx.stroke();
+          // Bottom-left
+          ctx.beginPath();
+          ctx.moveTo(-bSize, bSize - bCorner);
+          ctx.lineTo(-bSize, bSize);
+          ctx.lineTo(-bSize + bCorner, bSize);
+          ctx.stroke();
+          // Bottom-right
+          ctx.beginPath();
+          ctx.moveTo(bSize - bCorner, bSize);
+          ctx.lineTo(bSize, bSize);
+          ctx.lineTo(bSize, bSize - bCorner);
+          ctx.stroke();
+
+          // X-Ray Silhouette
+          ctx.fillStyle = 'rgba(95, 251, 241, 0.45)';
+          ctx.beginPath();
+          ctx.arc(0, 0, 13, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#5ffbf1';
+          ctx.font = 'bold 9px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(`⌖ ${pl.name || 'TARGET'}`, 0, -bSize - 4);
+
+          ctx.restore();
+        }
+      }
+    }
+
+    // 2. Juggernaut Bastion Force Barrier (curved 120° shield arc)
+    for (const pl of players) {
+      if (pl.isAlive && (pl.shieldHp > 0 || (pl.classId === 'juggernaut' && pl.abilityActive))) {
+        const px = pl.renderX ?? pl.x;
+        const py = pl.renderY ?? pl.y;
+        const aimAngle = pl.angle ?? pl.aimAngle ?? 0;
+        const sHp = pl.shieldHp || 80;
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(aimAngle);
+
+        const shieldRadius = 24;
+        const arcSpread = Math.PI * 0.65;
+        const startArc = -arcSpread / 2;
+        const endArc = arcSpread / 2;
+
+        ctx.strokeStyle = 'rgba(255, 207, 72, 0.45)';
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.arc(0, 0, shieldRadius, startArc, endArc);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#5ffbf1';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.arc(0, 0, shieldRadius, startArc, endArc);
+        ctx.stroke();
+
+        const segments = 5;
+        ctx.fillStyle = 'rgba(95, 251, 241, 0.3)';
+        for (let i = 0; i < segments; i++) {
+          const a = startArc + (arcSpread / segments) * (i + 0.5);
+          const hx = Math.cos(a) * shieldRadius;
+          const hy = Math.sin(a) * shieldRadius;
+          ctx.beginPath();
+          ctx.arc(hx, hy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.rotate(-aimAngle);
+        ctx.fillStyle = '#1c202a';
+        ctx.fillRect(-18, -shieldRadius - 14, 36, 6);
+        ctx.fillStyle = '#5ffbf1';
+        ctx.fillRect(-17, -shieldRadius - 13, (34 * Math.max(0, sHp)) / 80, 4);
+        ctx.strokeStyle = '#c59b27';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-18, -shieldRadius - 14, 36, 6);
+
+        ctx.restore();
+      }
+    }
+
+    // 3. Vanguard Steam Overdrive Jet Plumes
+    for (const pl of players) {
+      if (pl.isAlive && (pl.overdriveActive || (pl.classId === 'vanguard' && pl.abilityActive))) {
+        const px = pl.renderX ?? pl.x;
+        const py = pl.renderY ?? pl.y;
+        const aimAngle = pl.angle ?? pl.aimAngle ?? 0;
+
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(aimAngle);
+
+        const nozzleYs = [-4, 4];
+        for (const ny of nozzleYs) {
+          const plumeLen = 22 + Math.random() * 14;
+          const pGrad = ctx.createLinearGradient(-8, ny, -8 - plumeLen, ny);
+          pGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+          pGrad.addColorStop(0.3, 'rgba(255, 160, 40, 0.85)');
+          pGrad.addColorStop(0.7, 'rgba(255, 80, 20, 0.45)');
+          pGrad.addColorStop(1, 'rgba(100, 100, 100, 0)');
+
+          ctx.fillStyle = pGrad;
+          ctx.beginPath();
+          ctx.moveTo(-8, ny - 2);
+          ctx.lineTo(-8 - plumeLen, ny - 6);
+          ctx.lineTo(-8 - plumeLen, ny + 6);
+          ctx.lineTo(-8, ny + 2);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.fillStyle = '#ffcf48';
+          ctx.beginPath();
+          ctx.arc(-8 - plumeLen * 0.8, ny + (Math.random() - 0.5) * 6, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.restore();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders physical smoke zones created by Infiltrator smoke grenades.
+   */
+  renderSmokeZones(ctx, smokeZones = []) {
+    if (!Array.isArray(smokeZones) || smokeZones.length === 0) return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    for (const zone of smokeZones) {
+      if (!zone || !zone.x || !zone.y) continue;
+      const zx = zone.x;
+      const zy = zone.y;
+      const baseRadius = zone.radius || 140;
+
+      ctx.save();
+      const puffCount = 14;
+      for (let i = 0; i < puffCount; i++) {
+        const angle = (i / puffCount) * Math.PI * 2 + now * 0.0003;
+        const dist = (baseRadius * 0.55) + Math.sin(i * 1.7 + now * 0.001) * (baseRadius * 0.35);
+        const puffX = zx + Math.cos(angle) * dist;
+        const puffY = zy + Math.sin(angle) * dist;
+        const puffR = baseRadius * 0.45 + Math.cos(i * 2.3 + now * 0.0015) * 15;
+
+        const smokeGrad = ctx.createRadialGradient(puffX, puffY, 4, puffX, puffY, puffR);
+        smokeGrad.addColorStop(0, 'rgba(40, 45, 55, 0.75)');
+        smokeGrad.addColorStop(0.5, 'rgba(28, 32, 40, 0.60)');
+        smokeGrad.addColorStop(0.85, 'rgba(20, 24, 30, 0.35)');
+        smokeGrad.addColorStop(1, 'rgba(15, 18, 22, 0)');
+
+        ctx.fillStyle = smokeGrad;
+        ctx.beginPath();
+        ctx.arc(puffX, puffY, puffR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      const coreGrad = ctx.createRadialGradient(zx, zy, 5, zx, zy, baseRadius * 0.6);
+      coreGrad.addColorStop(0, 'rgba(25, 28, 35, 0.85)');
+      coreGrad.addColorStop(0.6, 'rgba(20, 24, 30, 0.65)');
+      coreGrad.addColorStop(1, 'rgba(15, 18, 22, 0)');
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(zx, zy, baseRadius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Layer 5.5: Renders screen-space ambient embers, steam motes, and cinematic steampunk vignette.
+   */
+  renderAtmosphericVfx(ctx, width, height) {
+    if (Array.isArray(this.ambientParticles)) {
+      for (const p of this.ambientParticles) {
+        const alpha = p.alpha * (0.6 + 0.4 * Math.sin(p.pulse));
+        if (p.type === 'ember') {
+          ctx.fillStyle = `rgba(255, 140, 30, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = `rgba(220, 240, 255, ${alpha * 0.35})`;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // Cinematic Steampunk Vignette
+    const maxRadius = Math.hypot(width, height) / 2;
+    const vignette = ctx.createRadialGradient(
+      width / 2, height / 2, maxRadius * 0.45,
+      width / 2, height / 2, maxRadius * 0.98
+    );
+    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    vignette.addColorStop(0.7, 'rgba(8, 10, 14, 0.35)');
+    vignette.addColorStop(1, 'rgba(5, 6, 8, 0.78)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, width, height);
   }
 
   /**
@@ -1041,6 +1364,11 @@ export class GameRenderer {
 
     ctx.save();
     ctx.translate(pl.renderX ?? pl.x, pl.renderY ?? pl.y);
+
+    const isStealth = Boolean(pl.smokeActive || (pl.classId === 'infiltrator' && pl.abilityActive));
+    if (isStealth) {
+      ctx.globalAlpha = isLocal ? 0.50 : 0.28;
+    }
 
     const aimAngle = pl.angle ?? pl.aimAngle ?? 0;
     const isBot = pl.isBot || pl.id?.startsWith('bot_');
@@ -1211,18 +1539,57 @@ export class GameRenderer {
         ctx.stroke();
       }
 
-      // 4. Steampunk Goggles / Eyepieces
-      ctx.fillStyle = '#ffcf48';
-      ctx.beginPath();
-      ctx.arc(5, -4, 3, 0, Math.PI * 2);
-      ctx.arc(5, 4, 3, 0, Math.PI * 2);
-      ctx.fill();
+      // 4. Steampunk Goggles / Eyepieces & Bot Optics
+      if (isBot) {
+        // High-intensity Glowing Automaton Optical Lenses
+        const isElite = pl.difficulty === 'nightmare' || pl.difficulty === 'hard';
+        const opticColor = isElite ? '#ff2a2a' : '#ff9f1c';
+        const haloColor = isElite ? 'rgba(255, 42, 42, 0.45)' : 'rgba(255, 159, 28, 0.45)';
 
-      ctx.fillStyle = '#0f1318';
-      ctx.beginPath();
-      ctx.arc(5, -4, 1.5, 0, Math.PI * 2);
-      ctx.arc(5, 4, 1.5, 0, Math.PI * 2);
-      ctx.fill();
+        ctx.fillStyle = haloColor;
+        ctx.beginPath();
+        ctx.arc(5, -4, 4.5, 0, Math.PI * 2);
+        ctx.arc(5, 4, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = opticColor;
+        ctx.beginPath();
+        ctx.arc(5, -4, 2.5, 0, Math.PI * 2);
+        ctx.arc(5, 4, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(6, -4, 1, 0, Math.PI * 2);
+        ctx.arc(6, 4, 1, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (pl.classId === 'sharpshooter') {
+        // Cyan Binocular Optic Sensors
+        ctx.fillStyle = '#5ffbf1';
+        ctx.beginPath();
+        ctx.arc(5, -4, 3, 0, Math.PI * 2);
+        ctx.arc(5, 4, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0f1318';
+        ctx.beginPath();
+        ctx.arc(5, -4, 1.2, 0, Math.PI * 2);
+        ctx.arc(5, 4, 1.2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Classic Brass Goggles
+        ctx.fillStyle = '#ffcf48';
+        ctx.beginPath();
+        ctx.arc(5, -4, 3, 0, Math.PI * 2);
+        ctx.arc(5, 4, 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0f1318';
+        ctx.beginPath();
+        ctx.arc(5, -4, 1.5, 0, Math.PI * 2);
+        ctx.arc(5, 4, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       ctx.restore(); // Restore rotation & translation
     }

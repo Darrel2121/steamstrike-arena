@@ -14,7 +14,9 @@ import {
   LANTERN_FOV_RAD,
   LANTERN_RANGE,
   PROJECTILE_SPEED,
-  PROJECTILE_RADIUS
+  PROJECTILE_RADIUS,
+  BOT_DIFFICULTIES,
+  BOT_DIFFICULTY_CONFIGS
 } from '../../shared/Constants.js';
 import { isPointVisible } from '../../shared/RaycastMath.js';
 import { TILE_TYPES } from '../../shared/MapSchema.js';
@@ -143,16 +145,19 @@ export class Bot extends Player {
   constructor(options = {}) {
     super(options);
     this.isBot = true;
+    this.difficulty = options.difficulty || BOT_DIFFICULTIES.NORMAL;
+    const diffCfg = BOT_DIFFICULTY_CONFIGS[this.difficulty] || BOT_DIFFICULTY_CONFIGS.normal;
+
     this.name = options.name || `Automaton_${this.id}`;
-    this.maxSpeed = options.maxSpeed ?? 140;
+    this.maxSpeed = options.maxSpeed ?? diffCfg.maxSpeed ?? 140;
 
     // Tactical vision parameters
     this.fov = options.fov ?? LANTERN_FOV_RAD ?? (80 * Math.PI / 180);
-    this.range = options.range ?? LANTERN_RANGE ?? 420;
+    this.range = options.range ?? diffCfg.range ?? LANTERN_RANGE ?? 420;
 
     // Weapon parameters & cooldown
     this.fireCooldown = 0;
-    this.fireInterval = options.fireInterval ?? 0.40;
+    this.fireInterval = options.fireInterval ?? diffCfg.fireInterval ?? 0.40;
     this.weaponDamage = options.weaponDamage ?? 35;
     this.weaponSpeed = options.weaponSpeed ?? PROJECTILE_SPEED ?? 750;
 
@@ -160,8 +165,11 @@ export class Bot extends Player {
     this.state = options.state || 'PATROL';
     this.currentTargetId = null;
     this.investigateTarget = null;
-    this.reactionDelay = options.reactionDelay ?? 0.50;
+    this.reactionDelay = options.reactionDelay ?? diffCfg.reactionDelay ?? 0.50;
     this.aimTime = 0;
+    this.turnRate = options.turnRate ?? diffCfg.turnRate ?? (Math.PI * 3.5);
+    this.leadAim = options.leadAim ?? diffCfg.leadAim ?? true;
+    this.abilityChance = options.abilityChance ?? diffCfg.abilityChance ?? 0.60;
 
     // Navigation & Waypoints
     this.map = options.map || null;
@@ -208,11 +216,16 @@ export class Bot extends Player {
     this.ammo--;
     this.fireCooldown = this.fireInterval;
 
+    let shotAngle = this.angle;
+    if (this.difficulty === BOT_DIFFICULTIES.EASY) {
+      shotAngle += (Math.random() - 0.5) * 0.22;
+    }
+
     return new Projectile({
       shooterId: this.id,
       x: this.x + Math.cos(this.angle) * 16,
       y: this.y + Math.sin(this.angle) * 16,
-      angle: this.angle,
+      angle: shotAngle,
       speed: this.weaponSpeed,
       damage: this.weaponDamage,
       maxRange: this.range,
@@ -427,7 +440,7 @@ export class Bot extends Player {
 
     // Rate-limited angular aim smoothing with predictive ballistic lead
     let desiredAngle = Math.atan2(target.y - this.y, target.x - this.x);
-    if (this.aimTime > 0.10 && typeof tacticalNeuralAgent?.predictLeadAim === 'function') {
+    if (this.leadAim !== false && this.aimTime > 0.10 && typeof tacticalNeuralAgent?.predictLeadAim === 'function') {
       desiredAngle = tacticalNeuralAgent.predictLeadAim(this, target, this.weaponSpeed || 1800);
     }
 
@@ -485,7 +498,20 @@ export class Bot extends Player {
 
       // Tactical ability deployment during active engagement
       if (this.abilityCooldownTimer <= 0 && (this.hp < this.maxHp * 0.70 || this.isReloading || dist < 140)) {
-        this.activateAbility();
+        if (Math.random() < (this.abilityChance ?? 0.60)) {
+          const act = this.activateAbility();
+          if (act && act.ok && this.classId === 'infiltrator' && room && Array.isArray(room.smokeZones)) {
+            room.smokeZones.push({
+              id: 'smoke_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+              x: this.x,
+              y: this.y,
+              radius: 180,
+              createdAt: Date.now(),
+              duration: 5.0,
+              ownerId: this.id
+            });
+          }
+        }
       }
       let moveDir = 0;
       if (dist > 250) {

@@ -40,7 +40,8 @@ export class Room {
     this.maxPlayers = options.maxPlayers || 4;
     this.tickRate = options.tickRate || 30;
     this.autoTick = options.autoTick ?? false;
-    this.autoFillBots = options.autoFillBots ?? false;
+    this.autoFillBots = options.autoFillBots ?? (options.fillBots === true || options.fillWithBots === true);
+    this.botDifficulty = options.botDifficulty || 'normal';
 
     // Game Mode & Ruleset
     this.gameMode = options.gameMode || GAME_MODES.SOLO_ELIM;
@@ -53,6 +54,7 @@ export class Room {
     this.bots = new Map();
     this.projectiles = [];
     this.soundEvents = [];
+    this.smokeZones = [];
     this.pickups = [];
     this.tickNumber = 0;
     this.intervalId = null;
@@ -77,14 +79,21 @@ export class Room {
     return this.gameMode === GAME_MODES.TEAM_DM || this.gameMode === GAME_MODES.FFA_DM;
   }
 
-  setGameMode(gameMode, targetKills = null) {
-    if (!Object.values(GAME_MODES).includes(gameMode)) return false;
-    this.gameMode = gameMode;
+  setGameMode(gameMode, targetKills = null, fillWithBots = null, botDifficulty = null) {
+    if (gameMode && Object.values(GAME_MODES).includes(gameMode)) {
+      this.gameMode = gameMode;
+    }
     if (typeof targetKills === 'number' && targetKills > 0) {
       this.targetKills = targetKills;
-    } else {
+    } else if (gameMode) {
       const cfg = GAME_MODE_CONFIGS[gameMode];
       this.targetKills = cfg?.defaultTargetKills || 0;
+    }
+    if (fillWithBots !== null && fillWithBots !== undefined) {
+      this.autoFillBots = Boolean(fillWithBots);
+    }
+    if (botDifficulty) {
+      this.botDifficulty = botDifficulty;
     }
     // Rebalance existing players if entering team mode
     if (this.isTeamMode()) {
@@ -93,6 +102,23 @@ export class Room {
         p.team = (idx % 2 === 0) ? 'team1' : 'team2';
         idx++;
       }
+    }
+    this.broadcastLobbyState();
+    return true;
+  }
+
+  setRoomConfig(config = {}) {
+    if (config.gameMode && Object.values(GAME_MODES).includes(config.gameMode)) {
+      this.gameMode = config.gameMode;
+    }
+    if (typeof config.targetKills === 'number' && config.targetKills > 0) {
+      this.targetKills = config.targetKills;
+    }
+    if (config.fillWithBots !== undefined) {
+      this.autoFillBots = Boolean(config.fillWithBots);
+    }
+    if (config.botDifficulty) {
+      this.botDifficulty = config.botDifficulty;
     }
     this.broadcastLobbyState();
     return true;
@@ -344,7 +370,7 @@ export class Room {
   /**
    * Fills remaining vacant slots up to maxPlayers with AI bot entities.
    */
-  fillWithBots() {
+  fillWithBots(difficulty = null) {
     const targetCount = this.maxPlayers - this.players.size;
     const currentBots = this.bots.size;
     const needed = Math.max(0, targetCount - currentBots);
@@ -488,6 +514,10 @@ export class Room {
         botTeam = t1 <= t2 ? 'team1' : 'team2';
       }
 
+      const botClasses = ['vanguard', 'sharpshooter', 'juggernaut', 'infiltrator'];
+      const botClass = botClasses[botIndex % botClasses.length];
+      const botDiff = difficulty || this.botDifficulty || 'normal';
+
       const bot = new Bot({
         id: botId,
         name: `Automaton_${botIndex + 1}`,
@@ -499,7 +529,9 @@ export class Room {
         maxHp: 100,
         ammo: 6,
         maxAmmo: 6,
-        map: this.map
+        map: this.map,
+        classId: botClass,
+        difficulty: botDiff
       });
 
       this.bots.set(botId, bot);
@@ -529,8 +561,10 @@ export class Room {
     this.matchResultsRecorded = false;
     this.lastMatchOutcome = null;
 
-    if (this.autoFillBots || options?.fillBots) {
-      this.fillWithBots();
+    if (options?.fillBots === false || options?.fillWithBots === false) {
+      this.bots.clear();
+    } else if (this.autoFillBots || options?.fillBots || options?.fillWithBots) {
+      this.fillWithBots(options?.botDifficulty || this.botDifficulty);
     }
 
     // Ensure team assignments if in team mode
@@ -697,6 +731,20 @@ export class Room {
       if (typeof player.activateAbility === 'function') {
         const act = player.activateAbility();
         if (act && act.ok) {
+          if (player.classId === 'infiltrator') {
+            this.smokeZones.push({
+              id: 'smoke_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+              x: player.x,
+              y: player.y,
+              radius: 180,
+              createdAt: Date.now(),
+              duration: 5.0,
+              ownerId: player.id
+            });
+          } else if (player.classId === 'vanguard') {
+            player.ammo = player.maxAmmo;
+            player.isReloading = false;
+          }
           const sndRadius = player.classId === 'infiltrator' ? 80 : 160;
           this.soundEvents.push({
             id: 'snd_abil_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
@@ -1018,6 +1066,11 @@ export class Room {
     const now = Date.now();
     this.soundEvents = this.soundEvents.filter(s => (now - (s.createdAt || now)) < 1200);
 
+    // Advance smoke zones & remove expired
+    if (this.smokeZones && this.smokeZones.length > 0) {
+      this.smokeZones = this.smokeZones.filter(z => (now - (z.createdAt || now)) < ((z.duration || 5.0) * 1000));
+    }
+
     // Check match conditions on every tick in respawn modes (e.g. target kills)
     if (this.isRespawnMode() && this.state === 'IN_PROGRESS') {
       this.evaluateMatchOutcome();
@@ -1090,6 +1143,7 @@ export class Room {
       players: snapshotPlayers,
       projectiles: (this.projectiles || []).map(p => (typeof p.toJSON === 'function' ? p.toJSON() : p)),
       soundEvents: this.soundEvents || [],
+      smokeZones: this.smokeZones || [],
       pickups: (this.pickups || []).filter(pk => pk.isActive).map(pk => (typeof pk.toSnapshot === 'function' ? pk.toSnapshot() : pk))
     };
 
@@ -1115,15 +1169,26 @@ export class Room {
       }
     }
 
+    let actualDamage = damage;
+    if (attacker && attacker.classId === 'infiltrator') {
+      const toAttacker = Math.atan2(attacker.y - target.y, attacker.x - target.x);
+      let angleDiff = Math.abs(toAttacker - (target.angle || 0));
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      angleDiff = Math.abs(angleDiff);
+      if (angleDiff > Math.PI * 0.5) {
+        actualDamage = Math.round(damage * 1.25);
+      }
+    }
+
     if (attackerId && this.matchStats?.has(attackerId)) {
       const atkStats = this.matchStats.get(attackerId);
-      atkStats.damageDealt += damage;
+      atkStats.damageDealt += actualDamage;
     }
 
     if (typeof target.takeDamage === 'function') {
-      target.takeDamage(damage);
+      target.takeDamage(actualDamage);
     } else {
-      target.hp = Math.max(0, target.hp - damage);
+      target.hp = Math.max(0, target.hp - actualDamage);
       if (target.hp === 0) {
         target.isAlive = false;
       }
@@ -1132,7 +1197,7 @@ export class Room {
     this.broadcast(PROTOCOL_MSG_TYPES.S2C_DAMAGE_EVENT, {
       targetId,
       attackerId,
-      damage,
+      damage: actualDamage,
       remainingHp: target.hp
     });
 
@@ -1449,6 +1514,8 @@ export class Room {
       hasPassword: this.hasPassword(),
       gameMode: this.gameMode,
       targetKills: this.targetKills,
+      fillWithBots: Boolean(this.autoFillBots),
+      botDifficulty: this.botDifficulty || 'normal',
       gameModeConfig: GAME_MODE_CONFIGS[this.gameMode] || null,
       players: Array.from(this.players.values()).map(p => ({
         id: p.id,

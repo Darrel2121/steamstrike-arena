@@ -156,6 +156,26 @@
               </div>
             </div>
 
+            <!-- Bot Population Toggle & AI Difficulty -->
+            <div class="console-field" id="homeBotsGroup" style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 140px;">
+                <label for="homeBotFillSelect">Боти в матчі:</label>
+                <select id="homeBotFillSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                  <option value="true" selected>🤖 З ботами (Автозаповнення)</option>
+                  <option value="false">👥 Лише гравці (Без ботів)</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 140px;" id="homeBotDifficultyWrapper">
+                <label for="homeBotDifficultySelect">Інтелект ботів:</label>
+                <select id="homeBotDifficultySelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                  <option value="easy">🥉 Рекрут (Новачок)</option>
+                  <option value="normal" selected>🥈 Ветеран (Стандартний)</option>
+                  <option value="hard">🥇 Еліта (Тактик)</option>
+                  <option value="nightmare">🔥 Титан (Смертоносний)</option>
+                </select>
+              </div>
+            </div>
+
             <!-- Online Room Name & Actions (multiplayer mode) -->
             <div class="console-field" id="homeRoomField" style="display: none; flex-direction: column; gap: 8px;">
               <label for="homeRoomInput">Код або назва кімнати (Chamber ID):</label>
@@ -266,6 +286,126 @@
             </div>
             <p>AI-автоматоні використовують тактичну нейромережу онлайн-навчання: стріляють на випередження, виконують бічні стрейфи та ховаються під час перезаряджання.</p>
           </div>
+        </div>
+      </section>
+
+      <!-- Steampunk Lore & World Chronicle -->
+      <section class="home-lore-section">
+        <h2 class="section-heading"><span>📜</span> ХРОНІКИ НОВОГО ЕТЕЛЬГАРДУ: ВЕЛИКИЙ ПАРОВИЙ ПРОРИВ <span>📜</span></h2>
+        
+        <div class="lore-main-card steampunk-panel">
+          <div class="lore-prologue">
+            <h3 style="color: var(--color-brass-glow); margin-bottom: 8px;">⚙ Світ вічної імли та розпеченої пари</h3>
+            <p style="color: var(--color-text-dim); line-height: 1.6; margin-bottom: 10px;">
+              Після катастрофічного тектонічного розлому «День Тріщини» залишки людської цивілізації підняли у повітря та на масивні залізні опори місто <strong>Новий Етельгард (New Aethelgard)</strong>. 
+              Глибоко під бруківкою б'ють геотермальні гейзери та резервуари летючого ефіру, які живлять тисячі парових магістралей, поршнів і манометрів. 
+              Сонце сховане за вічною хмарою сажі та конденсованого туману — кожен крок у темряві робиться лише при тьмяному світлі переносного латунного ліхтаря.
+            </p>
+            <p style="color: var(--color-text-dim); line-height: 1.6;">
+              Щоб покласти край руйнівній громадянській війні за енергетичні клапани, верховний магістрат затвердив <strong>«Пакт Шестерень»</strong>: 
+              усі суперечки за території, ресурси та владу вирішуються у закритих бойових Секторах-Аренах, де зіштовхуються елітні бійці та автономні тактичні автоматони чотирьох Великих Гільдій.
+            </p>
+          </div>
+
+          <!-- The 4 Great Guilds -->
+          <div class="guilds-showcase" style="margin-top: 18px;">
+            <h4 class="guilds-title" style="color: var(--color-brass-bright); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px dashed rgba(197,155,39,0.3); padding-bottom: 6px;">⚔ ЧОТИРИ ВЕЛИКІ ГІЛЬДІЇ ТА ЇХНІ БОЙОВІ КЛАСИ</h4>
+            <div class="guilds-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
+              
+              <!-- Guild 1: Vanguard -->
+              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(37, 117, 252, 0.4); border-radius: 6px; padding: 12px;">
+                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 24px;">🐺</span>
+                  <div>
+                    <div style="font-weight: bold; color: #80b5ff; font-size: 14px;">Парові Вовки</div>
+                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Авангард (Vanguard)</div>
+                  </div>
+                </div>
+                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Штурмові лінійні бійці Великого Механічного Заводу. Обладнані важкими паровими екзоскелетами з форсованими клапанами скидання тиску.</p>
+                <div style="background: rgba(37, 117, 252, 0.1); border: 1px solid rgba(37, 117, 252, 0.3); border-radius: 4px; padding: 6px 8px;">
+                  <div style="font-weight: bold; color: #80b5ff; font-size: 11px; margin-bottom: 2px;">⚡ Вміння: «Паровий Форсаж»</div>
+                  <div style="font-size: 11px; color: var(--color-text-dim);">+40% швидкості руху, миттєве поповнення набоїв та викид реактивних струменів пари з ранця.</div>
+                </div>
+              </div>
+
+              <!-- Guild 2: Sharpshooter -->
+              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(46, 196, 182, 0.4); border-radius: 6px; padding: 12px;">
+                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 24px;">🦅</span>
+                  <div>
+                    <div style="font-weight: bold; color: #5ffbf1; font-size: 14px;">Небесні Соколи</div>
+                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Снайпер (Sharpshooter)</div>
+                  </div>
+                </div>
+                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Вартові швартувальних платформ та цепелінів. Оснащені далекобійними нарізними голкострілами та оптичними бінокулярами.</p>
+                <div style="background: rgba(46, 196, 182, 0.1); border: 1px solid rgba(46, 196, 182, 0.3); border-radius: 4px; padding: 6px 8px;">
+                  <div style="font-weight: bold; color: #5ffbf1; font-size: 11px; margin-bottom: 2px;">📡 Вміння: «Ехолокаційний Сонар»</div>
+                  <div style="font-size: 11px; color: var(--color-text-dim);">Круговий ультразвуковий імпульс: пронизує стіни й морок, підсвічуючи бірюзові X-Ray силуети ворогів на арені.</div>
+                </div>
+              </div>
+
+              <!-- Guild 3: Juggernaut -->
+              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(255, 207, 72, 0.4); border-radius: 6px; padding: 12px;">
+                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 24px;">🛡️</span>
+                  <div>
+                    <div style="font-weight: bold; color: #ffcf48; font-size: 14px;">Залізний Бастіон</div>
+                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Джаггернаут (Juggernaut)</div>
+                  </div>
+                </div>
+                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Важкі інженери котлових цехів. Лита котлова броня витримує шквал куль, а важкий мушкетон розносить усе на друзки.</p>
+                <div style="background: rgba(255, 207, 72, 0.1); border: 1px solid rgba(255, 207, 72, 0.3); border-radius: 4px; padding: 6px 8px;">
+                  <div style="font-weight: bold; color: #ffcf48; font-size: 11px; margin-bottom: 2px;">🛡️ Вміння: «Кінетичний Щит»</div>
+                  <div style="font-size: 11px; color: var(--color-text-dim);">120-градусний фронтальний силовий бар'єр міцністю 80 HP з гексагональною сіткою для блокування куль.</div>
+                </div>
+              </div>
+
+              <!-- Guild 4: Infiltrator -->
+              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(255, 71, 87, 0.4); border-radius: 6px; padding: 12px;">
+                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 24px;">🦊</span>
+                  <div>
+                    <div style="font-weight: bold; color: #ffa4ad; font-size: 14px;">Мідні Тіні</div>
+                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Диверсант (Infiltrator)</div>
+                  </div>
+                </div>
+                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Таємні ліквідатори Алхімічної Цитаделі. Спеціалізуються на димових завісах, непомітному пересуванні та ударах у спину.</p>
+                <div style="background: rgba(255, 71, 87, 0.1); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 4px; padding: 6px 8px;">
+                  <div style="font-weight: bold; color: #ffa4ad; font-size: 11px; margin-bottom: 2px;">💨 Вміння: «Димова Завіса & Стелс»</div>
+                  <div style="font-size: 11px; color: var(--color-text-dim);">Хмара густої пари радіусом 140px, маскувальний стелс та пасивні +25% шкоди при атаці з флангу та спини.</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Arenas Lore Strip -->
+          <div class="arenas-lore-strip" style="margin-top: 18px;">
+            <h4 class="guilds-title" style="color: var(--color-brass-bright); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px dashed rgba(197,155,39,0.3); padding-bottom: 6px;">🗺 ЛЕГЕНДАРНІ АРЕНИ ВІЙНИ</h4>
+            <div class="arenas-lore-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid var(--color-copper);">
+                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">⚙ The Clockwork Foundry</div>
+                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Старовинний ливарний цех із рухомими зубчастими колесами та паровими трубами під високим тиском.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #4a5568;">
+                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">⛏ The Ironworks Catacombs</div>
+                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Лабіринт підземних тунелів із вентиляційними шахтами та глухими кутами для тактичних засідок.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #80b5ff;">
+                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">⚓ The Grand Zeppelin Docks</div>
+                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Висотна швартувальна платформа повітряних суден із довгими коридорами для далекобійного вогню.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #5ffbf1;">
+                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">🧪 The Alchemical Citadel</div>
+                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Експериментальний комплекс із реакторами ефіру та контейнерами нестабільного конденсату.</div>
+              </div>
+              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #ffcf48;">
+                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">🚂 The Steam Rail Terminal</div>
+                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Вузлова станція броньованих паротягів із довгими платформами для швидкісних флангових маневрів.</div>
+              </div>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -385,6 +525,25 @@
             </div>
           </div>
 
+          <div class="lobby-input-group" id="lobbyBotsGroup" style="display: flex; gap: 8px;">
+            <div style="flex: 1;">
+              <label for="lobbyBotFillSelect">Заповнення ботами:</label>
+              <select id="lobbyBotFillSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                <option value="true" selected>🤖 З ботами</option>
+                <option value="false">👥 Лише гравці</option>
+              </select>
+            </div>
+            <div style="flex: 1;" id="lobbyBotDifficultyWrapper">
+              <label for="lobbyBotDifficultySelect">Складність ботів:</label>
+              <select id="lobbyBotDifficultySelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                <option value="easy">🥉 Рекрут</option>
+                <option value="normal" selected>🥈 Ветеран</option>
+                <option value="hard">🥇 Еліта</option>
+                <option value="nightmare">🔥 Титан</option>
+              </select>
+            </div>
+          </div>
+
           <div style="display: flex; gap: 8px;">
             <button id="btnJoinRoom" class="btn-steampunk btn-brass" style="flex: 1;">
               ⚡ Приєднатися
@@ -403,17 +562,36 @@
                 <span style="font-weight: bold; color: var(--color-brass-glow);" id="lobbyRoomTitle">Chamber</span>
                 <span style="font-size: 12px; color: var(--color-text-dim);" id="lobbyMapTitle">Foundry</span>
                 <span id="lobbyLockBadge" style="display: none; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(255, 71, 87, 0.2); color: #ff6b81; border: 1px solid #ff4757;">🔒 Захищено шифром</span>
+                <span id="lobbyBotBadge" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(46, 196, 182, 0.2); color: #2ec4b6; border: 1px solid #2ec4b6;">🤖 Боти: Ветеран</span>
               </div>
               <span id="lobbyModeBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 3px; background: #2b230f; color: #ffcf48; border: 1px solid #c59b27;">ВИЖИВАННЯ</span>
             </div>
 
-            <!-- Host Config inside Room (Target Kills / Mode) -->
-            <div id="lobbyHostConfigRow" style="display: none; margin-bottom: 8px; padding: 6px 8px; background: rgba(0,0,0,0.35); border-radius: 4px; border: 1px solid rgba(197, 155, 39, 0.3);">
-              <div style="font-size: 11px; color: var(--color-brass-bright); margin-bottom: 4px; font-weight: bold;">⚙ Налаштування кімнати (Хост):</div>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <label for="roomActiveTargetKillsInput" style="font-size: 11px; color: var(--color-text-dim); white-space: nowrap;">Ціль кілів:</label>
-                <input type="number" id="roomActiveTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 70px; padding: 4px 6px; font-size: 12px;">
-                <button type="button" id="btnUpdateRoomTargetKills" class="btn-steampunk btn-brass" style="font-size: 11px; padding: 4px 8px;">Зберегти ціль</button>
+            <!-- Host Config inside Room (Target Kills / Bots / Difficulty) -->
+            <div id="lobbyHostConfigRow" style="display: none; margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.35); border-radius: 4px; border: 1px solid rgba(197, 155, 39, 0.3);">
+              <div style="font-size: 11px; color: var(--color-brass-bright); margin-bottom: 6px; font-weight: bold;">⚙ Налаштування кімнати (Хост):</div>
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <label for="roomActiveTargetKillsInput" style="font-size: 11px; color: var(--color-text-dim); white-space: nowrap;">Ціль кілів:</label>
+                  <input type="number" id="roomActiveTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 60px; padding: 4px 6px; font-size: 12px;">
+                </div>
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <label for="roomActiveBotFillSelect" style="font-size: 11px; color: var(--color-text-dim); white-space: nowrap;">Боти:</label>
+                  <select id="roomActiveBotFillSelect" class="steampunk-input" style="font-size: 11px; padding: 3px 6px; cursor: pointer;">
+                    <option value="true">🤖 З ботами</option>
+                    <option value="false">👥 Без ботів</option>
+                  </select>
+                </div>
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <label for="roomActiveBotDifficultySelect" style="font-size: 11px; color: var(--color-text-dim); white-space: nowrap;">Складність:</label>
+                  <select id="roomActiveBotDifficultySelect" class="steampunk-input" style="font-size: 11px; padding: 3px 6px; cursor: pointer;">
+                    <option value="easy">🥉 Рекрут</option>
+                    <option value="normal">🥈 Ветеран</option>
+                    <option value="hard">🥇 Еліта</option>
+                    <option value="nightmare">🔥 Титан</option>
+                  </select>
+                </div>
+                <button type="button" id="btnUpdateRoomTargetKills" class="btn-steampunk btn-brass" style="font-size: 11px; padding: 4px 10px; margin-left: auto;">Зберегти налаштування</button>
               </div>
             </div>
 

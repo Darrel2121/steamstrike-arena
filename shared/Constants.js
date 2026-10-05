@@ -129,4 +129,80 @@ export const GAME_MODE_CONFIGS = {
   }
 };
 
+// Bot Intelligence & AI Difficulty Levels
+export const BOT_DIFFICULTIES = {
+  EASY: 'easy',
+  NORMAL: 'normal',
+  HARD: 'hard',
+  NIGHTMARE: 'nightmare'
+};
+
+export const BOT_DIFFICULTY_CONFIGS = {
+  [BOT_DIFFICULTIES.EASY]: {
+    id: 'easy',
+    name: 'Рекрут (Легкий)',
+    shortName: 'Рекрут',
+    badge: 'ЛЕГКИЙ',
+    icon: '🟢',
+    color: '#10b981',
+    description: 'Повільна реакція (0.85с), без стрільби на випередження, сповільнений рух',
+    reactionDelay: 0.85,
+    maxSpeed: 115,
+    turnRate: 1.8 * Math.PI,
+    range: 320,
+    fireInterval: 0.65,
+    leadAim: false,
+    abilityChance: 0.20
+  },
+  [BOT_DIFFICULTIES.NORMAL]: {
+    id: 'normal',
+    name: 'Ветеран (Звичайний)',
+    shortName: 'Ветеран',
+    badge: 'ЗВИЧАЙНИЙ',
+    icon: '🟡',
+    color: '#ffcf48',
+    description: 'Тактичне патрулювання, збалансований приціл (0.45с), базова реакція на звук',
+    reactionDelay: 0.45,
+    maxSpeed: 145,
+    turnRate: 3.5 * Math.PI,
+    range: 420,
+    fireInterval: 0.40,
+    leadAim: true,
+    abilityChance: 0.60
+  },
+  [BOT_DIFFICULTIES.HARD]: {
+    id: 'hard',
+    name: 'Елітний автоматон (Важкий)',
+    shortName: 'Еліта',
+    badge: 'ВАЖКИЙ',
+    icon: '🔴',
+    color: '#f97316',
+    description: 'Балістичне випередження, активні стрейфи, швидка реакція (0.22с), часті вміння',
+    reactionDelay: 0.22,
+    maxSpeed: 175,
+    turnRate: 6.0 * Math.PI,
+    range: 490,
+    fireInterval: 0.30,
+    leadAim: true,
+    abilityChance: 0.90
+  },
+  [BOT_DIFFICULTIES.NIGHTMARE]: {
+    id: 'nightmare',
+    name: 'Кошмарний титан (Екстремальний)',
+    shortName: 'Титан',
+    badge: 'ЕКСТРЕМ',
+    icon: '🟣',
+    color: '#ef4444',
+    description: 'Блискавичні рефлекси (0.08с), нещадний фланг, максимальна швидкість та філігранні вміння',
+    reactionDelay: 0.08,
+    maxSpeed: 195,
+    turnRate: 9.0 * Math.PI,
+    range: 560,
+    fireInterval: 0.22,
+    leadAim: true,
+    abilityChance: 1.00
+  }
+};
+
+
 

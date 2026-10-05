@@ -247,8 +247,13 @@ export class GameServer {
                 room.initPickups();
               }
             }
-            if (payload?.gameMode) {
-              room.setGameMode(payload.gameMode, payload.targetKills);
+            if (payload?.gameMode || payload?.targetKills || payload?.fillWithBots !== undefined || payload?.botDifficulty) {
+              room.setRoomConfig({
+                gameMode: payload?.gameMode,
+                targetKills: payload?.targetKills,
+                fillWithBots: payload?.fillWithBots !== undefined ? payload.fillWithBots : (payload?.autoFillBots !== undefined ? payload.autoFillBots : undefined),
+                botDifficulty: payload?.botDifficulty
+              });
             }
             if (payload?.maxPlayers) {
               room.maxPlayers = payload.maxPlayers;
@@ -263,7 +268,8 @@ export class GameServer {
               maxPlayers: payload?.maxPlayers || 4,
               gameMode: payload?.gameMode,
               targetKills: payload?.targetKills,
-              autoFillBots: payload?.autoFillBots ?? false,
+              autoFillBots: payload?.autoFillBots !== undefined ? payload.autoFillBots : (payload?.fillWithBots !== false),
+              botDifficulty: payload?.botDifficulty || 'normal',
               autoTick: true,
               password: payload?.password || null
             });
@@ -318,7 +324,12 @@ export class GameServer {
           if (currentRoom) {
             const player = currentRoom.players.get(clientId);
             if (player && player.isHost) {
-              currentRoom.setGameMode(payload?.gameMode, payload?.targetKills);
+              currentRoom.setRoomConfig({
+                gameMode: payload?.gameMode,
+                targetKills: payload?.targetKills,
+                fillWithBots: payload?.fillWithBots !== undefined ? payload.fillWithBots : (payload?.autoFillBots !== undefined ? payload.autoFillBots : undefined),
+                botDifficulty: payload?.botDifficulty
+              });
             }
           }
           break;
@@ -344,7 +355,10 @@ export class GameServer {
 
         case PROTOCOL_MSG_TYPES.C2S_MATCH_START: {
           if (currentRoom) {
-            currentRoom.startMatch({ fillBots: payload?.fillBots });
+            currentRoom.startMatch({
+              fillBots: payload?.fillBots !== undefined ? payload.fillBots : (payload?.fillWithBots !== undefined ? payload.fillWithBots : currentRoom.autoFillBots),
+              botDifficulty: payload?.botDifficulty || currentRoom.botDifficulty
+            });
           }
           break;
         }
