@@ -141,7 +141,8 @@ export class VisibilityRenderer {
     fCtx.translate(-camX, -camY);
 
     // 3a. Punch local player's vision with smooth feathered lantern falloff
-    if (poly && poly.length >= 3) {
+    const isPlayerAlive = player.isAlive !== false && (player.hp === undefined || player.hp > 0);
+    if (isPlayerAlive && poly && poly.length >= 3) {
       const px = player.renderX ?? player.x;
       const py = player.renderY ?? player.y;
 
@@ -218,6 +219,20 @@ export class VisibilityRenderer {
       fCtx.fillStyle = proxGrad;
       fCtx.beginPath();
       fCtx.arc(px, py, proxRadius, 0, Math.PI * 2);
+      fCtx.fill();
+      fCtx.restore();
+    } else if (!isPlayerAlive && player) {
+      // Dead player: lantern extinguished, soft dying ember glow around wreck only (32px)
+      const px = player.renderX ?? player.x;
+      const py = player.renderY ?? player.y;
+      fCtx.save();
+      const wreckGrad = fCtx.createRadialGradient(px, py, 0, px, py, 34);
+      wreckGrad.addColorStop(0, 'rgba(255, 130, 50, 0.35)');
+      wreckGrad.addColorStop(0.60, 'rgba(180, 60, 20, 0.12)');
+      wreckGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+      fCtx.fillStyle = wreckGrad;
+      fCtx.beginPath();
+      fCtx.arc(px, py, 34, 0, Math.PI * 2);
       fCtx.fill();
       fCtx.restore();
     }
@@ -341,7 +356,7 @@ export class VisibilityRenderer {
     mainCtx.translate(-camX, -camY);
 
     // 5a. Local Player Soft Volumetric Beam Glow
-    if (poly && poly.length >= 3) {
+    if (isPlayerAlive && poly && poly.length >= 3) {
       const px = player.renderX ?? player.x;
       const py = player.renderY ?? player.y;
       const aimAngle = player.angle !== undefined ? player.angle : (player.aimAngle ?? 0);

@@ -637,23 +637,31 @@ export class HUD {
     const wName = player.weaponName || 'Clockwork Revolver';
     const callSign = player.name || 'Mechanic Ranger';
 
-    ctx.fillStyle = 'rgba(12, 14, 20, 0.85)';
+    // Drop shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 3;
+
+    ctx.fillStyle = '#0e1219';
     ctx.strokeStyle = '#c59b27';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.roundRect(x, y, 180, 46, 4);
+    ctx.roundRect(x, y, 180, 46, 5);
     ctx.fill();
     ctx.stroke();
 
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
     // Call-sign
     ctx.fillStyle = '#ffcf48';
-    ctx.font = 'bold 12px Georgia, serif';
+    ctx.font = 'bold 12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(`⚙ ${callSign}`, x + 10, y + 18);
 
     // Weapon title
-    ctx.fillStyle = '#9d9685';
-    ctx.font = '11px monospace';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.font = 'bold 11px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(wName, x + 10, y + 36);
 
     ctx.restore();
@@ -669,44 +677,68 @@ export class HUD {
     if (!this.notifications || this.notifications.length === 0) return;
 
     ctx.save();
-    let currentY = 70;
+    let currentY = 76;
 
     for (const notif of this.notifications) {
       if (notif.alpha <= 0.01) continue;
 
       ctx.save();
-      ctx.globalAlpha = notif.alpha;
+      ctx.globalAlpha = Math.min(1.0, notif.alpha);
 
-      ctx.font = 'bold 13px Georgia, serif';
+      // Clean typography: Modern readable font without fuzzy shadow blur
+      const font = 'bold 13px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = font;
       const textMetrics = ctx.measureText(notif.text);
-      const toastWidth = Math.max(260, Math.min(500, textMetrics.width + 48));
-      const toastHeight = 32;
+      const toastHeight = 36;
+      const toastWidth = Math.max(280, Math.min(width - 40, textMetrics.width + 56));
       const toastX = (width - toastWidth) / 2;
 
-      // Dark brass backing
-      ctx.fillStyle = 'rgba(15, 18, 25, 0.92)';
+      // 1. Heavy drop shadow so it detaches cleanly from background/lights
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 4;
+
+      // 2. 100% Solid Opaque Steampunk Backing Plate (NO light bleed-through!)
+      ctx.fillStyle = '#0f131a';
       ctx.strokeStyle = notif.color || '#c59b27';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.roundRect(toastX, currentY, toastWidth, toastHeight, 5);
+      ctx.roundRect(toastX, currentY, toastWidth, toastHeight, 6);
       ctx.fill();
       ctx.stroke();
 
-      // Corner rivets
-      ctx.fillStyle = '#ffcf48';
+      // Reset shadow for inner elements
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetY = 0;
+
+      // 3. Colored status accent strip on the left
+      const accentColor = notif.color || '#ffcf48';
+      ctx.fillStyle = accentColor;
       ctx.beginPath();
-      ctx.arc(toastX + 4, currentY + 4, 1.5, 0, Math.PI * 2);
-      ctx.arc(toastX + toastWidth - 4, currentY + 4, 1.5, 0, Math.PI * 2);
-      ctx.arc(toastX + 4, currentY + toastHeight - 4, 1.5, 0, Math.PI * 2);
-      ctx.arc(toastX + toastWidth - 4, currentY + toastHeight - 4, 1.5, 0, Math.PI * 2);
+      ctx.roundRect(toastX + 2, currentY + 3, 5, toastHeight - 6, 2);
       ctx.fill();
 
-      // Glowing text
-      ctx.shadowColor = notif.color || '#ffcf48';
-      ctx.shadowBlur = 6;
-      ctx.fillStyle = notif.color || '#ffcf48';
+      // 4. Corner rivets in brass
+      ctx.fillStyle = '#ffcf48';
+      ctx.beginPath();
+      ctx.arc(toastX + 11, currentY + 7, 1.5, 0, Math.PI * 2);
+      ctx.arc(toastX + toastWidth - 7, currentY + 7, 1.5, 0, Math.PI * 2);
+      ctx.arc(toastX + 11, currentY + toastHeight - 7, 1.5, 0, Math.PI * 2);
+      ctx.arc(toastX + toastWidth - 7, currentY + toastHeight - 7, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 5. Crisp, high-contrast text with dark outline for maximum legibility
+      ctx.font = font;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+
+      // Subtle crisp dark stroke outline
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+      ctx.lineWidth = 3;
+      ctx.strokeText(notif.text, width / 2, currentY + toastHeight / 2);
+
+      // Bright white crisp text fill
+      ctx.fillStyle = '#ffffff';
       ctx.fillText(notif.text, width / 2, currentY + toastHeight / 2);
 
       ctx.restore();
@@ -981,6 +1013,8 @@ export class HUD {
 
   /**
    * Renders the top-center competitive game mode scoreboard.
+   * Engineered with 100% solid opaque backing and high-contrast typography
+   * to eliminate transparency artifacts and guarantee pristine legibility.
    */
   renderGameModeScoreboard(ctx, width, height, player, matchContext = {}) {
     ctx.save();
@@ -990,28 +1024,46 @@ export class HUD {
     const teamScores = matchContext.teamScores || { team1: 0, team2: 0 };
     const players = matchContext.players || [];
 
-    const boardW = 320;
-    const boardH = 46;
-    const bx = width / 2 - boardW / 2;
-    const by = 16;
+    const boardW = 340;
+    const boardH = 50;
+    const bx = Math.round(width / 2 - boardW / 2);
+    const by = 14;
 
-    // Dark iron frame with brass trim
-    ctx.fillStyle = 'rgba(15, 18, 24, 0.88)';
+    // 1. Heavy drop shadow to physically detach UI from 3D game arena
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.90)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetY = 4;
+
+    // 2. 100% Solid Opaque Steampunk Chassis (Pure dark obsidian steel: NO light bleed!)
+    ctx.fillStyle = '#0b0e14';
     ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.roundRect(bx, by, boardW, boardH, 6);
+    ctx.roundRect(bx, by, boardW, boardH, 7);
     ctx.fill();
     ctx.stroke();
 
-    // Rivets in corners
+    // Reset shadow for crisp inner elements
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Subtle inner golden bevel border
+    ctx.strokeStyle = 'rgba(255, 207, 72, 0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(bx + 2, by + 2, boardW - 4, boardH - 4, 5);
+    ctx.stroke();
+
+    // Corner rivets
     ctx.fillStyle = '#ffcf48';
     ctx.beginPath();
-    ctx.arc(bx + 6, by + 6, 2, 0, Math.PI * 2);
-    ctx.arc(bx + boardW - 6, by + 6, 2, 0, Math.PI * 2);
-    ctx.arc(bx + 6, by + boardH - 6, 2, 0, Math.PI * 2);
-    ctx.arc(bx + boardW - 6, by + boardH - 6, 2, 0, Math.PI * 2);
+    ctx.arc(bx + 7, by + 7, 2, 0, Math.PI * 2);
+    ctx.arc(bx + boardW - 7, by + 7, 2, 0, Math.PI * 2);
+    ctx.arc(bx + 7, by + boardH - 7, 2, 0, Math.PI * 2);
+    ctx.arc(bx + boardW - 7, by + boardH - 7, 2, 0, Math.PI * 2);
     ctx.fill();
+
+    const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
     if (mode === 'team_dm') {
       // TEAM DEATHMATCH: Blue Team (Парові Вовки) vs Red Team (Мідні Лиси)
@@ -1019,41 +1071,41 @@ export class HUD {
       const t2 = teamScores.team2 || 0;
 
       // Blue Team (Left)
-      ctx.fillStyle = '#2575fc';
-      ctx.font = 'bold 16px monospace';
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = `bold 16px ${sansFont}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`🐺 ${t1}`, bx + 16, by + 28);
+      ctx.fillText(`🐺 ${t1}`, bx + 16, by + 27);
 
       // Score divider & target
-      ctx.fillStyle = '#ffcf48';
-      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'center';
       ctx.fillText(`ЦІЛЬ: ${targetKills}`, width / 2, by + 20);
 
-      ctx.fillStyle = '#8e9aa8';
-      ctx.font = '9px monospace';
-      ctx.fillText('КОМАНДНИЙ DM', width / 2, by + 34);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `bold 10px ${sansFont}`;
+      ctx.fillText('КОМАНДНИЙ DEATHMATCH', width / 2, by + 35);
 
       // Red Team (Right)
-      ctx.fillStyle = '#ff4757';
-      ctx.font = 'bold 16px monospace';
+      ctx.fillStyle = '#ef4444';
+      ctx.font = `bold 16px ${sansFont}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`${t2} 🦊`, bx + boardW - 16, by + 28);
+      ctx.fillText(`${t2} 🦊`, bx + boardW - 16, by + 27);
 
       // Progress bars at bottom of board
-      const barW = 105;
+      const barW = 100;
       const barH = 3;
       const ratio1 = Math.min(1.0, t1 / Math.max(1, targetKills));
       const ratio2 = Math.min(1.0, t2 / Math.max(1, targetKills));
 
-      ctx.fillStyle = '#1c2026';
+      ctx.fillStyle = '#1e293b';
       ctx.fillRect(bx + 16, by + boardH - 6, barW, barH);
       ctx.fillRect(bx + boardW - 16 - barW, by + boardH - 6, barW, barH);
 
-      ctx.fillStyle = '#2575fc';
+      ctx.fillStyle = '#3b82f6';
       ctx.fillRect(bx + 16, by + boardH - 6, barW * ratio1, barH);
 
-      ctx.fillStyle = '#ff4757';
+      ctx.fillStyle = '#ef4444';
       ctx.fillRect(bx + boardW - 16 - barW * ratio2, by + boardH - 6, barW * ratio2, barH);
 
     } else if (mode === 'team_elim') {
@@ -1067,39 +1119,43 @@ export class HUD {
         }
       }
 
-      ctx.fillStyle = '#2575fc';
-      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`🐺 Живих: ${t1Alive}`, bx + 14, by + 28);
+      ctx.fillText(`🐺 Живих: ${t1Alive}`, bx + 16, by + 27);
 
-      ctx.fillStyle = '#ffcf48';
-      ctx.font = 'bold 11px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'center';
       ctx.fillText('ОСТАННЯ КОМАНДА', width / 2, by + 20);
 
-      ctx.fillStyle = '#8e9aa8';
-      ctx.font = '9px monospace';
-      ctx.fillText('БЕЗ ВІДРОДЖЕННЯ', width / 2, by + 34);
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = `bold 10px ${sansFont}`;
+      ctx.fillText('БЕЗ ВІДРОДЖЕННЯ', width / 2, by + 35);
 
-      ctx.fillStyle = '#ff4757';
-      ctx.font = 'bold 13px monospace';
+      ctx.fillStyle = '#ef4444';
+      ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'right';
-      ctx.fillText(`Живих: ${t2Alive} 🦊`, bx + boardW - 14, by + 28);
+      ctx.fillText(`Живих: ${t2Alive} 🦊`, bx + boardW - 16, by + 27);
 
     } else if (mode === 'ffa_dm') {
       // FREE FOR ALL DEATHMATCH: Player kills vs target
       const myKills = player.kills || 0;
-      ctx.fillStyle = '#ffcf48';
-      ctx.font = 'bold 15px monospace';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 14px ${sansFont}`;
       ctx.textAlign = 'center';
-      ctx.fillText(`⚔️ КІЛИ: ${myKills} / ${targetKills}`, width / 2, by + 22);
+      ctx.fillText(`⚔️ ВАШІ КІЛИ: `, width / 2 - 25, by + 22);
+
+      ctx.fillStyle = '#ffcf48';
+      ctx.fillText(`${myKills} / ${targetKills}`, width / 2 + 35, by + 22);
 
       ctx.fillStyle = '#2ec4b6';
-      ctx.font = '10px monospace';
-      ctx.fillText('FFA DEATHMATCH (ВІДРОДЖЕННЯ)', width / 2, by + 36);
+      ctx.font = `bold 10px ${sansFont}`;
+      ctx.textAlign = 'center';
+      ctx.fillText('ВІЛЬНА БИТВА (ВІДРОДЖЕННЯ)', width / 2, by + 37);
 
     } else {
-      // SOLO ELIMINATION: Last Man Standing
+      // SOLO ELIMINATION: Last Man Standing (High-contrast, crisp readable typography)
       let aliveCount = 0;
       for (const p of players) {
         if (p.isAlive && (p.hp === undefined || p.hp > 0)) aliveCount++;
@@ -1107,14 +1163,26 @@ export class HUD {
       if (aliveCount === 0 && matchContext.aliveCount) aliveCount = matchContext.aliveCount;
       if (aliveCount === 0) aliveCount = 1;
 
-      ctx.fillStyle = '#ffcf48';
-      ctx.font = 'bold 14px Georgia, serif';
+      // Top Header: Pure white crisp text
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold 14px ${sansFont}`;
       ctx.textAlign = 'center';
-      ctx.fillText(`💀 БІЙЦІВ У ГРІ: ${aliveCount}`, width / 2, by + 22);
+      ctx.fillText(`💀 ЖИВИХ БІЙЦІВ: ${aliveCount}`, width / 2, by + 21);
 
-      ctx.fillStyle = '#8e9aa8';
-      ctx.font = '10px monospace';
-      ctx.fillText(`Ваші кіли: ${player.kills || 0} | Виживання`, width / 2, by + 36);
+      // Bottom Row: Clean sub-metrics
+      ctx.font = `bold 11px ${sansFont}`;
+
+      ctx.fillStyle = '#ffcf48';
+      ctx.textAlign = 'right';
+      ctx.fillText(`⚔️ Кіли: ${player.kills || 0}`, width / 2 - 8, by + 38);
+
+      ctx.fillStyle = '#475569';
+      ctx.textAlign = 'center';
+      ctx.fillText('•', width / 2, by + 38);
+
+      ctx.fillStyle = '#2ec4b6';
+      ctx.textAlign = 'left';
+      ctx.fillText('⏱️ Виживання', width / 2 + 8, by + 38);
     }
 
     ctx.restore();

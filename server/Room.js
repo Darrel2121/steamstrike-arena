@@ -1205,10 +1205,17 @@ export class Room {
     } else {
       // SOLO_ELIM: Last man standing (permadeath)
       const alive = this.getAliveCombatants();
+      const aliveHumans = Array.from(this.players.values()).filter(p => p.isAlive && p.hp > 0 && !p.isBot);
+
       if (alive.length === 0 || (alive.length === 1 && totalEntities > 1)) {
         isGameOver = true;
         draw = alive.length === 0;
         winnerId = alive.length === 1 ? alive[0].id : null;
+      } else if (aliveHumans.length === 0 && this.players.size > 0) {
+        // All human players eliminated: immediately resolve match so player is not stuck watching bots
+        isGameOver = true;
+        draw = false;
+        winnerId = alive.length > 0 ? alive[0].id : null;
       }
     }
 

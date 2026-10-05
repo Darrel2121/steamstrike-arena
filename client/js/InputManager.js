@@ -139,10 +139,11 @@ export class InputManager {
 
   onKeyDown(e) {
     this.keys.add(e.code);
-    if (e.code === 'KeyR') {
+    const keyLower = typeof e.key === 'string' ? e.key.toLowerCase() : '';
+    if (e.code === 'KeyR' || keyLower === 'r' || keyLower === 'к') {
       this.reloadRequested = true;
     }
-    if (e.code === 'KeyE') {
+    if (e.code === 'KeyE' || keyLower === 'e' || keyLower === 'у') {
       this.abilityRequested = true;
     }
     if (e.code === 'Space') {

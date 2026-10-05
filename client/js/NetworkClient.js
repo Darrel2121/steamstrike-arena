@@ -510,6 +510,7 @@ export class NetworkClient {
       aimAngle: typeof input.aimAngle === 'number' ? input.aimAngle : this.predictedAngle,
       firing: !!input.firing,
       reload: !!input.reload,
+      ability: Boolean(input.ability || input.useAbility),
       dt: dtMs,
       timestamp: Date.now()
     };

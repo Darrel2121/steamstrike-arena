@@ -722,6 +722,19 @@ export class App {
       // 2. Poll input and send to network client (freeze inputs when match concludes)
       if (!this.isMatchOver) {
         const input = this.inputManager.pollInput(playerScreenPos.x, playerScreenPos.y);
+        const isDead = localPlayerPredicted && (localPlayerPredicted.isAlive === false || (localPlayerPredicted.hp !== undefined && localPlayerPredicted.hp <= 0));
+        if (isDead) {
+          input.moveX = 0;
+          input.moveY = 0;
+          input.firing = false;
+          input.sprint = false;
+          input.ability = false;
+          input.reload = false;
+          input.aimAngle = this.lastDeathAngle ?? localPlayerPredicted.angle ?? 0;
+        } else if (localPlayerPredicted) {
+          this.lastDeathAngle = localPlayerPredicted.angle;
+        }
+
         if (this.networkClient.isConnected) {
           this.networkClient.sendInput(input);
         }
