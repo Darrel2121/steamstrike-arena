@@ -168,20 +168,30 @@ export class AuthModal {
 
   setupGsi() {
     try {
-      window.google.accounts.id.initialize({
-        client_id: 'mock-steampunk-client-id.apps.googleusercontent.com',
-        callback: (res) => this.handleGoogleCredentialResponse(res)
-      });
-
-      if (this.dom.gsiContainer) {
-        window.google.accounts.id.renderButton(this.dom.gsiContainer, {
-          theme: 'filled_black',
-          size: 'large',
-          text: 'signin_with',
-          shape: 'rectangular'
+      const realClientId = window.__GOOGLE_CLIENT_ID__ || null;
+      if (realClientId && !realClientId.startsWith('mock-') && window.google?.accounts?.id) {
+        window.google.accounts.id.initialize({
+          client_id: realClientId,
+          callback: (res) => this.handleGoogleCredentialResponse(res)
         });
+
+        if (this.dom.gsiContainer) {
+          window.google.accounts.id.renderButton(this.dom.gsiContainer, {
+            theme: 'filled_black',
+            size: 'large',
+            text: 'signin_with',
+            shape: 'rectangular'
+          });
+          if (this.dom.btnMockGoogleSignIn) {
+            this.dom.btnMockGoogleSignIn.style.display = 'none';
+          }
+        }
+      } else {
+        if (this.dom.gsiContainer) {
+          this.dom.gsiContainer.style.display = 'none';
+        }
         if (this.dom.btnMockGoogleSignIn) {
-          this.dom.btnMockGoogleSignIn.style.display = 'none';
+          this.dom.btnMockGoogleSignIn.style.display = 'inline-flex';
         }
       }
     } catch (_) {

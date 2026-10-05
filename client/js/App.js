@@ -25,7 +25,9 @@ export class App {
     this.animationFrameId = null;
     this.isMatchOver = false;
 
-    this.progressionManager = new ProgressionManager();
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
+    this.progressionManager = new ProgressionManager({ apiBase });
     this.bindDomElements();
     this.authModal = new AuthModal(this.progressionManager);
     this.workshopUI = new WorkshopUI(this.progressionManager, {
