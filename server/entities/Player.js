@@ -42,6 +42,7 @@ export class Player {
     this.socket = options.socket || null;
     this.isHost = options.isHost ?? false;
     this.ready = options.ready ?? false;
+    this.emblem = options.emblem || 'gear';
 
     // Kinematic Position & Geometry
     this.x = typeof options.x === 'number' ? options.x : 100;
@@ -397,6 +398,7 @@ export class Player {
       isBot: Boolean(this.isBot),
       lanternOn: this.lanternOn !== false,
       lastProcessedSeq: this.lastProcessedSeq || 0,
+      emblem: this.emblem || 'gear',
       classId: this.classId || 'vanguard',
       abilityId: this.ability?.id || 'steam_overdrive',
       abilityCooldown: Math.max(0, Number((this.abilityCooldownTimer || 0).toFixed(1))),

@@ -921,8 +921,29 @@
           <span id="authTypeBadge" class="auth-type-pill guest">⚙ Гість-механік</span>
           <span id="authLevelBadge" style="font-size: 12px; color: #ffcf48; font-weight: bold;">Ранг 1</span>
         </div>
-        <div class="auth-callsign" id="authCallsignDisplay">FoundryMechanic#101</div>
+
+        <!-- Callsign & Emblem Edit Row -->
+        <div class="auth-callsign-edit-row">
+          <div class="auth-active-emblem-badge" id="authActiveEmblem" title="Обраний бойовий герб">⚙️</div>
+          <div class="auth-callsign-input-wrap">
+            <input type="text" id="authCallsignInput" class="auth-callsign-input" maxlength="24" placeholder="Ваш позивний..." spellcheck="false" autocomplete="off">
+            <span id="authCallsignDisplay" style="display: none;"></span>
+          </div>
+          <button id="btnSaveCallsign" class="btn-steampunk btn-brass auth-btn-action" title="Зберегти позивний">💾</button>
+          <button id="btnAuthRandomCallsign" class="btn-steampunk btn-iron auth-btn-action" title="Випадковий позивний">🎲</button>
+        </div>
+        <div id="authCallsignNotice" class="auth-callsign-notice" style="display: none;"></div>
+
         <div class="auth-email" id="authEmailDisplay">Збережено локально в механізмах браузера</div>
+      </div>
+
+      <!-- Heraldic Emblems Selection Section -->
+      <div class="auth-emblems-section">
+        <div class="auth-section-title">
+          <span>🛡️ ГЕРБ ТА БОЙОВИЙ ШТАНДАРТ</span>
+          <span id="authSelectedEmblemName" class="auth-emblem-selected-name">Гільдія Шестерень</span>
+        </div>
+        <div id="authEmblemsGrid" class="auth-emblems-grid"></div>
       </div>
 
       <div class="auth-notice" id="authStatusNotice">

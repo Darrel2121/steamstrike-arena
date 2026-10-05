@@ -18,8 +18,13 @@ import {
   calculateLevelFromTotalXp,
   createDefaultProfile,
   SCRAP_TO_CORE_EXCHANGE_RATE,
-  transmuteScrapToCores
+  transmuteScrapToCores,
+  STEAMPUNK_EMBLEMS,
+  DEFAULT_EMBLEM_ID,
+  getEmblemDefinition
 } from '../../shared/ProgressionSchema.js';
+
+export { STEAMPUNK_EMBLEMS, DEFAULT_EMBLEM_ID, getEmblemDefinition };
 
 export const STORAGE_KEY_PROFILE = 'clockwork_player_profile_v1';
 export const STORAGE_KEY_TOKEN = 'clockwork_auth_token_v1';
@@ -485,6 +490,52 @@ export class ProgressionManager {
     this.saveLocalProfile();
     this.emit('profileUpdated', this.profile);
     this.syncEquippedLoadout();
+    return true;
+  }
+
+  /**
+   * Updates player identity (callsign and/or heraldic emblem) locally and on the server.
+   * @param {Object} identity
+   * @param {string} [identity.username]
+   * @param {string} [identity.emblem]
+   * @returns {Promise<boolean>}
+   */
+  async updateIdentity({ username, emblem } = {}) {
+    if (!this.profile) return false;
+    let changed = false;
+
+    if (typeof username === 'string' && username.trim().length > 0) {
+      this.profile.username = username.trim().slice(0, 32);
+      changed = true;
+    }
+
+    if (typeof emblem === 'string' && emblem.trim().length > 0) {
+      this.profile.emblem = emblem.trim();
+      changed = true;
+    }
+
+    if (!changed) return false;
+
+    this.profile.updatedAt = Date.now();
+    this.saveLocalProfile();
+    this.emit('profileUpdated', this.profile);
+
+    try {
+      await fetch(`${this.apiBase}/api/profile/identity`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {})
+        },
+        body: JSON.stringify({
+          username: this.profile.username,
+          emblem: this.profile.emblem || 'gear',
+          profileId: this.profile.id,
+          guestId: this.profile.id
+        })
+      });
+    } catch (_) {}
+
     return true;
   }
 

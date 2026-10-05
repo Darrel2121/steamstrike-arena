@@ -4,6 +4,9 @@
  * Integrates Google Identity Services (GSI) with seamless fallback mock for offline/headless test execution.
  */
 
+import { generateSteampunkCallsign } from '../ProgressionManager.js';
+import { STEAMPUNK_EMBLEMS, getEmblemDefinition } from '../../shared/ProgressionSchema.js';
+
 export class AuthModal {
   /**
    * @param {Object} progressionManager - Instance of ProgressionManager
@@ -13,6 +16,7 @@ export class AuthModal {
     this.prog = progressionManager;
     this.isOpen = false;
     this.pendingToken = null;
+    this._noticeTimer = null;
 
     this.bindDom();
     this.attachEvents();
@@ -29,7 +33,14 @@ export class AuthModal {
       btnClose: document.getElementById('btnAuthClose'),
       authTypeBadge: document.getElementById('authTypeBadge'),
       authLevelBadge: document.getElementById('authLevelBadge'),
+      authActiveEmblem: document.getElementById('authActiveEmblem'),
+      authCallsignInput: document.getElementById('authCallsignInput'),
       authCallsignDisplay: document.getElementById('authCallsignDisplay'),
+      btnSaveCallsign: document.getElementById('btnSaveCallsign'),
+      btnAuthRandomCallsign: document.getElementById('btnAuthRandomCallsign'),
+      authCallsignNotice: document.getElementById('authCallsignNotice'),
+      authSelectedEmblemName: document.getElementById('authSelectedEmblemName'),
+      authEmblemsGrid: document.getElementById('authEmblemsGrid'),
       authEmailDisplay: document.getElementById('authEmailDisplay'),
       authStatusNotice: document.getElementById('authStatusNotice'),
 
@@ -48,6 +59,33 @@ export class AuthModal {
     this.dom.btnClose?.addEventListener('click', () => this.close());
     this.dom.overlay?.addEventListener('click', (e) => {
       if (e.target === this.dom.overlay) this.close();
+    });
+
+    const saveCallsignHandler = async () => {
+      const val = (this.dom.authCallsignInput?.value || '').trim();
+      if (!val) return;
+      if (this.prog) {
+        await this.prog.updateIdentity({ username: val });
+        this.showCallsignNotice('Позивний збережено!');
+      }
+    };
+
+    this.dom.btnSaveCallsign?.addEventListener('click', saveCallsignHandler);
+    this.dom.authCallsignInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        saveCallsignHandler();
+      }
+    });
+
+    this.dom.btnAuthRandomCallsign?.addEventListener('click', async () => {
+      const rand = generateSteampunkCallsign();
+      if (this.dom.authCallsignInput) {
+        this.dom.authCallsignInput.value = rand;
+      }
+      if (this.prog) {
+        await this.prog.updateIdentity({ username: rand });
+        this.showCallsignNotice('Позивний оновлено!');
+      }
     });
 
     // Mock Google Sign-In button for offline / testing
@@ -121,6 +159,26 @@ export class AuthModal {
       this.dom.authCallsignDisplay.textContent = profile.username || 'FoundryMechanic';
     }
 
+    if (this.dom.authCallsignInput) {
+      if (document.activeElement !== this.dom.authCallsignInput) {
+        this.dom.authCallsignInput.value = profile.username || '';
+      }
+    }
+
+    const activeEmblemId = profile.emblem || 'gear';
+    const emblemDef = getEmblemDefinition(activeEmblemId);
+
+    if (this.dom.authActiveEmblem) {
+      this.dom.authActiveEmblem.textContent = emblemDef.icon;
+      this.dom.authActiveEmblem.title = `${emblemDef.name} — «${emblemDef.motto}»`;
+    }
+
+    if (this.dom.authSelectedEmblemName) {
+      this.dom.authSelectedEmblemName.textContent = emblemDef.name;
+    }
+
+    this.renderEmblemsGrid(activeEmblemId);
+
     if (this.dom.authEmailDisplay) {
       this.dom.authEmailDisplay.textContent = isGuest ? 'Збережено локально в механізмах браузера' : (profile.email || 'Хмарна автентифікація');
     }
@@ -141,6 +199,49 @@ export class AuthModal {
     }
     if (this.dom.btnMockGoogleSignIn) {
       this.dom.btnMockGoogleSignIn.style.display = isGuest ? 'inline-flex' : 'none';
+    }
+  }
+
+  showCallsignNotice(msg) {
+    if (!this.dom.authCallsignNotice) return;
+    this.dom.authCallsignNotice.textContent = msg;
+    this.dom.authCallsignNotice.style.display = 'block';
+    clearTimeout(this._noticeTimer);
+    this._noticeTimer = setTimeout(() => {
+      if (this.dom.authCallsignNotice) {
+        this.dom.authCallsignNotice.style.display = 'none';
+      }
+    }, 2800);
+  }
+
+  renderEmblemsGrid(activeEmblemId) {
+    if (!this.dom.authEmblemsGrid) return;
+    this.dom.authEmblemsGrid.innerHTML = '';
+
+    for (const emblem of STEAMPUNK_EMBLEMS) {
+      const card = document.createElement('div');
+      card.className = `emblem-card ${emblem.id === activeEmblemId ? 'selected' : ''}`;
+      card.title = `${emblem.name}\n«${emblem.motto}»`;
+
+      const icon = document.createElement('div');
+      icon.className = 'emblem-card-icon';
+      icon.textContent = emblem.icon;
+
+      const name = document.createElement('div');
+      name.className = 'emblem-card-name';
+      name.textContent = emblem.name;
+
+      card.appendChild(icon);
+      card.appendChild(name);
+
+      card.addEventListener('click', async () => {
+        if (this.prog) {
+          await this.prog.updateIdentity({ emblem: emblem.id });
+          this.showCallsignNotice(`Герб обрано: ${emblem.name}`);
+        }
+      });
+
+      this.dom.authEmblemsGrid.appendChild(card);
     }
   }
 

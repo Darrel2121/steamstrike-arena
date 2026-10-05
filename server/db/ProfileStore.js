@@ -456,6 +456,41 @@ export class ProfileStore {
   }
 
   /**
+   * Updates player identity attributes (callsign and heraldic emblem).
+   * @param {string} profileId
+   * @param {Object} identity
+   * @param {string} [identity.username]
+   * @param {string} [identity.emblem]
+   * @returns {Promise<{ ok: boolean, profile?: Object, error?: string, username?: string, emblem?: string }>}
+   */
+  async updateIdentity(profileId, identity = {}) {
+    return this.enqueue(profileId, async () => {
+      let profile = this.cache.get(profileId);
+      if (!profile) {
+        profile = createDefaultProfile({ id: profileId });
+        this.cache.set(profileId, profile);
+      }
+
+      if (typeof identity.username === 'string' && identity.username.trim().length > 0) {
+        profile.username = identity.username.trim().slice(0, 32);
+      }
+      if (typeof identity.emblem === 'string' && identity.emblem.trim().length > 0) {
+        profile.emblem = identity.emblem.trim();
+      }
+
+      profile.updatedAt = Date.now();
+      await this.flush();
+
+      return {
+        ok: true,
+        profile,
+        username: profile.username,
+        emblem: profile.emblem || 'gear'
+      };
+    });
+  }
+
+  /**
    * Transmutes clockwork scrap into aetherium cores.
    * @param {string} profileId
    * @param {number} [coresToConvert=1]

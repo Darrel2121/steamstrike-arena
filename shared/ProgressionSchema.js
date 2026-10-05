@@ -4,7 +4,8 @@
  */
 
 import { CHARACTER_CLASSES, DEFAULT_CLASS_ID, getClassDefinition } from './CharacterClasses.js';
-export { CHARACTER_CLASSES, DEFAULT_CLASS_ID, getClassDefinition };
+import { STEAMPUNK_EMBLEMS, STEAMPUNK_EMBLEMS_MAP, DEFAULT_EMBLEM_ID, getEmblemDefinition } from './Emblems.js';
+export { CHARACTER_CLASSES, DEFAULT_CLASS_ID, getClassDefinition, STEAMPUNK_EMBLEMS, STEAMPUNK_EMBLEMS_MAP, DEFAULT_EMBLEM_ID, getEmblemDefinition };
 
 export const MAX_UPGRADE_TIER = 5;
 
@@ -473,6 +474,7 @@ export function createDefaultProfile(options = {}) {
     },
     equippedWeapon: options.equippedWeapon || 'revolver',
     equippedClass: options.equippedClass || DEFAULT_CLASS_ID,
+    emblem: options.emblem || DEFAULT_EMBLEM_ID,
     matchHistory: [],
     careerStats: {
       matchesPlayed: 0,

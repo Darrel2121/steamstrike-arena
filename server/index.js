@@ -233,6 +233,41 @@ export function startServer(port = process.env.PORT || 3000) {
           });
         }
 
+        // POST /api/profile/identity (Update callsign and heraldic emblem)
+        if (pathname === '/api/profile/identity' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          const accountId = userPayload?.accountId || body.guestId || body.profileId;
+          if (!accountId) return sendJson(400, { success: false, error: 'Missing profile ID' });
+
+          const username = body.username ? String(body.username).trim().slice(0, 32) : undefined;
+          const emblem = body.emblem ? String(body.emblem).trim() : undefined;
+
+          const result = await profileStore.updateIdentity(accountId, { username, emblem });
+
+          // Also synchronize active WebSocket rooms if present
+          if (accountId && gameServer) {
+            for (const [, room] of gameServer.rooms) {
+              for (const [, player] of room.players) {
+                if (player.profile?.id === accountId || player.id === accountId) {
+                  if (username) player.name = username;
+                  if (emblem) player.emblem = emblem;
+                  player.profile = result.profile;
+                  if (room.state === 'LOBBY') {
+                    room.broadcastLobbyState();
+                  }
+                }
+              }
+            }
+          }
+
+          return sendJson(200, {
+            success: true,
+            username: result.username,
+            emblem: result.emblem,
+            profile: result.profile
+          });
+        }
+
         // POST /api/match/reward
         if (pathname === '/api/match/reward' && req.method === 'POST') {
           const body = await parseJsonBody(req);

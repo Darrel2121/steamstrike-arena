@@ -12,7 +12,7 @@ import {
   PLAYER_STAMINA_MAX,
   THEME_COLORS
 } from '../../../shared/Constants.js';
-import { WEAPON_DEFINITIONS } from '../../../shared/ProgressionSchema.js';
+import { WEAPON_DEFINITIONS, getEmblemDefinition } from '../../../shared/ProgressionSchema.js';
 
 export class HUD {
   /**
@@ -640,6 +640,8 @@ export class HUD {
     const def = WEAPON_DEFINITIONS[player.weaponId];
     const wName = player.weaponName || def?.name || 'Годинниковий револьвер';
     const callSign = player.name || 'Механік-рейнджер';
+    const emblemDef = getEmblemDefinition(player.emblem);
+    const emblemIcon = emblemDef ? emblemDef.icon : '⚙️';
 
     // Drop shadow
     ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
@@ -657,11 +659,11 @@ export class HUD {
     ctx.shadowBlur = 0;
     ctx.shadowOffsetY = 0;
 
-    // Call-sign
+    // Call-sign with heraldic emblem
     ctx.fillStyle = '#ffcf48';
     ctx.font = 'bold 12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`⚙ ${callSign}`, x + 10, y + 18);
+    ctx.fillText(`${emblemIcon} ${callSign}`, x + 10, y + 18);
 
     // Weapon title
     ctx.fillStyle = '#cbd5e1';

@@ -10,7 +10,8 @@ import { NetworkClient } from './NetworkClient.js';
 import { InputManager } from './InputManager.js';
 import { LobbyUI } from './ui/LobbyUI.js';
 import { GameRenderer } from './rendering/GameRenderer.js';
-import { ProgressionManager } from './ProgressionManager.js';
+import { ProgressionManager, generateSteampunkCallsign } from './ProgressionManager.js';
+import { getEmblemDefinition } from '../../shared/ProgressionSchema.js';
 import { WorkshopUI } from './ui/WorkshopUI.js';
 import { AuthModal } from './ui/AuthModal.js';
 
@@ -271,9 +272,18 @@ export class App {
         'GearStriker', 'ShadowVanguard'
       ];
       this.btnRandomCallsign.addEventListener('click', () => {
-        const rand = callsigns[Math.floor(Math.random() * callsigns.length)] + '_' + Math.floor(10 + Math.random() * 90);
+        const rand = generateSteampunkCallsign();
         if (this.homePlayerNameInput) this.homePlayerNameInput.value = rand;
         if (this.lobbyUI?.dom?.playerNameInput) this.lobbyUI.dom.playerNameInput.value = rand;
+        this.progressionManager?.updateIdentity({ username: rand });
+      });
+
+      this.homePlayerNameInput?.addEventListener('change', () => {
+        const val = this.homePlayerNameInput.value?.trim();
+        if (val) {
+          if (this.lobbyUI?.dom?.playerNameInput) this.lobbyUI.dom.playerNameInput.value = val;
+          this.progressionManager?.updateIdentity({ username: val });
+        }
       });
     }
 
@@ -281,6 +291,9 @@ export class App {
       this.btnHeroQuickPlay.addEventListener('click', () => {
         const name = (this.homePlayerNameInput?.value || 'FoundryRanger_1').trim();
         if (this.lobbyUI?.dom?.playerNameInput) this.lobbyUI.dom.playerNameInput.value = name;
+        if (this.progressionManager?.profile && this.progressionManager.profile.username !== name) {
+          this.progressionManager.updateIdentity({ username: name });
+        }
 
         const selectedMap = this.getSelectedHeroMap();
         if (this.lobbyUI?.dom?.lobbyMapSelect && this.homeMapSelect) {
@@ -312,13 +325,19 @@ export class App {
 
     if (this.progressionManager) {
       this.progressionManager.on('profileUpdated', (p) => {
+        const emblemDef = getEmblemDefinition(p?.emblem);
+        const icon = emblemDef ? emblemDef.icon : (p?.isGuest !== false ? '⚙' : '🌐');
+
         if (this.headerUserBadge && p) {
-          this.headerUserBadge.textContent = p.isGuest !== false ? '⚙ Guest' : `🌐 ${p.username}`;
+          this.headerUserBadge.textContent = `${icon} ${p.username || 'Механік'}`;
         }
         if (this.homeUserCallsign && p) {
-          this.homeUserCallsign.textContent = p.username || 'FoundryRanger_1';
-          if (this.homePlayerNameInput && !this.homePlayerNameInput.value) {
-            this.homePlayerNameInput.value = p.username;
+          this.homeUserCallsign.textContent = `${icon} ${p.username || 'FoundryRanger_1'}`;
+          if (this.homePlayerNameInput) {
+            this.homePlayerNameInput.value = p.username || '';
+          }
+          if (this.lobbyUI?.dom?.playerNameInput) {
+            this.lobbyUI.dom.playerNameInput.value = p.username || '';
           }
         }
         if (this.homeUserBadge && p) {

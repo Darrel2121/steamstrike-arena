@@ -6,6 +6,7 @@
 
 import { createDefaultMap, deserializeMap, PRESET_MAPS, getPresetMap } from '../../../shared/MapSchema.js';
 import { STORAGE_KEY_CUSTOM_MAP } from '../../../shared/Constants.js';
+import { getEmblemDefinition } from '../../../shared/ProgressionSchema.js';
 
 export class LobbyUI {
   /**
@@ -767,8 +768,8 @@ export class LobbyUI {
       this.dom.btnSelectTeam2.style.color = me?.team === 'team2' ? '#fff' : '#ffa4ad';
     }
 
-    // Render players with team tags and status
-    const playerSig = JSON.stringify((state.players || []).map(p => `${p.id}:${p.name}:${p.ready}:${p.isHost}:${p.team}`));
+    // Render players with team tags, heraldic emblems, and status
+    const playerSig = JSON.stringify((state.players || []).map(p => `${p.id}:${p.name}:${p.ready}:${p.isHost}:${p.team}:${p.emblem}`));
     if (this._lastPlayersSig !== playerSig && this.dom.lobbyPlayerList) {
       this._lastPlayersSig = playerSig;
       this.dom.lobbyPlayerList.innerHTML = '';
@@ -784,7 +785,12 @@ export class LobbyUI {
             ? '<span style="color: #80b5ff; margin-right: 6px; font-weight: bold;">[🐺 Вовки]</span>'
             : '<span style="color: #ffa4ad; margin-right: 6px; font-weight: bold;">[🦊 Лиси]</span>';
         }
-        nameSpan.innerHTML = `${teamTag}${player.isHost ? '<span style="color: #ffcf48; margin-right: 4px;">★ (Хост)</span>' : ''}${player.name}`;
+
+        const emblemDef = getEmblemDefinition(player.emblem);
+        const emblemIcon = emblemDef ? emblemDef.icon : '⚙️';
+        const emblemTooltip = emblemDef ? `${emblemDef.name} — «${emblemDef.motto}»` : 'Бойовий герб';
+
+        nameSpan.innerHTML = `${teamTag}${player.isHost ? '<span style="color: #ffcf48; margin-right: 4px;">★ (Хост)</span>' : ''}<span style="margin-right: 6px; font-size: 13px;" title="${emblemTooltip}">${emblemIcon}</span>${player.name}`;
         nameSpan.style.color = player.isHost ? 'var(--color-brass-bright)' : 'var(--color-text-brass)';
 
         const statusBadge = document.createElement('span');

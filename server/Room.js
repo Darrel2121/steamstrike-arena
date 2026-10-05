@@ -227,6 +227,7 @@ export class Room {
       team = t1 <= t2 ? 'team1' : 'team2';
     }
 
+    const emblem = playerProfile?.emblem || 'gear';
     const player = new Player({
       id,
       name: name || `Player_${id}`,
@@ -239,8 +240,10 @@ export class Room {
       maxHp,
       maxSpeed,
       weaponId,
-      classId
+      classId,
+      emblem
     });
+    player.emblem = emblem;
     player.lanternRange = lanternRange;
     player.profile = playerProfile;
 
@@ -1447,7 +1450,9 @@ export class Room {
         name: p.name,
         team: p.team || null,
         ready: !!p.ready,
-        isHost: !!p.isHost
+        isHost: !!p.isHost,
+        emblem: p.emblem || p.profile?.emblem || 'gear',
+        classId: p.classId || 'vanguard'
       })),
       maxPlayers: this.maxPlayers,
       mapName: this.map?.name || 'The Clockwork Foundry'
