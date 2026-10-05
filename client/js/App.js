@@ -170,7 +170,20 @@ export class App {
 
   initGameRenderer() {
     if (this.gameCanvas) {
-      this.gameRenderer = new GameRenderer(this.gameCanvas);
+      const container = this.gameCanvas.parentElement;
+      const w = container?.clientWidth || (typeof window !== 'undefined' ? window.innerWidth : 800);
+      const h = container?.clientHeight || (typeof window !== 'undefined' ? window.innerHeight : 600);
+      // Tighter tactical FOV: target visible world width ~520px (13 tiles across)
+      const targetWorldWidth = 520;
+      const calculatedZoom = Math.max(1.8, Math.min(4.5, Math.round((w / targetWorldWidth) * 100) / 100));
+
+      this.gameRenderer = new GameRenderer(this.gameCanvas, {
+        zoom: calculatedZoom,
+        minZoom: 1.5,
+        maxZoom: 4.5,
+        adaptiveZoom: true,
+        targetWorldWidth: 520
+      });
 
       this.gameCanvas.addEventListener('click', (e) => {
         if (this.isMatchOver && this.gameRenderer?.hud) {
@@ -204,7 +217,7 @@ export class App {
       this.gameCanvas.addEventListener('wheel', (e) => {
         if (this.gameRenderer && this.currentView === 'game') {
           e.preventDefault();
-          const zoomDelta = e.deltaY < 0 ? 0.08 : -0.08;
+          const zoomDelta = e.deltaY < 0 ? 0.12 : -0.12;
           this.gameRenderer.adjustZoom(zoomDelta);
         }
       }, { passive: false });

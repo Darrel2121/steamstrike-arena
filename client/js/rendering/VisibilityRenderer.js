@@ -140,7 +140,7 @@ export class VisibilityRenderer {
     }
     fCtx.translate(-camX, -camY);
 
-    // 3a. Punch local player's vision (100% clarity)
+    // 3a. Punch local player's vision with smooth feathered lantern falloff
     if (poly && poly.length >= 3) {
       const px = player.renderX ?? player.x;
       const py = player.renderY ?? player.y;
@@ -159,28 +159,65 @@ export class VisibilityRenderer {
       fCtx.closePath();
       fCtx.clip();
 
-      const lanternGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
-      lanternGrad.addColorStop(0, 'rgba(255, 235, 180, 1.0)');
-      lanternGrad.addColorStop(0.35, 'rgba(255, 207, 72, 0.95)');
-      lanternGrad.addColorStop(0.70, 'rgba(184, 115, 51, 0.75)');
-      lanternGrad.addColorStop(1.0, 'rgba(112, 56, 22, 0.0)');
+      // Pass 1: Broad soft penumbra (feathered outer halo to soften cone edges)
+      const penumbraFovHalf = fovHalf * 1.22;
+      const penumbraGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
+      penumbraGrad.addColorStop(0, 'rgba(255, 235, 180, 0.28)');
+      penumbraGrad.addColorStop(0.30, 'rgba(255, 210, 80, 0.18)');
+      penumbraGrad.addColorStop(0.60, 'rgba(200, 130, 50, 0.08)');
+      penumbraGrad.addColorStop(0.85, 'rgba(140, 70, 20, 0.02)');
+      penumbraGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+      fCtx.fillStyle = penumbraGrad;
+      fCtx.beginPath();
+      fCtx.moveTo(px, py);
+      fCtx.arc(px, py, range * 0.98, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
+      fCtx.closePath();
+      fCtx.fill();
 
-      fCtx.fillStyle = lanternGrad;
+      // Pass 2: Mid warm diffusion with very smooth natural falloff
+      const midGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
+      midGrad.addColorStop(0, 'rgba(255, 240, 190, 0.52)');
+      midGrad.addColorStop(0.25, 'rgba(255, 215, 90, 0.40)');
+      midGrad.addColorStop(0.50, 'rgba(220, 155, 60, 0.24)');
+      midGrad.addColorStop(0.75, 'rgba(180, 105, 35, 0.10)');
+      midGrad.addColorStop(0.90, 'rgba(140, 70, 20, 0.02)');
+      midGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+      fCtx.fillStyle = midGrad;
       fCtx.beginPath();
       fCtx.moveTo(px, py);
       fCtx.arc(px, py, range, aimAngle - fovHalf, aimAngle + fovHalf);
       fCtx.closePath();
       fCtx.fill();
 
-      // Proximity awareness circle
-      const proxGrad = fCtx.createRadialGradient(px, py, 0, px, py, this.proximityRadius);
+      // Pass 3: Concentrated core beam (warm alchemical lantern filament)
+      const coreFovHalf = fovHalf * 0.72;
+      const coreGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
+      coreGrad.addColorStop(0, 'rgba(255, 250, 220, 0.65)');
+      coreGrad.addColorStop(0.25, 'rgba(255, 225, 120, 0.48)');
+      coreGrad.addColorStop(0.50, 'rgba(230, 170, 70, 0.26)');
+      coreGrad.addColorStop(0.75, 'rgba(190, 115, 40, 0.08)');
+      coreGrad.addColorStop(0.90, 'rgba(140, 65, 20, 0.01)');
+      coreGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+      fCtx.fillStyle = coreGrad;
+      fCtx.beginPath();
+      fCtx.moveTo(px, py);
+      fCtx.arc(px, py, range * 0.94, aimAngle - coreFovHalf, aimAngle + coreFovHalf);
+      fCtx.closePath();
+      fCtx.fill();
+
+      // Proximity awareness circle: soft ambient glow around the combatant
+      const proxRadius = this.proximityRadius * 1.15;
+      const proxGrad = fCtx.createRadialGradient(px, py, 0, px, py, proxRadius);
       proxGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      proxGrad.addColorStop(0.60, 'rgba(255, 240, 200, 0.90)');
-      proxGrad.addColorStop(1.0, 'rgba(255, 240, 200, 0.0)');
+      proxGrad.addColorStop(0.25, 'rgba(255, 248, 220, 0.88)');
+      proxGrad.addColorStop(0.50, 'rgba(255, 235, 180, 0.52)');
+      proxGrad.addColorStop(0.75, 'rgba(220, 180, 100, 0.18)');
+      proxGrad.addColorStop(0.90, 'rgba(180, 130, 60, 0.04)');
+      proxGrad.addColorStop(1.0, 'rgba(120, 80, 30, 0.0)');
 
       fCtx.fillStyle = proxGrad;
       fCtx.beginPath();
-      fCtx.arc(px, py, this.proximityRadius, 0, Math.PI * 2);
+      fCtx.arc(px, py, proxRadius, 0, Math.PI * 2);
       fCtx.fill();
       fCtx.restore();
     }
@@ -188,7 +225,7 @@ export class VisibilityRenderer {
     // Cache polygon and transform data for secondary lighter glow pass
     const othersPassData = [];
 
-    // 3b. Punch out lantern beams for Allies and Enemies
+    // 3b. Punch out lantern beams for Allies and Enemies with soft feathered gradients
     for (const c of activeOthers) {
       const cPoly = this.computePolygon(c, segments);
       if (!cPoly || cPoly.length < 3) continue;
@@ -213,13 +250,25 @@ export class VisibilityRenderer {
       fCtx.clip();
 
       if (isAlly) {
-        // Ally: Clears fog for shared team vision
-        const allyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        allyGrad.addColorStop(0.40, 'rgba(255, 255, 255, 0.85)');
-        allyGrad.addColorStop(0.75, 'rgba(255, 255, 255, 0.60)');
-        allyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+        // Ally: Soft multi-layered team vision
+        const allyPenumbraHalf = cFovHalf * 1.22;
+        const allyPenumbra = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.98);
+        allyPenumbra.addColorStop(0, 'rgba(255, 255, 255, 0.30)');
+        allyPenumbra.addColorStop(0.50, 'rgba(255, 255, 255, 0.12)');
+        allyPenumbra.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+        fCtx.fillStyle = allyPenumbra;
+        fCtx.beginPath();
+        fCtx.moveTo(cx, cy);
+        fCtx.arc(cx, cy, cRange * 0.98, cAngle - allyPenumbraHalf, cAngle + allyPenumbraHalf);
+        fCtx.closePath();
+        fCtx.fill();
 
+        const allyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
+        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.90)');
+        allyGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.65)');
+        allyGrad.addColorStop(0.70, 'rgba(255, 255, 255, 0.25)');
+        allyGrad.addColorStop(0.90, 'rgba(255, 255, 255, 0.05)');
+        allyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = allyGrad;
         fCtx.beginPath();
         fCtx.moveTo(cx, cy);
@@ -228,21 +277,34 @@ export class VisibilityRenderer {
         fCtx.fill();
 
         // Ally proximity circle
-        const allyProx = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 40);
+        const allyProx = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 45);
         allyProx.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        allyProx.addColorStop(0.50, 'rgba(255, 255, 255, 0.45)');
         allyProx.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = allyProx;
         fCtx.beginPath();
-        fCtx.arc(cx, cy, 40, 0, Math.PI * 2);
+        fCtx.arc(cx, cy, 45, 0, Math.PI * 2);
         fCtx.fill();
       } else {
-        // Opponent / Enemy: Atmospheric illumination revealing floor/walls where their searchlight points
-        const enemyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        enemyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.70)');
-        enemyGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.55)');
-        enemyGrad.addColorStop(0.70, 'rgba(255, 255, 255, 0.35)');
-        enemyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+        // Opponent / Enemy: Atmospheric illumination with soft feathered cone
+        const enemyPenumbraHalf = cFovHalf * 1.20;
+        const enemyPenumbra = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.96);
+        enemyPenumbra.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
+        enemyPenumbra.addColorStop(0.50, 'rgba(255, 255, 255, 0.08)');
+        enemyPenumbra.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+        fCtx.fillStyle = enemyPenumbra;
+        fCtx.beginPath();
+        fCtx.moveTo(cx, cy);
+        fCtx.arc(cx, cy, cRange * 0.96, cAngle - enemyPenumbraHalf, cAngle + enemyPenumbraHalf);
+        fCtx.closePath();
+        fCtx.fill();
 
+        const enemyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
+        enemyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.65)');
+        enemyGrad.addColorStop(0.30, 'rgba(255, 255, 255, 0.45)');
+        enemyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.18)');
+        enemyGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.03)');
+        enemyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = enemyGrad;
         fCtx.beginPath();
         fCtx.moveTo(cx, cy);
@@ -250,13 +312,14 @@ export class VisibilityRenderer {
         fCtx.closePath();
         fCtx.fill();
 
-        // Glowing hostile lamp housing punched through fog
-        const lampPunch = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 26);
+        // Glowing hostile lamp housing punched softly through fog
+        const lampPunch = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 28);
         lampPunch.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
+        lampPunch.addColorStop(0.50, 'rgba(255, 255, 255, 0.35)');
         lampPunch.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = lampPunch;
         fCtx.beginPath();
-        fCtx.arc(cx, cy, 26, 0, Math.PI * 2);
+        fCtx.arc(cx, cy, 28, 0, Math.PI * 2);
         fCtx.fill();
       }
       fCtx.restore();
@@ -277,7 +340,7 @@ export class VisibilityRenderer {
     }
     mainCtx.translate(-camX, -camY);
 
-    // 5a. Local Player Beam Glow
+    // 5a. Local Player Soft Volumetric Beam Glow
     if (poly && poly.length >= 3) {
       const px = player.renderX ?? player.x;
       const py = player.renderY ?? player.y;
@@ -295,30 +358,49 @@ export class VisibilityRenderer {
       mainCtx.closePath();
       mainCtx.clip();
 
-      const glowGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range);
-      glowGrad.addColorStop(0, 'rgba(255, 207, 72, 0.22)');
-      glowGrad.addColorStop(0.50, 'rgba(184, 115, 51, 0.10)');
-      glowGrad.addColorStop(1.0, 'rgba(184, 115, 51, 0.0)');
-
-      mainCtx.fillStyle = glowGrad;
+      // Broad soft volumetric steam mist glow
+      const mistFovHalf = fovHalf * 1.18;
+      const mistGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
+      mistGrad.addColorStop(0, 'rgba(255, 205, 80, 0.10)');
+      mistGrad.addColorStop(0.35, 'rgba(215, 135, 45, 0.05)');
+      mistGrad.addColorStop(0.70, 'rgba(160, 85, 20, 0.012)');
+      mistGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+      mainCtx.fillStyle = mistGrad;
       mainCtx.beginPath();
       mainCtx.moveTo(px, py);
-      mainCtx.arc(px, py, range, aimAngle - fovHalf, aimAngle + fovHalf);
+      mainCtx.arc(px, py, range * 0.98, aimAngle - mistFovHalf, aimAngle + mistFovHalf);
       mainCtx.closePath();
       mainCtx.fill();
 
-      const coreGrad = mainCtx.createRadialGradient(px, py, 0, px, py, this.proximityRadius * 0.8);
-      coreGrad.addColorStop(0, 'rgba(255, 242, 178, 0.25)');
-      coreGrad.addColorStop(1.0, 'rgba(255, 207, 72, 0.0)');
+      // Core focused warm steam cone with smooth natural falloff
+      const glowGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
+      glowGrad.addColorStop(0, 'rgba(255, 220, 110, 0.18)');
+      glowGrad.addColorStop(0.28, 'rgba(240, 165, 55, 0.10)');
+      glowGrad.addColorStop(0.60, 'rgba(195, 105, 30, 0.035)');
+      glowGrad.addColorStop(0.85, 'rgba(130, 55, 15, 0.006)');
+      glowGrad.addColorStop(1.0, 'rgba(80, 30, 10, 0.0)');
+      mainCtx.fillStyle = glowGrad;
+      mainCtx.beginPath();
+      mainCtx.moveTo(px, py);
+      mainCtx.arc(px, py, range * 0.94, aimAngle - fovHalf * 0.85, aimAngle + fovHalf * 0.85);
+      mainCtx.closePath();
+      mainCtx.fill();
 
+      // Soft core lantern housing bloom
+      const bloomRadius = this.proximityRadius * 0.9;
+      const coreGrad = mainCtx.createRadialGradient(px, py, 0, px, py, bloomRadius);
+      coreGrad.addColorStop(0, 'rgba(255, 245, 185, 0.22)');
+      coreGrad.addColorStop(0.35, 'rgba(255, 200, 75, 0.09)');
+      coreGrad.addColorStop(0.70, 'rgba(200, 115, 35, 0.02)');
+      coreGrad.addColorStop(1.0, 'rgba(120, 50, 15, 0.0)');
       mainCtx.fillStyle = coreGrad;
       mainCtx.beginPath();
-      mainCtx.arc(px, py, this.proximityRadius * 0.8, 0, Math.PI * 2);
+      mainCtx.arc(px, py, bloomRadius, 0, Math.PI * 2);
       mainCtx.fill();
       mainCtx.restore();
     }
 
-    // 5b. Allies and Opponents' Volumetric Lantern Beams
+    // 5b. Allies and Opponents' Volumetric Lantern Beams (Softened & No Hard Stroked Lines)
     for (const item of othersPassData) {
       const { cPoly, cx, cy, cAngle, cFovHalf, cRange, isAlly } = item;
 
@@ -333,76 +415,74 @@ export class VisibilityRenderer {
       mainCtx.clip();
 
       if (isAlly) {
-        // Ally: Cool Cyan / Cobalt Steam-Lantern Beam
-        const allyGlow = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        allyGlow.addColorStop(0, 'rgba(100, 180, 255, 0.38)');
-        allyGlow.addColorStop(0.40, 'rgba(60, 140, 240, 0.20)');
-        allyGlow.addColorStop(1.0, 'rgba(30, 90, 220, 0.0)');
+        // Ally: Soft Cool Cyan / Cobalt Steam-Lantern Beam
+        const allyMistHalf = cFovHalf * 1.18;
+        const allyMist = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.98);
+        allyMist.addColorStop(0, 'rgba(100, 180, 255, 0.16)');
+        allyMist.addColorStop(0.45, 'rgba(60, 140, 240, 0.06)');
+        allyMist.addColorStop(1.0, 'rgba(20, 80, 210, 0.0)');
+        mainCtx.fillStyle = allyMist;
+        mainCtx.beginPath();
+        mainCtx.moveTo(cx, cy);
+        mainCtx.arc(cx, cy, cRange * 0.98, cAngle - allyMistHalf, cAngle + allyMistHalf);
+        mainCtx.closePath();
+        mainCtx.fill();
 
+        const allyGlow = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.94);
+        allyGlow.addColorStop(0, 'rgba(120, 200, 255, 0.28)');
+        allyGlow.addColorStop(0.35, 'rgba(70, 150, 245, 0.12)');
+        allyGlow.addColorStop(0.75, 'rgba(30, 90, 220, 0.025)');
+        allyGlow.addColorStop(1.0, 'rgba(15, 50, 180, 0.0)');
         mainCtx.fillStyle = allyGlow;
         mainCtx.beginPath();
         mainCtx.moveTo(cx, cy);
-        mainCtx.arc(cx, cy, cRange, cAngle - cFovHalf, cAngle + cFovHalf);
+        mainCtx.arc(cx, cy, cRange * 0.94, cAngle - cFovHalf * 0.85, cAngle + cFovHalf * 0.85);
         mainCtx.closePath();
         mainCtx.fill();
 
         // Friendly lens flare at ally origin
-        const allyLens = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 18);
-        allyLens.addColorStop(0, 'rgba(200, 235, 255, 0.85)');
-        allyLens.addColorStop(0.5, 'rgba(74, 144, 226, 0.40)');
+        const allyLens = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 20);
+        allyLens.addColorStop(0, 'rgba(210, 240, 255, 0.80)');
+        allyLens.addColorStop(0.45, 'rgba(74, 144, 226, 0.30)');
         allyLens.addColorStop(1.0, 'rgba(74, 144, 226, 0.0)');
         mainCtx.fillStyle = allyLens;
         mainCtx.beginPath();
-        mainCtx.arc(cx, cy, 18, 0, Math.PI * 2);
+        mainCtx.arc(cx, cy, 20, 0, Math.PI * 2);
         mainCtx.fill();
       } else {
-        // Opponent / Enemy: Threatening Incandescent Ember / Hot Steam-Brass Searchlight
-        const enemyGlow = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        enemyGlow.addColorStop(0, 'rgba(255, 130, 50, 0.42)');
-        enemyGlow.addColorStop(0.40, 'rgba(255, 80, 30, 0.22)');
-        enemyGlow.addColorStop(1.0, 'rgba(200, 40, 15, 0.0)');
-
-        mainCtx.fillStyle = enemyGlow;
+        // Opponent / Enemy: Soft Threatening Incandescent Ember / Hot Steam Searchlight
+        const enemyMistHalf = cFovHalf * 1.18;
+        const enemyMist = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.98);
+        enemyMist.addColorStop(0, 'rgba(255, 120, 40, 0.15)');
+        enemyMist.addColorStop(0.45, 'rgba(220, 70, 20, 0.05)');
+        enemyMist.addColorStop(1.0, 'rgba(150, 30, 10, 0.0)');
+        mainCtx.fillStyle = enemyMist;
         mainCtx.beginPath();
         mainCtx.moveTo(cx, cy);
-        mainCtx.arc(cx, cy, cRange, cAngle - cFovHalf, cAngle + cFovHalf);
+        mainCtx.arc(cx, cy, cRange * 0.98, cAngle - enemyMistHalf, cAngle + enemyMistHalf);
         mainCtx.closePath();
         mainCtx.fill();
 
-        // Outer beam boundary guide lines for sharp searchlight aesthetic
-        const leftEdgeX = cx + Math.cos(cAngle - cFovHalf) * cRange;
-        const leftEdgeY = cy + Math.sin(cAngle - cFovHalf) * cRange;
-        const rightEdgeX = cx + Math.cos(cAngle + cFovHalf) * cRange;
-        const rightEdgeY = cy + Math.sin(cAngle + cFovHalf) * cRange;
-
-        const edgeGrad1 = mainCtx.createLinearGradient(cx, cy, leftEdgeX, leftEdgeY);
-        edgeGrad1.addColorStop(0, 'rgba(255, 160, 80, 0.45)');
-        edgeGrad1.addColorStop(1, 'rgba(255, 80, 20, 0.0)');
-        mainCtx.strokeStyle = edgeGrad1;
-        mainCtx.lineWidth = 1.5;
+        const enemyGlow = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.94);
+        enemyGlow.addColorStop(0, 'rgba(255, 150, 60, 0.28)');
+        enemyGlow.addColorStop(0.35, 'rgba(255, 90, 30, 0.14)');
+        enemyGlow.addColorStop(0.70, 'rgba(200, 45, 15, 0.03)');
+        enemyGlow.addColorStop(1.0, 'rgba(120, 20, 5, 0.0)');
+        mainCtx.fillStyle = enemyGlow;
         mainCtx.beginPath();
         mainCtx.moveTo(cx, cy);
-        mainCtx.lineTo(leftEdgeX, leftEdgeY);
-        mainCtx.stroke();
+        mainCtx.arc(cx, cy, cRange * 0.94, cAngle - cFovHalf * 0.85, cAngle + cFovHalf * 0.85);
+        mainCtx.closePath();
+        mainCtx.fill();
 
-        const edgeGrad2 = mainCtx.createLinearGradient(cx, cy, rightEdgeX, rightEdgeY);
-        edgeGrad2.addColorStop(0, 'rgba(255, 160, 80, 0.45)');
-        edgeGrad2.addColorStop(1, 'rgba(255, 80, 20, 0.0)');
-        mainCtx.strokeStyle = edgeGrad2;
-        mainCtx.lineWidth = 1.5;
-        mainCtx.beginPath();
-        mainCtx.moveTo(cx, cy);
-        mainCtx.lineTo(rightEdgeX, rightEdgeY);
-        mainCtx.stroke();
-
-        // Hostile glowing lantern housing cutting through darkness
-        const enemyLamp = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 16);
-        enemyLamp.addColorStop(0, 'rgba(255, 240, 190, 0.95)');
-        enemyLamp.addColorStop(0.40, 'rgba(255, 110, 40, 0.50)');
+        // Hostile glowing lantern housing cutting softly through darkness
+        const enemyLamp = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 18);
+        enemyLamp.addColorStop(0, 'rgba(255, 240, 190, 0.90)');
+        enemyLamp.addColorStop(0.40, 'rgba(255, 110, 40, 0.40)');
         enemyLamp.addColorStop(1.0, 'rgba(255, 60, 20, 0.0)');
         mainCtx.fillStyle = enemyLamp;
         mainCtx.beginPath();
-        mainCtx.arc(cx, cy, 16, 0, Math.PI * 2);
+        mainCtx.arc(cx, cy, 18, 0, Math.PI * 2);
         mainCtx.fill();
       }
       mainCtx.restore();

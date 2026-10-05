@@ -36,6 +36,7 @@ export class GameRenderer {
     this.tileSize = TILE_SIZE;
 
     // Viewport camera with closer tactical zoom (Bullet Echo style)
+    this.options = options;
     const baseZoom = options.zoom || 1.45;
     this.camera = {
       x: 0,
@@ -45,9 +46,10 @@ export class GameRenderer {
       zoom: baseZoom,
       targetZoom: baseZoom,
       minZoom: options.minZoom || 1.15,
-      maxZoom: options.maxZoom || 1.95,
+      maxZoom: options.maxZoom || (options.adaptiveZoom ? 4.5 : 1.95),
       smoothSpeed: options.cameraSmoothing || 0.15
     };
+    this.userManuallyZoomed = false;
 
     // Tracking state for camera initialization, aiming, and sound event deduplication
     this.cameraInitialized = false;
@@ -144,10 +146,25 @@ export class GameRenderer {
    * @param {number} delta
    */
   adjustZoom(delta) {
+    this.userManuallyZoomed = true;
     const minZ = this.camera.minZoom || 1.15;
     const maxZ = this.camera.maxZoom || 1.95;
     const current = this.camera.targetZoom || this.camera.zoom || 1.45;
     this.camera.targetZoom = Math.max(minZ, Math.min(maxZ, current + delta));
+  }
+
+  /**
+   * Calculates closer tactical zoom to maintain a consistent world field of view.
+   * @param {number} width
+   * @param {number} height
+   * @returns {number}
+   */
+  calculateTacticalZoom(width, height) {
+    const targetW = this.options?.targetWorldWidth || 560;
+    const computed = (width || 800) / targetW;
+    const minZ = this.camera.minZoom || 1.15;
+    const maxZ = this.camera.maxZoom || 4.5;
+    return Math.max(minZ, Math.min(maxZ, Math.round(computed * 100) / 100));
   }
 
   /**
@@ -1244,6 +1261,11 @@ export class GameRenderer {
     }
     this.camera.width = width;
     this.camera.height = height;
+    if (this.options?.adaptiveZoom && !this.userManuallyZoomed) {
+      const opt = this.calculateTacticalZoom(width, height);
+      this.camera.zoom = opt;
+      this.camera.targetZoom = opt;
+    }
     this.visibilityRenderer.resize(width, height);
   }
 }
