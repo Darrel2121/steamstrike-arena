@@ -295,116 +295,162 @@
       <section class="home-lore-section">
         <h2 class="section-heading"><span>📜</span> ХРОНІКИ НОВОГО ЕТЕЛЬГАРДУ: ВЕЛИКИЙ ПАРОВИЙ ПРОРИВ <span>📜</span></h2>
         
-        <div class="lore-main-card steampunk-panel">
-          <div class="lore-prologue">
-            <h3 style="color: var(--color-brass-glow); margin-bottom: 8px;">⚙ Світ вічної імли та розпеченої пари</h3>
-            <p style="color: var(--color-text-dim); line-height: 1.6; margin-bottom: 10px;">
-              Після катастрофічного тектонічного розлому «День Тріщини» залишки людської цивілізації підняли у повітря та на масивні залізні опори місто <strong>Новий Етельгард (New Aethelgard)</strong>. 
-              Глибоко під бруківкою б'ють геотермальні гейзери та резервуари летючого ефіру, які живлять тисячі парових магістралей, поршнів і манометрів. 
-              Сонце сховане за вічною хмарою сажі та конденсованого туману — кожен крок у темряві робиться лише при тьмяному світлі переносного латунного ліхтаря.
+        <div class="lore-main-card">
+          <!-- Prologue Codex Box -->
+          <div class="lore-prologue-box">
+            <div class="lore-badge-stamp">⚜ АРХІВНІ ХРОНІКИ • СЕКТОР АРЕН 1889 ⚜</div>
+            <h3 class="lore-prologue-title">⚙ Світ вічної імли та розпеченої пари</h3>
+            <p class="lore-text-lead">
+              <span class="lore-drop-cap">П</span>ісля катастрофічного тектонічного розлому <span class="lore-highlight-copper">«День Тріщини»</span> вцілілі залишки людської цивілізації звели над безоднею на велетенських сталевих колонах місто-ковчег <span class="lore-highlight">Новий Етельгард (New Aethelgard)</span>. 
+              Глибоко в надрах б'ють геотермальні гейзери та резервуари летючого ефіру, які живлять тисячі парових магістралей, манометрів і поршнів. 
+              Сонце назавжди сховане за густою імлою сажі та конденсованої пари — кожен крок у темряві робиться лише при тьмяному світлі латунного ліхтаря.
             </p>
-            <p style="color: var(--color-text-dim); line-height: 1.6;">
-              Щоб покласти край руйнівній громадянській війні за енергетичні клапани, верховний магістрат затвердив <strong>«Пакт Шестерень»</strong>: 
-              усі суперечки за території, ресурси та владу вирішуються у закритих бойових Секторах-Аренах, де зіштовхуються елітні бійці та автономні тактичні автоматони чотирьох Великих Гільдій.
+            <p class="lore-text-lead" style="margin-bottom: 0;">
+              Щоб покласти край руйнівній війні за енергетичні клапани, верховний магістрат затвердив <span class="lore-highlight-cyan">«Пакт Шестерень»</span>: 
+              усі суперечки за ресурси, технології та сектори вирішуються у закритих бойових Аренах, де зіштовхуються елітні бійці та тактичні автоматони чотирьох Великих Гільдій.
             </p>
           </div>
 
-          <!-- The 4 Great Guilds -->
-          <div class="guilds-showcase" style="margin-top: 18px;">
-            <h4 class="guilds-title" style="color: var(--color-brass-bright); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px dashed rgba(197,155,39,0.3); padding-bottom: 6px;">⚔ ЧОТИРИ ВЕЛИКІ ГІЛЬДІЇ ТА ЇХНІ БОЙОВІ КЛАСИ</h4>
-            <div class="guilds-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">
-              
-              <!-- Guild 1: Vanguard -->
-              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(37, 117, 252, 0.4); border-radius: 6px; padding: 12px;">
-                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                  <span style="font-size: 24px;">🐺</span>
-                  <div>
-                    <div style="font-weight: bold; color: #80b5ff; font-size: 14px;">Парові Вовки</div>
-                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Авангард (Vanguard)</div>
-                  </div>
-                </div>
-                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Штурмові лінійні бійці Великого Механічного Заводу. Обладнані важкими паровими екзоскелетами з форсованими клапанами скидання тиску.</p>
-                <div style="background: rgba(37, 117, 252, 0.1); border: 1px solid rgba(37, 117, 252, 0.3); border-radius: 4px; padding: 6px 8px;">
-                  <div style="font-weight: bold; color: #80b5ff; font-size: 11px; margin-bottom: 2px;">⚡ Вміння: «Паровий Форсаж»</div>
-                  <div style="font-size: 11px; color: var(--color-text-dim);">+40% швидкості руху, миттєве поповнення набоїв та викид реактивних струменів пари з ранця.</div>
-                </div>
-              </div>
+          <!-- Section Divider: Guilds -->
+          <div class="lore-divider">
+            <div class="lore-divider-line"></div>
+            <span class="lore-divider-title">⚔ ЧОТИРИ ВЕЛИКІ ГІЛЬДІЇ ТА БОЙОВІ КЛАСИ ⚔</span>
+            <div class="lore-divider-line"></div>
+          </div>
 
-              <!-- Guild 2: Sharpshooter -->
-              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(46, 196, 182, 0.4); border-radius: 6px; padding: 12px;">
-                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                  <span style="font-size: 24px;">🦅</span>
-                  <div>
-                    <div style="font-weight: bold; color: #5ffbf1; font-size: 14px;">Небесні Соколи</div>
-                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Снайпер (Sharpshooter)</div>
-                  </div>
+          <!-- The 4 Great Guilds Dossier Cards -->
+          <div class="guilds-showcase-grid">
+            
+            <!-- Guild 1: Vanguard -->
+            <div class="guild-dossier-card vanguard">
+              <div class="guild-card-top">
+                <div class="guild-emblem-badge" style="border-color: #3b82f6; color: #80b5ff;">🛡️</div>
+                <div class="guild-meta">
+                  <div class="guild-meta-name" style="color: #93c5fd;">Парові Вовки</div>
+                  <div class="guild-meta-role">Клас: Авангард (Vanguard)</div>
                 </div>
-                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Вартові швартувальних платформ та цепелінів. Оснащені далекобійними нарізними голкострілами та оптичними бінокулярами.</p>
-                <div style="background: rgba(46, 196, 182, 0.1); border: 1px solid rgba(46, 196, 182, 0.3); border-radius: 4px; padding: 6px 8px;">
-                  <div style="font-weight: bold; color: #5ffbf1; font-size: 11px; margin-bottom: 2px;">📡 Вміння: «Ехолокаційний Сонар»</div>
-                  <div style="font-size: 11px; color: var(--color-text-dim);">Круговий ультразвуковий імпульс: пронизує стіни й морок, підсвічуючи бірюзові X-Ray силуети ворогів на арені.</div>
-                </div>
+                <span class="guild-role-tag" style="border-color: rgba(59, 130, 246, 0.4); color: #93c5fd;">ПРОРИВ</span>
               </div>
-
-              <!-- Guild 3: Juggernaut -->
-              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(255, 207, 72, 0.4); border-radius: 6px; padding: 12px;">
-                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                  <span style="font-size: 24px;">🛡️</span>
-                  <div>
-                    <div style="font-weight: bold; color: #ffcf48; font-size: 14px;">Залізний Бастіон</div>
-                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Джаггернаут (Juggernaut)</div>
-                  </div>
+              <p class="guild-desc">Штурмові лінійні бійці Великого Заводу. Обладнані важкими екзоскелетами з клапанами скидання тиску. Зменшують отримуваний урон на 20% під час форсажу.</p>
+              <div class="guild-ability-chip" style="border-color: rgba(59, 130, 246, 0.35);">
+                <div class="guild-ability-header" style="color: #60a5fa;">
+                  <span>⚡</span> Вміння: «Паровий Форсаж»
                 </div>
-                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Важкі інженери котлових цехів. Лита котлова броня витримує шквал куль, а важкий мушкетон розносить усе на друзки.</p>
-                <div style="background: rgba(255, 207, 72, 0.1); border: 1px solid rgba(255, 207, 72, 0.3); border-radius: 4px; padding: 6px 8px;">
-                  <div style="font-weight: bold; color: #ffcf48; font-size: 11px; margin-bottom: 2px;">🛡️ Вміння: «Кінетичний Щит»</div>
-                  <div style="font-size: 11px; color: var(--color-text-dim);">120-градусний фронтальний силовий бар'єр міцністю 80 HP з гексагональною сіткою для блокування куль.</div>
-                </div>
+                <div class="guild-ability-desc">+50% до швидкості бігу, миттєве поповнення барабана набоїв та реактивні струмені пари.</div>
               </div>
-
-              <!-- Guild 4: Infiltrator -->
-              <div class="guild-card" style="background: rgba(14, 17, 23, 0.7); border: 1px solid rgba(255, 71, 87, 0.4); border-radius: 6px; padding: 12px;">
-                <div class="guild-header" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                  <span style="font-size: 24px;">🦊</span>
-                  <div>
-                    <div style="font-weight: bold; color: #ffa4ad; font-size: 14px;">Мідні Тіні</div>
-                    <div style="font-size: 11px; color: var(--color-text-dim);">Клас: Диверсант (Infiltrator)</div>
-                  </div>
-                </div>
-                <p style="font-size: 12px; color: var(--color-text-dim); line-height: 1.4; margin-bottom: 8px;">Таємні ліквідатори Алхімічної Цитаделі. Спеціалізуються на димових завісах, непомітному пересуванні та ударах у спину.</p>
-                <div style="background: rgba(255, 71, 87, 0.1); border: 1px solid rgba(255, 71, 87, 0.3); border-radius: 4px; padding: 6px 8px;">
-                  <div style="font-weight: bold; color: #ffa4ad; font-size: 11px; margin-bottom: 2px;">💨 Вміння: «Димова Завіса & Стелс»</div>
-                  <div style="font-size: 11px; color: var(--color-text-dim);">Хмара густої пари радіусом 140px, маскувальний стелс та пасивні +25% шкоди при атаці з флангу та спини.</div>
-                </div>
-              </div>
-
             </div>
+
+            <!-- Guild 2: Sharpshooter -->
+            <div class="guild-dossier-card sharpshooter">
+              <div class="guild-card-top">
+                <div class="guild-emblem-badge" style="border-color: #2ec4b6; color: #5ffbf1;">🎯</div>
+                <div class="guild-meta">
+                  <div class="guild-meta-name" style="color: #5ffbf1;">Небесні Соколи</div>
+                  <div class="guild-meta-role">Клас: Стрілець (Sharpshooter)</div>
+                </div>
+                <span class="guild-role-tag" style="border-color: rgba(46, 196, 182, 0.4); color: #5ffbf1;">СНАЙПЕР</span>
+              </div>
+              <p class="guild-desc">Вартові швартувальних платформ цепелінів. Оснащені голкострілами та пневмо-глушником, що зменшує радіус звукових хвиль від кроків на 40%.</p>
+              <div class="guild-ability-chip" style="border-color: rgba(46, 196, 182, 0.35);">
+                <div class="guild-ability-header" style="color: #2ec4b6;">
+                  <span>📡</span> Вміння: «Ефірний Сонар»
+                </div>
+                <div class="guild-ability-desc">Резонансна хвиля виявляє бірюзові X-Ray силуети ворогів крізь стіни та туман у радіусі 550 px.</div>
+              </div>
+            </div>
+
+            <!-- Guild 3: Juggernaut -->
+            <div class="guild-dossier-card juggernaut">
+              <div class="guild-card-top">
+                <div class="guild-emblem-badge" style="border-color: #ffcf48; color: #ffcf48;">⚙️</div>
+                <div class="guild-meta">
+                  <div class="guild-meta-name" style="color: #ffe082;">Залізний Бастіон</div>
+                  <div class="guild-meta-role">Клас: Джаггернаут (Juggernaut)</div>
+                </div>
+                <span class="guild-role-tag" style="border-color: rgba(255, 207, 72, 0.4); color: #ffe082;">ТИТАН</span>
+              </div>
+              <p class="guild-desc">Важкі інженери котлових цехів. Колосальний запас міцності (HP x1.35) та титанова стійкість до відкидання при ворожому обстрілі.</p>
+              <div class="guild-ability-chip" style="border-color: rgba(255, 207, 72, 0.35);">
+                <div class="guild-ability-header" style="color: #ffcf48;">
+                  <span>🛡️</span> Вміння: «Паровий Бастіон»
+                </div>
+                <div class="guild-ability-desc">Розгортає 120° кінетичний силовий бар'єр (80 HP), що поглинає прямі ворожі кулі.</div>
+              </div>
+            </div>
+
+            <!-- Guild 4: Infiltrator -->
+            <div class="guild-dossier-card infiltrator">
+              <div class="guild-card-top">
+                <div class="guild-emblem-badge" style="border-color: #ff4757; color: #ffa4ad;">🗡️</div>
+                <div class="guild-meta">
+                  <div class="guild-meta-name" style="color: #ffa4ad;">Мідні Тіні</div>
+                  <div class="guild-meta-role">Клас: Диверсант (Infiltrator)</div>
+                </div>
+                <span class="guild-role-tag" style="border-color: rgba(255, 71, 87, 0.4); color: #ffa4ad;">СТЕЛС</span>
+              </div>
+              <p class="guild-desc">Таємні ліквідатори Алхімічної Цитаделі. Володіють пасивним бонусом +25% до урону при атаці у спину чи збоку від лінії прицілу ворога.</p>
+              <div class="guild-ability-chip" style="border-color: rgba(255, 71, 87, 0.35);">
+                <div class="guild-ability-header" style="color: #ff6b81;">
+                  <span>💨</span> Вміння: «Димова Завіса»
+                </div>
+                <div class="guild-ability-desc">Миттєво створює густу хмару алхімічного туману (180 px), даючи прискорення та скритність.</div>
+              </div>
+            </div>
+
           </div>
 
-          <!-- Arenas Lore Strip -->
-          <div class="arenas-lore-strip" style="margin-top: 18px;">
-            <h4 class="guilds-title" style="color: var(--color-brass-bright); font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; border-bottom: 1px dashed rgba(197,155,39,0.3); padding-bottom: 6px;">🗺 ЛЕГЕНДАРНІ АРЕНИ ВІЙНИ</h4>
-            <div class="arenas-lore-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
-              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid var(--color-copper);">
-                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">⚙ The Clockwork Foundry</div>
-                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Старовинний ливарний цех із рухомими зубчастими колесами та паровими трубами під високим тиском.</div>
+          <!-- Section Divider: Arenas -->
+          <div class="lore-divider">
+            <div class="lore-divider-line"></div>
+            <span class="lore-divider-title">🗺 ЛЕГЕНДАРНІ АРЕНИ ВІЙНИ 🗺</span>
+            <div class="lore-divider-line"></div>
+          </div>
+
+          <!-- Arenas Grid -->
+          <div class="arenas-showcase-grid">
+            <div class="arena-dossier-card">
+              <div class="arena-card-top">
+                <span class="arena-sector-tag">СЕКТОР I</span>
+                <span class="arena-type-tag">20x20 Стандарт</span>
               </div>
-              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #4a5568;">
-                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">⛏ The Ironworks Catacombs</div>
-                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Лабіринт підземних тунелів із вентиляційними шахтами та глухими кутами для тактичних засідок.</div>
+              <div class="arena-name">⚙ The Clockwork Foundry</div>
+              <div class="arena-desc">Ливарний цех із рухомими зубчастими колесами та паровими трубами під високим тиском.</div>
+            </div>
+
+            <div class="arena-dossier-card">
+              <div class="arena-card-top">
+                <span class="arena-sector-tag">СЕКТОР II</span>
+                <span class="arena-type-tag">28x28 Катакомби</span>
               </div>
-              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #80b5ff;">
-                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">⚓ The Grand Zeppelin Docks</div>
-                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Висотна швартувальна платформа повітряних суден із довгими коридорами для далекобійного вогню.</div>
+              <div class="arena-name">⛏ The Ironworks Catacombs</div>
+              <div class="arena-desc">Лабіринт підземних тунелів із вентиляційними шахтами та глухими кутами для раптових засідок.</div>
+            </div>
+
+            <div class="arena-dossier-card">
+              <div class="arena-card-top">
+                <span class="arena-sector-tag">СЕКТОР III</span>
+                <span class="arena-type-tag">32x32 Арена</span>
               </div>
-              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #5ffbf1;">
-                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">🧪 The Alchemical Citadel</div>
-                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Експериментальний комплекс із реакторами ефіру та контейнерами нестабільного конденсату.</div>
+              <div class="arena-name">⚓ The Grand Zeppelin Docks</div>
+              <div class="arena-desc">Висотна швартувальна платформа повітряних суден із довгими коридорами для далекобійного вогню.</div>
+            </div>
+
+            <div class="arena-dossier-card">
+              <div class="arena-card-top">
+                <span class="arena-sector-tag">СЕКТОР IV</span>
+                <span class="arena-type-tag">36x36 Цитадель</span>
               </div>
-              <div style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; border-left: 3px solid #ffcf48;">
-                <div style="font-size: 11px; color: var(--color-brass-glow); font-weight: bold;">🚂 The Steam Rail Terminal</div>
-                <div style="font-size: 11px; color: var(--color-text-dim); margin-top: 2px;">Вузлова станція броньованих паротягів із довгими платформами для швидкісних флангових маневрів.</div>
+              <div class="arena-name">🧪 The Alchemical Citadel</div>
+              <div class="arena-desc">Експериментальний комплекс із реакторами ефіру та контейнерами нестабільного конденсату.</div>
+            </div>
+
+            <div class="arena-dossier-card">
+              <div class="arena-card-top">
+                <span class="arena-sector-tag">СЕКТОР V</span>
+                <span class="arena-type-tag">40x24 Вокзал</span>
               </div>
+              <div class="arena-name">🚂 The Steam Rail Terminal</div>
+              <div class="arena-desc">Вузлова станція броньованих паротягів із платформами для швидкісних флангових маневрів.</div>
             </div>
           </div>
 
