@@ -142,14 +142,18 @@
 
             <!-- Target Kills / Match Length -->
             <div class="console-field" id="homeTargetKillsGroup">
-              <label for="homeTargetKillsSelect">Ціль матчу (Тривалість гри):</label>
-              <select id="homeTargetKillsSelect" class="steampunk-input" style="cursor: pointer;">
-                <option value="15">15 ліквідацій (Швидка сутичка ~2-3 хв)</option>
-                <option value="30" selected>30 ліквідацій (Стандартний бій ~5-7 хв)</option>
-                <option value="50">50 ліквідацій (Затяжна битва ~10-12 хв)</option>
-                <option value="100">100 ліквідацій (Марафон ~20 хв)</option>
-                <option value="999">999 ліквідацій (Нескінченна практика з ботами)</option>
-              </select>
+              <label for="homeTargetKillsInput">Ціль вбивств для перемоги:</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="number" id="homeTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 80px;" title="Кількість кілів для перемоги">
+                <select id="homeTargetKillsSelect" class="steampunk-input" style="cursor: pointer; flex: 1;">
+                  <option value="10">10 ліквідацій (Бліц-бій ~1-2 хв)</option>
+                  <option value="15">15 ліквідацій (Швидка сутичка ~2-3 хв)</option>
+                  <option value="30" selected>30 ліквідацій (Стандартний бій ~5-7 хв)</option>
+                  <option value="50">50 ліквідацій (Затяжна битва ~10-12 хв)</option>
+                  <option value="100">100 ліквідацій (Марафон ~20 хв)</option>
+                  <option value="999">999 ліквідацій (Нескінченна практика)</option>
+                </select>
+              </div>
             </div>
 
             <!-- Online Room Name & Actions (multiplayer mode) -->
@@ -367,8 +371,18 @@
           </div>
 
           <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: block;">
-            <label for="lobbyTargetKillsInput">Ціль кілів для перемоги:</label>
-            <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="5" max="999" value="30">
+            <label for="lobbyTargetKillsInput">Ціль вбивств для перемоги:</label>
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 80px;">
+              <select id="lobbyTargetKillsSelect" class="steampunk-input" style="cursor: pointer; flex: 1;">
+                <option value="10">10 ліквідацій</option>
+                <option value="15">15 ліквідацій</option>
+                <option value="30" selected>30 ліквідацій</option>
+                <option value="50">50 ліквідацій</option>
+                <option value="100">100 ліквідацій</option>
+                <option value="999">999 (Нескінченно)</option>
+              </select>
+            </div>
           </div>
 
           <div style="display: flex; gap: 8px;">
@@ -391,6 +405,16 @@
                 <span id="lobbyLockBadge" style="display: none; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(255, 71, 87, 0.2); color: #ff6b81; border: 1px solid #ff4757;">🔒 Захищено шифром</span>
               </div>
               <span id="lobbyModeBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 3px; background: #2b230f; color: #ffcf48; border: 1px solid #c59b27;">ВИЖИВАННЯ</span>
+            </div>
+
+            <!-- Host Config inside Room (Target Kills / Mode) -->
+            <div id="lobbyHostConfigRow" style="display: none; margin-bottom: 8px; padding: 6px 8px; background: rgba(0,0,0,0.35); border-radius: 4px; border: 1px solid rgba(197, 155, 39, 0.3);">
+              <div style="font-size: 11px; color: var(--color-brass-bright); margin-bottom: 4px; font-weight: bold;">⚙ Налаштування кімнати (Хост):</div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <label for="roomActiveTargetKillsInput" style="font-size: 11px; color: var(--color-text-dim); white-space: nowrap;">Ціль кілів:</label>
+                <input type="number" id="roomActiveTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 70px; padding: 4px 6px; font-size: 12px;">
+                <button type="button" id="btnUpdateRoomTargetKills" class="btn-steampunk btn-brass" style="font-size: 11px; padding: 4px 8px;">Зберегти ціль</button>
+              </div>
             </div>
 
             <!-- Team selection buttons (visible in team modes) -->

@@ -14,6 +14,12 @@ import {
 } from '../../../shared/Constants.js';
 import { WEAPON_DEFINITIONS, getEmblemDefinition } from '../../../shared/ProgressionSchema.js';
 
+function strokeIfSupported(ctx, text, x, y) {
+  if (typeof ctx.strokeText === 'function') {
+    ctx.strokeText(text, x, y);
+  }
+}
+
 export class HUD {
   /**
    * @param {Object} [options]
@@ -302,8 +308,7 @@ export class HUD {
     // 6. Top-Right: Elimination Kill Feed List (Who killed whom)
     this.renderKillFeed(ctx, width, height);
 
-    // 6.5 In-Canvas System Toast Notifications (e.g. Warnings, Pickups)
-    this.renderNotifications(ctx, width, height, player);
+    // Center notifications removed per user directive ("По центру повідомлення ми також прибираємо")
 
     // 7. Respawn Countdown Overlay (when local player is waiting to respawn in deathmatch)
     if (!player.isAlive && isRespawnMode && !this.matchOutcome) {
@@ -844,71 +849,29 @@ export class HUD {
     const rowH = 20;
     const boardH = headerH + displayList.length * rowH + 6;
 
-    // 1. Drop shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-    ctx.shadowBlur = 10;
-    ctx.shadowOffsetY = 3;
+    // Pure floating typography with drop shadow & black text outline - NO BLACK CHASSIS / NO PLATES!
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
 
-    // 2. Chassis (100% Solid Opaque Steampunk Chassis)
-    ctx.fillStyle = '#0a0d13';
-    ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.roundRect(x, y, boardW, boardH, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
-
-    // Header background bar
-    ctx.fillStyle = '#161b24';
-    ctx.beginPath();
-    ctx.roundRect(x + 1, y + 1, boardW - 2, headerH - 1, [5, 5, 0, 0]);
-    ctx.fill();
-
-    // Rivets on header
-    ctx.fillStyle = '#ffcf48';
-    ctx.beginPath();
-    ctx.arc(x + 7, y + 7, 1.5, 0, Math.PI * 2);
-    ctx.arc(x + boardW - 7, y + 7, 1.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.8;
 
     const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
     // Header title
     ctx.fillStyle = '#ffcf48';
-    ctx.font = `bold 11px ${sansFont}`;
+    ctx.font = `bold 12px ${sansFont}`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🏆 ЛІДЕРИ (КІЛИ)', x + 12, y + headerH / 2);
-
-    // Header target kills
-    if (targetKills > 0) {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = `bold 10px ${sansFont}`;
-      ctx.textAlign = 'right';
-      ctx.fillText(`Ціль: ${targetKills}`, x + boardW - 10, y + headerH / 2);
-    }
-
-    // Divider line below header
-    ctx.strokeStyle = 'rgba(197, 155, 39, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(x + 2, y + headerH);
-    ctx.lineTo(x + boardW - 2, y + headerH);
-    ctx.stroke();
+    strokeIfSupported(ctx, '🏆 ЛІДЕРИ (КІЛИ)', x, y + headerH / 2);
+    ctx.fillText('🏆 ЛІДЕРИ (КІЛИ)', x, y + headerH / 2);
 
     // Rows
-    let rowY = y + headerH + 3;
+    let rowY = y + headerH;
     displayList.forEach((c, idx) => {
       const rank = c.customRank || (idx + 1);
       const isLocal = c.isLocal;
-
-      if (isLocal) {
-        ctx.fillStyle = 'rgba(197, 155, 39, 0.18)';
-        ctx.fillRect(x + 2, rowY, boardW - 4, rowH);
-      }
 
       ctx.textBaseline = 'middle';
       const centerY = rowY + rowH / 2;
@@ -916,8 +879,8 @@ export class HUD {
       // Rank number
       ctx.textAlign = 'left';
       ctx.font = `bold 11px ${sansFont}`;
-      ctx.fillStyle = rank === 1 ? '#ffcf48' : (rank === 2 ? '#cbd5e1' : (rank === 3 ? '#cd7f32' : '#64748b'));
-      ctx.fillText(`${rank}.`, x + 8, centerY);
+      strokeIfSupported(ctx, `${rank}.`, x + 6, centerY);
+      ctx.fillText(`${rank}.`, x + 6, centerY);
 
       // Emblem or icon
       const emblemDef = getEmblemDefinition(c.emblem);
@@ -929,15 +892,17 @@ export class HUD {
       ctx.font = isLocal ? `bold 11px ${sansFont}` : `11px ${sansFont}`;
       ctx.fillStyle = isLocal ? '#ffcf48' : (c.isAlive ? '#e2e8f0' : '#64748b');
       const displayName = isLocal ? `${c.name} (Ви)` : c.name;
-      const maxLen = isLocal ? 13 : 12;
+      const maxLen = isLocal ? 16 : 14;
       const truncName = displayName.length > maxLen ? displayName.slice(0, maxLen - 1) + '…' : displayName;
+      strokeIfSupported(ctx, truncName, x + 40, centerY);
       ctx.fillText(truncName, x + 40, centerY);
 
       // Kills badge on right
       ctx.textAlign = 'right';
       ctx.font = `bold 11px ${sansFont}`;
       ctx.fillStyle = isLocal ? '#ffe082' : '#ffffff';
-      ctx.fillText(`${c.kills || 0} ⚔️`, x + boardW - 8, centerY);
+      strokeIfSupported(ctx, `${c.kills || 0} ⚔️`, x + 185, centerY);
+      ctx.fillText(`${c.kills || 0} ⚔️`, x + 185, centerY);
 
       rowY += rowH;
     });
@@ -958,32 +923,26 @@ export class HUD {
     const emblemDef = getEmblemDefinition(player.emblem);
     const emblemIcon = emblemDef ? emblemDef.icon : '⚙️';
 
-    // Drop shadow
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-    ctx.shadowBlur = 8;
-    ctx.shadowOffsetY = 3;
+    // Drop shadow & black outline - clean floating text
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
 
-    ctx.fillStyle = '#0e1219';
-    ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.roundRect(x, y, 205, 46, 5);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.5;
 
     // Call-sign with heraldic emblem
     ctx.fillStyle = '#ffcf48';
     ctx.font = 'bold 12px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText(`${emblemIcon} ${callSign}`, x + 10, y + 18);
+    strokeIfSupported(ctx, `${emblemIcon} ${callSign}`, x + 6, y + 14);
+    ctx.fillText(`${emblemIcon} ${callSign}`, x + 6, y + 14);
 
     // Weapon title
     ctx.fillStyle = '#cbd5e1';
     ctx.font = 'bold 11px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText(wName, x + 10, y + 36);
+    strokeIfSupported(ctx, wName, x + 6, y + 28);
+    ctx.fillText(wName, x + 6, y + 28);
 
     ctx.restore();
   }
@@ -1051,43 +1010,16 @@ export class HUD {
       ctx.save();
       ctx.globalAlpha = Math.min(1.0, item.alpha);
 
-      const cardH = 26;
+      const cardH = 22;
 
-      // 1. Drop shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)';
-      ctx.shadowBlur = 8;
-      ctx.shadowOffsetY = 2;
-
-      // 2. Chassis (100% Solid Opaque Steampunk Chassis)
+      // Pure floating typography with drop shadow & black outline - NO BLACK BACKGROUND / NO PLATES!
       const isDeath = item.isVictimLocal || item.type === 'death';
       const isKill = item.isKillerLocal || item.type === 'kill';
 
-      ctx.fillStyle = isDeath ? '#1c0f12' : (isKill ? '#1f190e' : '#0e1219');
-      ctx.strokeStyle = isDeath ? '#ef4444' : (isKill ? '#ffcf48' : '#475569');
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.roundRect(feedX, currentY, feedW, cardH, 5);
-      ctx.fill();
-      ctx.stroke();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
 
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-
-      // 3. Colored accent strip on left
-      const accent = isDeath ? '#ef4444' : (isKill ? '#ffcf48' : '#3b82f6');
-      ctx.fillStyle = accent;
-      ctx.beginPath();
-      ctx.roundRect(feedX + 2, currentY + 3, 4, cardH - 6, 2);
-      ctx.fill();
-
-      // 4. Rivets on right
-      ctx.fillStyle = isKill ? '#ffcf48' : '#94a3b8';
-      ctx.beginPath();
-      ctx.arc(feedX + feedW - 6, currentY + 6, 1.2, 0, Math.PI * 2);
-      ctx.arc(feedX + feedW - 6, currentY + cardH - 6, 1.2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // 5. Content text: Killer ⚔️ Victim
       ctx.textBaseline = 'middle';
       const textY = currentY + cardH / 2;
 
@@ -1097,35 +1029,37 @@ export class HUD {
 
       // Killer on the left
       ctx.textAlign = 'left';
-      ctx.font = `bold 11px ${sansFont}`;
+      ctx.font = `bold 12px ${sansFont}`;
       ctx.fillStyle = item.isKillerLocal ? '#ffcf48' : '#ffffff';
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 2.2;
+      ctx.lineWidth = 2.5;
       const baseKiller = killer;
       const kTrunc = item.isKillerLocal
         ? (baseKiller.length > 11 ? baseKiller.slice(0, 10) + '… (Ви)' : `${baseKiller} (Ви)`)
         : (baseKiller.length > 15 ? baseKiller.slice(0, 14) + '…' : baseKiller);
-      ctx.strokeText(kTrunc, feedX + 11, textY);
-      ctx.fillText(kTrunc, feedX + 11, textY);
+      strokeIfSupported(ctx, kTrunc, feedX, textY);
+      ctx.fillText(kTrunc, feedX, textY);
 
       // Icon in the center
       ctx.textAlign = 'center';
-      ctx.font = '10px sans-serif';
+      ctx.font = '11px sans-serif';
       ctx.fillText(icon, feedX + feedW / 2 + 10, textY);
 
       // Victim on the right
       ctx.textAlign = 'right';
-      ctx.font = `bold 11px ${sansFont}`;
+      ctx.font = `bold 12px ${sansFont}`;
       ctx.fillStyle = item.isVictimLocal ? '#ef4444' : '#cbd5e1';
+      ctx.strokeStyle = '#000000';
+      ctx.lineWidth = 2.5;
       const baseVictim = victim;
       const vTrunc = item.isVictimLocal
         ? (baseVictim.length > 11 ? baseVictim.slice(0, 10) + '… (Ви)' : `${baseVictim} (Ви)`)
         : (baseVictim.length > 15 ? baseVictim.slice(0, 14) + '…' : baseVictim);
-      ctx.strokeText(vTrunc, feedX + feedW - 12, textY);
-      ctx.fillText(vTrunc, feedX + feedW - 12, textY);
+      strokeIfSupported(ctx, vTrunc, feedX + feedW, textY);
+      ctx.fillText(vTrunc, feedX + feedW, textY);
 
       ctx.restore();
-      currentY += cardH + 5;
+      currentY += cardH + 4;
     }
 
     ctx.restore();
@@ -1203,7 +1137,7 @@ export class HUD {
       // Subtle crisp dark stroke outline
       ctx.strokeStyle = '#000000';
       ctx.lineWidth = 2.5;
-      ctx.strokeText(notif.text, width / 2, currentY + toastHeight / 2);
+      strokeIfSupported(ctx, notif.text, width / 2, currentY + toastHeight / 2);
 
       // Bright white crisp text fill
       ctx.fillStyle = isDeath ? '#fff0f0' : (isKill ? '#fffbe8' : '#ffffff');
@@ -1494,110 +1428,42 @@ export class HUD {
 
     const sansFont = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
 
+    // Pure floating typography with drop shadow & black outline - NO CHASSIS / NO PLATES!
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 2.8;
+
+    const topY = 22;
+
     if (mode === 'team_dm') {
-      // TEAM DEATHMATCH: Prominent Global Scoreboard at Top-Center
-      const boardW = Math.min(380, width - 32);
-      const boardH = 54;
-      const bx = Math.round((width - boardW) / 2);
-      const by = 12;
-
-      // 1. Drop shadow
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.90)';
-      ctx.shadowBlur = 12;
-      ctx.shadowOffsetY = 4;
-
-      // 2. Chassis (100% Solid Opaque Steampunk Chassis)
-      ctx.fillStyle = '#0b0e14';
-      ctx.strokeStyle = '#c59b27';
-      ctx.lineWidth = 2.0;
-      ctx.beginPath();
-      ctx.roundRect(bx, by, boardW, boardH, 8);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetY = 0;
-
-      // Subtle inner golden bevel border
-      ctx.strokeStyle = 'rgba(255, 207, 72, 0.25)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(bx + 2, by + 2, boardW - 4, boardH - 4, 6);
-      ctx.stroke();
-
-      // Corner rivets
-      ctx.fillStyle = '#ffcf48';
-      ctx.beginPath();
-      ctx.arc(bx + 7, by + 7, 2, 0, Math.PI * 2);
-      ctx.arc(bx + boardW - 7, by + 7, 2, 0, Math.PI * 2);
-      ctx.arc(bx + 7, by + boardH - 7, 2, 0, Math.PI * 2);
-      ctx.arc(bx + boardW - 7, by + boardH - 7, 2, 0, Math.PI * 2);
-      ctx.fill();
-
       const t1 = teamScores.team1 || 0;
       const t2 = teamScores.team2 || 0;
 
-      // Team 1: Blue Team (Парові Вовки)
-      ctx.fillStyle = '#3b82f6';
-      ctx.font = `bold 20px ${sansFont}`;
-      ctx.textAlign = 'left';
-      ctx.fillText(`🐺 ${t1}`, bx + 16, by + 26);
-
-      ctx.font = `bold 10px ${sansFont}`;
-      ctx.fillStyle = '#93c5fd';
-      ctx.fillText('Парові Вовки', bx + 16, by + 40);
-
-      // Center: Global Target & Match Label
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold 13px ${sansFont}`;
+      // Center: Global Target Kills & Title
       ctx.textAlign = 'center';
-      ctx.fillText(`ЦІЛЬ: ${targetKills}`, width / 2, by + 21);
+      ctx.font = `bold 14px ${sansFont}`;
+      ctx.fillStyle = '#ffcf48';
+      strokeIfSupported(ctx, `КОМАНДНИЙ РАХУНОК • ЦІЛЬ: ${targetKills}`, width / 2, topY);
+      ctx.fillText(`КОМАНДНИЙ РАХУНОК • ЦІЛЬ: ${targetKills}`, width / 2, topY);
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = `bold 10px ${sansFont}`;
-      ctx.fillText('КОМАНДНИЙ РАХУНОК', width / 2, by + 37);
-
-      // Team 2: Red Team (Мідні Лиси)
-      ctx.fillStyle = '#ef4444';
-      ctx.font = `bold 20px ${sansFont}`;
+      // Team 1 on left of center
       ctx.textAlign = 'right';
-      ctx.fillText(`${t2} 🦊`, bx + boardW - 16, by + 26);
+      ctx.font = `bold 16px ${sansFont}`;
+      ctx.fillStyle = '#60a5fa';
+      strokeIfSupported(ctx, `Парові Вовки 🐺 ${t1}`, width / 2 - 140, topY);
+      ctx.fillText(`Парові Вовки 🐺 ${t1}`, width / 2 - 140, topY);
 
-      ctx.font = `bold 10px ${sansFont}`;
-      ctx.fillStyle = '#fca5a5';
-      ctx.fillText('Мідні Лиси', bx + boardW - 16, by + 40);
-
-      // Progress bars at bottom of board
-      const barW = Math.min(105, (boardW - 160) / 2);
-      const barH = 3;
-      const ratio1 = Math.min(1.0, t1 / Math.max(1, targetKills));
-      const ratio2 = Math.min(1.0, t2 / Math.max(1, targetKills));
-
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(bx + 16, by + boardH - 6, barW, barH);
-      ctx.fillRect(bx + boardW - 16 - barW, by + boardH - 6, barW, barH);
-
-      ctx.fillStyle = '#3b82f6';
-      ctx.fillRect(bx + 16, by + boardH - 6, barW * ratio1, barH);
-
-      ctx.fillStyle = '#ef4444';
-      ctx.fillRect(bx + boardW - 16 - barW * ratio2, by + boardH - 6, barW * ratio2, barH);
+      // Team 2 on right of center
+      ctx.textAlign = 'left';
+      ctx.font = `bold 16px ${sansFont}`;
+      ctx.fillStyle = '#f87171';
+      strokeIfSupported(ctx, `${t2} 🦊 Мідні Лиси`, width / 2 + 140, topY);
+      ctx.fillText(`${t2} 🦊 Мідні Лиси`, width / 2 + 140, topY);
 
     } else if (mode === 'team_elim') {
-      // TEAM ELIMINATION: Team 1 living vs Team 2 living
-      const boardW = Math.min(380, width - 32);
-      const boardH = 50;
-      const bx = Math.round((width - boardW) / 2);
-      const by = 14;
-
-      ctx.fillStyle = '#0b0e14';
-      ctx.strokeStyle = '#c59b27';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.roundRect(bx, by, boardW, boardH, 7);
-      ctx.fill();
-      ctx.stroke();
-
       let t1Alive = 0;
       let t2Alive = 0;
       for (const p of players) {
@@ -1607,76 +1473,46 @@ export class HUD {
         }
       }
 
-      ctx.fillStyle = '#3b82f6';
-      ctx.font = `bold 14px ${sansFont}`;
-      ctx.textAlign = 'left';
-      ctx.fillText(`🐺 Живих: ${t1Alive}`, bx + 16, by + 26);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold 13px ${sansFont}`;
       ctx.textAlign = 'center';
-      ctx.fillText('КОМАНДНИЙ БІЙ', width / 2, by + 20);
-
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = `bold 10px ${sansFont}`;
-      ctx.fillText('ОСТАННЯ КОМАНДА', width / 2, by + 35);
-
-      ctx.fillStyle = '#ef4444';
       ctx.font = `bold 14px ${sansFont}`;
+      ctx.fillStyle = '#ffcf48';
+      strokeIfSupported(ctx, 'КОМАНДНЕ ВИЖИВАННЯ • ОСТАННЯ КОМАНДА', width / 2, topY);
+      ctx.fillText('КОМАНДНЕ ВИЖИВАННЯ • ОСТАННЯ КОМАНДА', width / 2, topY);
+
       ctx.textAlign = 'right';
-      ctx.fillText(`Живих: ${t2Alive} 🦊`, bx + boardW - 16, by + 26);
+      ctx.font = `bold 15px ${sansFont}`;
+      ctx.fillStyle = '#60a5fa';
+      strokeIfSupported(ctx, `Парові Вовки 🐺 ${t1Alive}`, width / 2 - 160, topY);
+      ctx.fillText(`Парові Вовки 🐺 ${t1Alive}`, width / 2 - 160, topY);
+
+      ctx.textAlign = 'left';
+      ctx.font = `bold 15px ${sansFont}`;
+      ctx.fillStyle = '#f87171';
+      strokeIfSupported(ctx, `${t2Alive} 🦊 Мідні Лиси`, width / 2 + 160, topY);
+      ctx.fillText(`${t2Alive} 🦊 Мідні Лиси`, width / 2 + 160, topY);
 
     } else if (mode === 'ffa_dm') {
-      // FFA DEATHMATCH: Sleek compact top banner (leaderboard is in top-left!)
-      if (width >= 768) {
-        const boardW = 230;
-        const boardH = 32;
-        const bx = Math.round((width - boardW) / 2);
-        const by = 14;
+      // FFA Deathmatch: Simply write the final goal cleanly at the top, without any plate
+      ctx.textAlign = 'center';
+      ctx.font = `bold 15px ${sansFont}`;
+      ctx.fillStyle = '#ffcf48';
+      strokeIfSupported(ctx, `⚔️ ЦІЛЬ: ${targetKills} ВБИВСТВ`, width / 2, topY);
+      ctx.fillText(`⚔️ ЦІЛЬ: ${targetKills} ВБИВСТВ`, width / 2, topY);
 
-        ctx.fillStyle = '#0b0e14';
-        ctx.strokeStyle = '#c59b27';
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.roundRect(bx, by, boardW, boardH, 6);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold 12px ${sansFont}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`⚔️ ВІЛЬНА БИТВА • ЦІЛЬ: ${targetKills}`, width / 2, by + boardH / 2);
-      }
     } else {
-      // SOLO ELIMINATION: Last Man Standing
-      if (width >= 768) {
-        const boardW = 210;
-        const boardH = 32;
-        const bx = Math.round((width - boardW) / 2);
-        const by = 14;
-
-        ctx.fillStyle = '#0b0e14';
-        ctx.strokeStyle = '#c59b27';
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.roundRect(bx, by, boardW, boardH, 6);
-        ctx.fill();
-        ctx.stroke();
-
-        let aliveCount = 0;
-        for (const p of players) {
-          if (p.isAlive && (p.hp === undefined || p.hp > 0)) aliveCount++;
-        }
-        if (aliveCount === 0 && matchContext.aliveCount) aliveCount = matchContext.aliveCount;
-        if (aliveCount === 0) aliveCount = 1;
-
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold 12px ${sansFont}`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`💀 ЖИВИХ БІЙЦІВ: ${aliveCount}`, width / 2, by + boardH / 2);
+      // Solo elimination
+      let aliveCount = 0;
+      for (const p of players) {
+        if (p.isAlive && (p.hp === undefined || p.hp > 0)) aliveCount++;
       }
+      if (aliveCount === 0 && matchContext.aliveCount) aliveCount = matchContext.aliveCount;
+      if (aliveCount === 0) aliveCount = 1;
+
+      ctx.textAlign = 'center';
+      ctx.font = `bold 15px ${sansFont}`;
+      ctx.fillStyle = '#ffcf48';
+      strokeIfSupported(ctx, `💀 ЗАЛИШИЛОСЯ БІЙЦІВ: ${aliveCount}`, width / 2, topY);
+      ctx.fillText(`💀 ЗАЛИШИЛОСЯ БІЙЦІВ: ${aliveCount}`, width / 2, topY);
     }
 
     ctx.restore();

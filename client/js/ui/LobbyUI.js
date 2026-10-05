@@ -70,11 +70,16 @@ export class LobbyUI {
       lobbyGameModeSelect: document.getElementById('lobbyGameModeSelect'),
       lobbyTargetKillsGroup: document.getElementById('lobbyTargetKillsGroup'),
       lobbyTargetKillsInput: document.getElementById('lobbyTargetKillsInput'),
+      lobbyTargetKillsSelect: document.getElementById('lobbyTargetKillsSelect'),
+      lobbyHostConfigRow: document.getElementById('lobbyHostConfigRow'),
+      roomActiveTargetKillsInput: document.getElementById('roomActiveTargetKillsInput'),
+      btnUpdateRoomTargetKills: document.getElementById('btnUpdateRoomTargetKills'),
       lobbyTeamSelectGroup: document.getElementById('lobbyTeamSelectGroup'),
       btnSelectTeam1: document.getElementById('btnSelectTeam1'),
       btnSelectTeam2: document.getElementById('btnSelectTeam2'),
       homeGameModeSelect: document.getElementById('homeGameModeSelect'),
       homeTargetKillsGroup: document.getElementById('homeTargetKillsGroup'),
+      homeTargetKillsInput: document.getElementById('homeTargetKillsInput'),
       homeTargetKillsSelect: document.getElementById('homeTargetKillsSelect'),
       btnCopyRoomCode: document.getElementById('btnCopyRoomCode'),
       btnCopyRoomLink: document.getElementById('btnCopyRoomLink'),
@@ -113,6 +118,17 @@ export class LobbyUI {
     this.addTapAndClick(this.dom.btnLobbyRefreshRooms, () => this.fetchAndRenderRooms());
     this.addTapAndClick(this.dom.btnHomeRefreshRooms, () => this.fetchAndRenderRooms());
 
+    // Host live room target kills update button
+    this.addTapAndClick(this.dom.btnUpdateRoomTargetKills, () => {
+      if (this.currentLobbyState && this.isHost()) {
+        const mode = this.currentLobbyState.gameMode || 'ffa_dm';
+        const val = parseInt(this.dom.roomActiveTargetKillsInput?.value || 30, 10);
+        const targetKills = Number.isFinite(val) && val > 0 ? val : 30;
+        this.networkClient.changeGameMode(mode, targetKills);
+      }
+    });
+
+    // Sync Home mode select
     if (this.dom.homeGameModeSelect) {
       this.dom.homeGameModeSelect.addEventListener('change', () => {
         const mode = this.dom.homeGameModeSelect.value;
@@ -125,17 +141,52 @@ export class LobbyUI {
           if (this.dom.lobbyTargetKillsGroup) {
             this.dom.lobbyTargetKillsGroup.style.display = isDm ? 'block' : 'none';
           }
-          if (this.dom.lobbyTargetKillsInput && this.dom.homeTargetKillsSelect) {
-            this.dom.lobbyTargetKillsInput.value = this.dom.homeTargetKillsSelect.value;
-          }
         }
       });
     }
 
+    // Sync Home Target Kills Select & Input
     if (this.dom.homeTargetKillsSelect) {
       this.dom.homeTargetKillsSelect.addEventListener('change', () => {
-        if (this.dom.lobbyTargetKillsInput) {
-          this.dom.lobbyTargetKillsInput.value = this.dom.homeTargetKillsSelect.value;
+        const val = this.dom.homeTargetKillsSelect.value;
+        if (this.dom.homeTargetKillsInput) this.dom.homeTargetKillsInput.value = val;
+        if (this.dom.lobbyTargetKillsInput) this.dom.lobbyTargetKillsInput.value = val;
+        if (this.dom.lobbyTargetKillsSelect) this.dom.lobbyTargetKillsSelect.value = val;
+      });
+    }
+    if (this.dom.homeTargetKillsInput) {
+      this.dom.homeTargetKillsInput.addEventListener('input', () => {
+        const val = this.dom.homeTargetKillsInput.value;
+        if (this.dom.lobbyTargetKillsInput) this.dom.lobbyTargetKillsInput.value = val;
+      });
+    }
+
+    // Sync Lobby Target Kills Select & Input
+    if (this.dom.lobbyTargetKillsSelect) {
+      this.dom.lobbyTargetKillsSelect.addEventListener('change', () => {
+        const val = this.dom.lobbyTargetKillsSelect.value;
+        if (this.dom.lobbyTargetKillsInput) this.dom.lobbyTargetKillsInput.value = val;
+        if (this.dom.homeTargetKillsInput) this.dom.homeTargetKillsInput.value = val;
+        if (this.dom.homeTargetKillsSelect) this.dom.homeTargetKillsSelect.value = val;
+        if (this.currentLobbyState && this.isHost()) {
+          const mode = this.dom.lobbyGameModeSelect?.value || 'ffa_dm';
+          const targetKills = parseInt(val, 10);
+          this.networkClient.changeGameMode(mode, targetKills);
+        }
+      });
+    }
+
+    if (this.dom.lobbyTargetKillsInput) {
+      this.dom.lobbyTargetKillsInput.addEventListener('input', () => {
+        const val = this.dom.lobbyTargetKillsInput.value;
+        if (this.dom.homeTargetKillsInput) this.dom.homeTargetKillsInput.value = val;
+      });
+      this.dom.lobbyTargetKillsInput.addEventListener('change', () => {
+        if (this.currentLobbyState && this.isHost()) {
+          const mode = this.dom.lobbyGameModeSelect?.value || 'ffa_dm';
+          const val = parseInt(this.dom.lobbyTargetKillsInput.value || 30, 10);
+          const targetKills = Number.isFinite(val) && val > 0 ? val : 30;
+          this.networkClient.changeGameMode(mode, targetKills);
         }
       });
     }
@@ -154,17 +205,8 @@ export class LobbyUI {
           this.dom.lobbyTargetKillsGroup.style.display = isDm ? 'block' : 'none';
         }
         if (this.currentLobbyState && this.isHost()) {
-          const targetKills = isDm ? parseInt(this.dom.lobbyTargetKillsInput?.value || 30, 10) : 0;
-          this.networkClient.changeGameMode(mode, targetKills);
-        }
-      });
-    }
-
-    if (this.dom.lobbyTargetKillsInput) {
-      this.dom.lobbyTargetKillsInput.addEventListener('change', () => {
-        if (this.currentLobbyState && this.isHost()) {
-          const mode = this.dom.lobbyGameModeSelect?.value || 'solo_elim';
-          const targetKills = parseInt(this.dom.lobbyTargetKillsInput.value || 10, 10);
+          const val = parseInt(this.dom.lobbyTargetKillsInput?.value || 30, 10);
+          const targetKills = isDm ? (Number.isFinite(val) && val > 0 ? val : 30) : 0;
           this.networkClient.changeGameMode(mode, targetKills);
         }
       });
@@ -660,8 +702,15 @@ export class LobbyUI {
     if (homeModeSelect) homeModeSelect.value = gameMode;
 
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
-    const rawTarget = this.dom.homeTargetKillsSelect?.value || this.dom.lobbyTargetKillsInput?.value;
-    const targetKills = isDm ? parseInt(rawTarget || (gameMode === 'team_dm' ? 15 : 30), 10) : 0;
+    let targetKills = 30;
+    if (isHomeContext) {
+      const val = parseInt(this.dom.homeTargetKillsInput?.value || this.dom.homeTargetKillsSelect?.value, 10);
+      if (Number.isFinite(val) && val > 0) targetKills = val;
+    } else {
+      const val = parseInt(this.dom.lobbyTargetKillsInput?.value || this.dom.lobbyTargetKillsSelect?.value, 10);
+      if (Number.isFinite(val) && val > 0) targetKills = val;
+    }
+    if (!isDm) targetKills = 0;
 
     this.showError('');
     this.setButtonBusy(this.dom.btnCreateRoom, '⚙ Створення...');
@@ -774,6 +823,15 @@ export class LobbyUI {
       if (this.dom.lobbyTargetKillsInput && state.targetKills) {
         this.dom.lobbyTargetKillsInput.value = state.targetKills;
       }
+    }
+
+    // Host live room config (target kills adjustment)
+    const isDm = state.gameMode === 'ffa_dm' || state.gameMode === 'team_dm';
+    if (this.dom.lobbyHostConfigRow) {
+      this.dom.lobbyHostConfigRow.style.display = (this.isHost() && isDm) ? 'block' : 'none';
+    }
+    if (this.dom.roomActiveTargetKillsInput && state.targetKills) {
+      this.dom.roomActiveTargetKillsInput.value = state.targetKills;
     }
 
     // Show team selection buttons if in team mode

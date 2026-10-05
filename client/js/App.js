@@ -1001,11 +1001,20 @@ export class App {
 
     const soloRoomId = `solo_${Date.now().toString(36)}`;
     const playerName = (this.lobbyUI?.dom?.playerNameInput?.value || 'SoloCadet').trim();
-    const gameMode = document.getElementById('homeGameModeSelect')?.value || document.getElementById('lobbyGameModeSelect')?.value || 'ffa_dm';
+    const isHomeContext = (this.currentView === 'home');
+    const gameMode = isHomeContext
+      ? (document.getElementById('homeGameModeSelect')?.value || document.getElementById('lobbyGameModeSelect')?.value || 'ffa_dm')
+      : (document.getElementById('lobbyGameModeSelect')?.value || document.getElementById('homeGameModeSelect')?.value || 'ffa_dm');
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
-    const rawTarget = document.getElementById('homeTargetKillsSelect')?.value || document.getElementById('lobbyTargetKillsInput')?.value;
-    const selectedTarget = parseInt(rawTarget, 10);
-    const targetKills = isDm ? (Number.isFinite(selectedTarget) && selectedTarget > 0 ? selectedTarget : (gameMode === 'team_dm' ? 15 : 30)) : 0;
+    let targetKills = 30;
+    if (isHomeContext) {
+      const val = parseInt(document.getElementById('homeTargetKillsInput')?.value || document.getElementById('homeTargetKillsSelect')?.value, 10);
+      if (Number.isFinite(val) && val > 0) targetKills = val;
+    } else {
+      const val = parseInt(document.getElementById('lobbyTargetKillsInput')?.value || document.getElementById('lobbyTargetKillsSelect')?.value, 10);
+      if (Number.isFinite(val) && val > 0) targetKills = val;
+    }
+    if (!isDm) targetKills = 0;
 
     const doLaunch = () => {
       const prof = this.progressionManager?.getProfile();

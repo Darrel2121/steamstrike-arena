@@ -82,6 +82,7 @@ class HeadlessCanvasMock {
   strokeRect(x, y, w, h) { this.logs.push({ op: 'strokeRect', x, y, w, h }); }
   clearRect(x, y, w, h) { this.logs.push({ op: 'clearRect', x, y, w, h }); }
   fillText(text, x, y) { this.logs.push({ op: 'fillText', text, x, y }); }
+  strokeText(text, x, y) { this.logs.push({ op: 'strokeText', text, x, y }); }
   fill(rule) { this.logs.push({ op: 'fill', rule, fillStyle: this.fillStyle, gco: this.globalCompositeOperation }); }
   stroke() { this.logs.push({ op: 'stroke', strokeStyle: this.strokeStyle, lineWidth: this.lineWidth, gco: this.globalCompositeOperation }); }
   clip() { this.logs.push({ op: 'clip' }); }
