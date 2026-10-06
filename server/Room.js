@@ -337,6 +337,9 @@ export class Room {
     if (config.botDifficulty) {
       this.botDifficulty = config.botDifficulty;
     }
+    if (typeof config.maxPlayers === 'number' && config.maxPlayers >= 2 && config.maxPlayers <= 16) {
+      this.maxPlayers = config.maxPlayers;
+    }
     this.broadcastLobbyState();
     return true;
   }

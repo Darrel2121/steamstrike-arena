@@ -53,8 +53,10 @@ export class LobbyUI {
     this.dom = {
       playerNameInput: document.getElementById('playerNameInput'),
       roomInput: document.getElementById('roomInput'),
+      lobbySetupForm: document.getElementById('lobbySetupForm'),
       btnJoinRoom: document.getElementById('btnJoinRoom'),
       btnCreateRoom: document.getElementById('btnCreateRoom'),
+      btnLeaveRoom: document.getElementById('btnLeaveRoom'),
       btnToggleReady: document.getElementById('btnToggleReady'),
       btnStartMatch: document.getElementById('btnStartMatch'),
       btnQuickPlay: document.getElementById('btnQuickPlay'),
@@ -63,6 +65,8 @@ export class LobbyUI {
       lobbyRoomTitle: document.getElementById('lobbyRoomTitle'),
       lobbyMapTitle: document.getElementById('lobbyMapTitle'),
       lobbyModeBadge: document.getElementById('lobbyModeBadge'),
+      lobbyCapacityBadge: document.getElementById('lobbyCapacityBadge'),
+      lobbyRosterTitle: document.getElementById('lobbyRosterTitle'),
       lobbyPlayerList: document.getElementById('lobbyPlayerList'),
       lobbyErrorMsg: document.getElementById('lobbyErrorMsg'),
       lobbyPingBadge: document.getElementById('lobbyPingBadge'),
@@ -98,8 +102,11 @@ export class LobbyUI {
       homeBotDifficultySelect: document.getElementById('homeBotDifficultySelect'),
       lobbyBotFillSelect: document.getElementById('lobbyBotFillSelect'),
       lobbyBotDifficultySelect: document.getElementById('lobbyBotDifficultySelect'),
+      homeMaxPlayersSelect: document.getElementById('homeMaxPlayersSelect'),
+      lobbyMaxPlayersSelect: document.getElementById('lobbyMaxPlayersSelect'),
       roomActiveBotFillSelect: document.getElementById('roomActiveBotFillSelect'),
       roomActiveBotDifficultySelect: document.getElementById('roomActiveBotDifficultySelect'),
+      roomActiveMaxPlayersSelect: document.getElementById('roomActiveMaxPlayersSelect'),
       lobbyBotBadge: document.getElementById('lobbyBotBadge')
     };
   }
@@ -119,6 +126,7 @@ export class LobbyUI {
   attachEvents() {
     this.addTapAndClick(this.dom.btnJoinRoom, () => this.handleJoinRoom());
     this.addTapAndClick(this.dom.btnCreateRoom, () => this.handleCreateRoom());
+    this.addTapAndClick(this.dom.btnLeaveRoom, () => this.handleLeaveRoom());
     this.addTapAndClick(this.dom.btnToggleReady, () => this.handleToggleReady());
     this.addTapAndClick(this.dom.btnStartMatch, () => this.handleStartMatch());
     this.addTapAndClick(this.dom.btnCopyRoomCode, () => this.handleCopyRoomCode());
@@ -144,7 +152,8 @@ export class LobbyUI {
         const targetKills = Number.isFinite(val) && val > 0 ? val : 30;
         const fillWithBots = this.dom.roomActiveBotFillSelect ? (this.dom.roomActiveBotFillSelect.value === 'true') : true;
         const botDifficulty = this.dom.roomActiveBotDifficultySelect ? this.dom.roomActiveBotDifficultySelect.value : 'normal';
-        this.networkClient.changeGameMode(mode, targetKills, fillWithBots, botDifficulty);
+        const maxPlayers = parseInt(this.dom.roomActiveMaxPlayersSelect?.value || 4, 10);
+        this.networkClient.changeGameMode(mode, targetKills, fillWithBots, botDifficulty, maxPlayers);
       }
     });
 
@@ -175,6 +184,20 @@ export class LobbyUI {
       this.dom.lobbyBotDifficultySelect.addEventListener('change', () => {
         const val = this.dom.lobbyBotDifficultySelect.value;
         if (this.dom.homeBotDifficultySelect) this.dom.homeBotDifficultySelect.value = val;
+      });
+    }
+
+    // Sync Home & Lobby Max Players Selects
+    if (this.dom.homeMaxPlayersSelect) {
+      this.dom.homeMaxPlayersSelect.addEventListener('change', () => {
+        const val = this.dom.homeMaxPlayersSelect.value;
+        if (this.dom.lobbyMaxPlayersSelect) this.dom.lobbyMaxPlayersSelect.value = val;
+      });
+    }
+    if (this.dom.lobbyMaxPlayersSelect) {
+      this.dom.lobbyMaxPlayersSelect.addEventListener('change', () => {
+        const val = this.dom.lobbyMaxPlayersSelect.value;
+        if (this.dom.homeMaxPlayersSelect) this.dom.homeMaxPlayersSelect.value = val;
       });
     }
 
@@ -814,6 +837,10 @@ export class LobbyUI {
     }
     if (!isDm) targetKills = 0;
 
+    const maxPlayers = isHomeContext
+      ? (parseInt(this.dom.homeMaxPlayersSelect?.value, 10) || 4)
+      : (parseInt(this.dom.lobbyMaxPlayersSelect?.value, 10) || 4);
+
     this.showError('');
     this.setButtonBusy(this.dom.btnCreateRoom, '⚙ Створення...');
     this.setButtonBusy(this.dom.btnHomeCreateRoom, '⚙ Створення...');
@@ -831,7 +858,7 @@ export class LobbyUI {
         roomId,
         playerName,
         mapName: selectedMap.name || 'The Clockwork Foundry',
-        maxPlayers: 4,
+        maxPlayers,
         map: selectedMap,
         gameMode,
         targetKills,
@@ -868,6 +895,25 @@ export class LobbyUI {
     }
   }
 
+  handleLeaveRoom() {
+    this.currentLobbyState = null;
+    this.isReady = false;
+    if (this.dom.btnToggleReady) {
+      this.dom.btnToggleReady.textContent = 'Готовий';
+      this.dom.btnToggleReady.className = 'btn-steampunk btn-iron';
+    }
+    if (this.networkClient) {
+      this.networkClient.leaveRoom();
+    }
+    if (this.dom.lobbyStatusCard) {
+      this.dom.lobbyStatusCard.style.display = 'none';
+    }
+    if (this.dom.lobbySetupForm) {
+      this.dom.lobbySetupForm.style.display = 'block';
+    }
+    this.fetchAndRenderRooms();
+  }
+
   handleToggleReady() {
     this.isReady = !this.isReady;
     this.networkClient.setReady(this.isReady);
@@ -894,8 +940,20 @@ export class LobbyUI {
   renderLobbyState(state) {
     this.currentLobbyState = state;
 
-    if (this.dom.lobbyStatusCard) {
-      this.dom.lobbyStatusCard.style.display = 'block';
+    if (state && state.roomId) {
+      if (this.dom.lobbyStatusCard) {
+        this.dom.lobbyStatusCard.style.display = 'block';
+      }
+      if (this.dom.lobbySetupForm) {
+        this.dom.lobbySetupForm.style.display = 'none';
+      }
+    } else {
+      if (this.dom.lobbyStatusCard) {
+        this.dom.lobbyStatusCard.style.display = 'none';
+      }
+      if (this.dom.lobbySetupForm) {
+        this.dom.lobbySetupForm.style.display = 'block';
+      }
     }
 
     if (this.dom.lobbyRoomTitle) {
@@ -904,6 +962,17 @@ export class LobbyUI {
 
     if (this.dom.lobbyMapTitle) {
       this.dom.lobbyMapTitle.textContent = state.mapName || 'The Clockwork Foundry';
+    }
+
+    const playerCount = (state.players || []).length;
+    const maxCapacity = state.maxPlayers || 4;
+
+    if (this.dom.lobbyCapacityBadge) {
+      this.dom.lobbyCapacityBadge.textContent = `👥 ${playerCount}/${maxCapacity} бійців`;
+    }
+
+    if (this.dom.lobbyRosterTitle) {
+      this.dom.lobbyRosterTitle.textContent = `Бійці у кімнаті (${playerCount}/${maxCapacity}):`;
     }
 
     if (this.dom.lobbyLockBadge) {
@@ -956,7 +1025,7 @@ export class LobbyUI {
       }
     }
 
-    // Host live room config (target kills / bots / difficulty)
+    // Host live room config (target kills / bots / difficulty / max players)
     if (this.dom.lobbyHostConfigRow) {
       this.dom.lobbyHostConfigRow.style.display = this.isHost() ? 'block' : 'none';
     }
@@ -968,6 +1037,9 @@ export class LobbyUI {
     }
     if (this.dom.roomActiveBotDifficultySelect && state.botDifficulty) {
       this.dom.roomActiveBotDifficultySelect.value = state.botDifficulty;
+    }
+    if (this.dom.roomActiveMaxPlayersSelect && state.maxPlayers) {
+      this.dom.roomActiveMaxPlayersSelect.value = String(state.maxPlayers);
     }
 
     // Show team selection buttons if in team mode

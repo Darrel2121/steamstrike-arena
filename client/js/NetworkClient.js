@@ -829,13 +829,17 @@ export class NetworkClient {
    * Requests game mode change (host only).
    * @param {string} gameMode
    * @param {number} [targetKills]
+   * @param {boolean} [fillWithBots]
+   * @param {string} [botDifficulty]
+   * @param {number} [maxPlayers]
    */
-  changeGameMode(gameMode, targetKills = null, fillWithBots = null, botDifficulty = null) {
+  changeGameMode(gameMode, targetKills = null, fillWithBots = null, botDifficulty = null, maxPlayers = null) {
     const payload = {};
     if (gameMode) payload.gameMode = gameMode;
     if (targetKills !== null && targetKills !== undefined) payload.targetKills = targetKills;
     if (fillWithBots !== null && fillWithBots !== undefined) payload.fillWithBots = fillWithBots;
     if (botDifficulty) payload.botDifficulty = botDifficulty;
+    if (maxPlayers !== null && maxPlayers !== undefined) payload.maxPlayers = maxPlayers;
     this.send(PROTOCOL_MSG_TYPES.C2S_CHANGE_GAME_MODE, payload);
   }
 

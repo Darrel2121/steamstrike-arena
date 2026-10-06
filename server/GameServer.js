@@ -328,7 +328,8 @@ export class GameServer {
                 gameMode: payload?.gameMode,
                 targetKills: payload?.targetKills,
                 fillWithBots: payload?.fillWithBots !== undefined ? payload.fillWithBots : (payload?.autoFillBots !== undefined ? payload.autoFillBots : undefined),
-                botDifficulty: payload?.botDifficulty
+                botDifficulty: payload?.botDifficulty,
+                maxPlayers: payload?.maxPlayers
               });
             }
           }

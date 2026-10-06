@@ -312,7 +312,7 @@
               </div>
             </div>
 
-            <!-- Bot Population Toggle & AI Difficulty -->
+            <!-- Bot Population Toggle & AI Difficulty & Max Players -->
             <div class="console-field" id="homeBotsGroup" style="display: flex; gap: 10px; flex-wrap: wrap;">
               <div style="flex: 1; min-width: 140px;">
                 <label for="homeBotFillSelect">Боти в матчі:</label>
@@ -328,6 +328,15 @@
                   <option value="normal" selected>🥈 Ветеран (Стандартний)</option>
                   <option value="hard">🥇 Еліта (Тактик)</option>
                   <option value="nightmare">🔥 Титан (Смертоносний)</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 120px;" id="homeMaxPlayersWrapper">
+                <label for="homeMaxPlayersSelect">Місткість кімнати:</label>
+                <select id="homeMaxPlayersSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                  <option value="2">2 бійці (Дуель 1v1)</option>
+                  <option value="4" selected>4 бійці (Стандарт)</option>
+                  <option value="6">6 бійців (Сутичка)</option>
+                  <option value="8">8 бійців (Битва)</option>
                 </select>
               </div>
             </div>
@@ -728,85 +737,97 @@
             <span id="lobbyPingBadge" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; background: #22262d; color: var(--color-status-success);">Підключено</span>
           </div>
 
-          <!-- Inputs when setting up or changing room -->
-          <div class="lobby-input-group">
-            <label for="playerNameInput">Позивний бійця (Нікнейм):</label>
-            <input type="text" id="playerNameInput" class="steampunk-input" value="FoundryRanger_1" maxlength="20">
-          </div>
+          <!-- Setup Form (Hidden once inside a room) -->
+          <div id="lobbySetupForm">
+            <!-- Inputs when setting up or changing room -->
+            <div class="lobby-input-group">
+              <label for="playerNameInput">Позивний бійця (Нікнейм):</label>
+              <input type="text" id="playerNameInput" class="steampunk-input" value="FoundryRanger_1" maxlength="20">
+            </div>
 
-          <div class="lobby-input-group">
-            <label for="roomInput">Код або назва кімнати (Chamber ID):</label>
-            <input type="text" id="roomInput" class="steampunk-input" value="Sector_Omega" maxlength="24">
-          </div>
+            <div class="lobby-input-group">
+              <label for="roomInput">Код або назва кімнати (Chamber ID):</label>
+              <input type="text" id="roomInput" class="steampunk-input" value="Sector_Omega" maxlength="24">
+            </div>
 
-          <div class="lobby-input-group">
-            <label for="roomPasswordInput">🔒 Паровий шифр / Пароль (опціонально для друзів):</label>
-            <input type="password" id="roomPasswordInput" class="steampunk-input" placeholder="Шифр доступу (порожньо — відкрита)" maxlength="24">
-          </div>
+            <div class="lobby-input-group">
+              <label for="roomPasswordInput">🔒 Паровий шифр / Пароль (опціонально для друзів):</label>
+              <input type="password" id="roomPasswordInput" class="steampunk-input" placeholder="Шифр доступу (порожньо — відкрита)" maxlength="24">
+            </div>
 
-          <div class="lobby-input-group">
-            <label for="lobbyMapSelect">Арена бою:</label>
-            <select id="lobbyMapSelect" class="steampunk-input" style="cursor: pointer;">
-              <option value="foundry" selected>The Clockwork Foundry (20x20 Стандарт)</option>
-              <option value="ironworks_catacombs">The Ironworks Catacombs (28x28 Катакомби)</option>
-              <option value="zeppelin_docks">The Grand Zeppelin Docks (32x32 Велика арена)</option>
-              <option value="alchemical_citadel">The Alchemical Citadel (36x36 Велетенська цитадель)</option>
-              <option value="steam_terminal">The Steam Rail Terminal (40x24 Довгий вокзал)</option>
-            </select>
-          </div>
-
-          <div class="lobby-input-group">
-            <label for="lobbyGameModeSelect">Режим гри:</label>
-            <select id="lobbyGameModeSelect" class="steampunk-input" style="cursor: pointer;">
-              <option value="wave_defense">🔮 PvE: Оборона Парового Реактора (5 Хвиль автоматонів)</option>
-              <option value="ffa_dm" selected>⚡ Бій на смерть із відродженням (FFA Deathmatch — Рекомендовано)</option>
-              <option value="team_dm">👥 Командний бій із відродженням (Team Deathmatch)</option>
-              <option value="solo_elim">💀 Виживання: 1 життя (Остаточна смерть / Battle Royale)</option>
-              <option value="team_elim">🛡️ Командне виживання (1 життя / Last Team Standing)</option>
-            </select>
-          </div>
-
-          <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: block;">
-            <label for="lobbyTargetKillsInput">Ціль вбивств для перемоги:</label>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 80px;">
-              <select id="lobbyTargetKillsSelect" class="steampunk-input" style="cursor: pointer; flex: 1;">
-                <option value="10">10 ліквідацій</option>
-                <option value="15">15 ліквідацій</option>
-                <option value="30" selected>30 ліквідацій</option>
-                <option value="50">50 ліквідацій</option>
-                <option value="100">100 ліквідацій</option>
-                <option value="999">999 (Нескінченно)</option>
+            <div class="lobby-input-group">
+              <label for="lobbyMapSelect">Арена бою:</label>
+              <select id="lobbyMapSelect" class="steampunk-input" style="cursor: pointer;">
+                <option value="foundry" selected>The Clockwork Foundry (20x20 Стандарт)</option>
+                <option value="ironworks_catacombs">The Ironworks Catacombs (28x28 Катакомби)</option>
+                <option value="zeppelin_docks">The Grand Zeppelin Docks (32x32 Велика арена)</option>
+                <option value="alchemical_citadel">The Alchemical Citadel (36x36 Велетенська цитадель)</option>
+                <option value="steam_terminal">The Steam Rail Terminal (40x24 Довгий вокзал)</option>
               </select>
             </div>
-          </div>
 
-          <div class="lobby-input-group" id="lobbyBotsGroup" style="display: flex; gap: 8px;">
-            <div style="flex: 1;">
-              <label for="lobbyBotFillSelect">Заповнення ботами:</label>
-              <select id="lobbyBotFillSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
-                <option value="true" selected>🤖 З ботами</option>
-                <option value="false">👥 Лише гравці</option>
+            <div class="lobby-input-group">
+              <label for="lobbyGameModeSelect">Режим гри:</label>
+              <select id="lobbyGameModeSelect" class="steampunk-input" style="cursor: pointer;">
+                <option value="wave_defense">🔮 PvE: Оборона Парового Реактора (5 Хвиль автоматонів)</option>
+                <option value="ffa_dm" selected>⚡ Бій на смерть із відродженням (FFA Deathmatch — Рекомендовано)</option>
+                <option value="team_dm">👥 Командний бій із відродженням (Team Deathmatch)</option>
+                <option value="solo_elim">💀 Виживання: 1 життя (Остаточна смерть / Battle Royale)</option>
+                <option value="team_elim">🛡️ Командне виживання (1 життя / Last Team Standing)</option>
               </select>
             </div>
-            <div style="flex: 1;" id="lobbyBotDifficultyWrapper">
-              <label for="lobbyBotDifficultySelect">Складність ботів:</label>
-              <select id="lobbyBotDifficultySelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
-                <option value="easy">🥉 Рекрут</option>
-                <option value="normal" selected>🥈 Ветеран</option>
-                <option value="hard">🥇 Еліта</option>
-                <option value="nightmare">🔥 Титан</option>
-              </select>
-            </div>
-          </div>
 
-          <div style="display: flex; gap: 8px;">
-            <button id="btnJoinRoom" class="btn-steampunk btn-brass" style="flex: 1;">
-              ⚡ Приєднатися
-            </button>
-            <button id="btnCreateRoom" class="btn-steampunk btn-copper" style="flex: 1;">
-              ⚙ Створити кімнату
-            </button>
+            <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: block;">
+              <label for="lobbyTargetKillsInput">Ціль вбивств для перемоги:</label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 80px;">
+                <select id="lobbyTargetKillsSelect" class="steampunk-input" style="cursor: pointer; flex: 1;">
+                  <option value="10">10 ліквідацій</option>
+                  <option value="15">15 ліквідацій</option>
+                  <option value="30" selected>30 ліквідацій</option>
+                  <option value="50">50 ліквідацій</option>
+                  <option value="100">100 ліквідацій</option>
+                  <option value="999">999 (Нескінченно)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="lobby-input-group" id="lobbyBotsGroup" style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 120px;">
+                <label for="lobbyBotFillSelect">Заповнення ботами:</label>
+                <select id="lobbyBotFillSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                  <option value="true" selected>🤖 З ботами</option>
+                  <option value="false">👥 Лише гравці</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 120px;" id="lobbyBotDifficultyWrapper">
+                <label for="lobbyBotDifficultySelect">Складність ботів:</label>
+                <select id="lobbyBotDifficultySelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                  <option value="easy">🥉 Рекрут</option>
+                  <option value="normal" selected>🥈 Ветеран</option>
+                  <option value="hard">🥇 Еліта</option>
+                  <option value="nightmare">🔥 Титан</option>
+                </select>
+              </div>
+              <div style="flex: 1; min-width: 110px;" id="lobbyMaxPlayersWrapper">
+                <label for="lobbyMaxPlayersSelect">Місткість кімнати:</label>
+                <select id="lobbyMaxPlayersSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                  <option value="2">2 бійці (1v1)</option>
+                  <option value="4" selected>4 бійці (Стандарт)</option>
+                  <option value="6">6 бійців</option>
+                  <option value="8">8 бійців</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+              <button id="btnJoinRoom" class="btn-steampunk btn-brass" style="flex: 1;">
+                ⚡ Приєднатися
+              </button>
+              <button id="btnCreateRoom" class="btn-steampunk btn-copper" style="flex: 1;">
+                ⚙ Створити кімнату
+              </button>
+            </div>
           </div>
 
           <div id="lobbyErrorMsg" style="display: none; color: var(--color-status-danger); font-size: 13px; text-align: center; margin-top: 4px;"></div>
@@ -817,13 +838,14 @@
               <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
                 <span style="font-weight: bold; color: var(--color-brass-glow);" id="lobbyRoomTitle">Chamber</span>
                 <span style="font-size: 12px; color: var(--color-text-dim);" id="lobbyMapTitle">Foundry</span>
+                <span id="lobbyCapacityBadge" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(197, 155, 39, 0.2); color: #ffcf48; border: 1px solid #c59b27;">👥 1/4 бійців</span>
                 <span id="lobbyLockBadge" style="display: none; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(255, 71, 87, 0.2); color: #ff6b81; border: 1px solid #ff4757;">🔒 Захищено шифром</span>
                 <span id="lobbyBotBadge" style="font-size: 11px; padding: 2px 6px; border-radius: 3px; background: rgba(46, 196, 182, 0.2); color: #2ec4b6; border: 1px solid #2ec4b6;">🤖 Боти: Ветеран</span>
               </div>
               <span id="lobbyModeBadge" style="font-size: 11px; padding: 2px 8px; border-radius: 3px; background: #2b230f; color: #ffcf48; border: 1px solid #c59b27;">ВИЖИВАННЯ</span>
             </div>
 
-            <!-- Host Config inside Room (Target Kills / Bots / Difficulty) -->
+            <!-- Host Config inside Room (Target Kills / Bots / Difficulty / Max Players) -->
             <div id="lobbyHostConfigRow" style="display: none; margin-bottom: 8px; padding: 8px; background: rgba(0,0,0,0.35); border-radius: 4px; border: 1px solid rgba(197, 155, 39, 0.3);">
               <div style="font-size: 11px; color: var(--color-brass-bright); margin-bottom: 6px; font-weight: bold;">⚙ Налаштування кімнати (Хост):</div>
               <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
@@ -845,6 +867,15 @@
                     <option value="normal">🥈 Ветеран</option>
                     <option value="hard">🥇 Еліта</option>
                     <option value="nightmare">🔥 Титан</option>
+                  </select>
+                </div>
+                <div style="display: flex; gap: 4px; align-items: center;">
+                  <label for="roomActiveMaxPlayersSelect" style="font-size: 11px; color: var(--color-text-dim); white-space: nowrap;">Місткість:</label>
+                  <select id="roomActiveMaxPlayersSelect" class="steampunk-input" style="font-size: 11px; padding: 3px 6px; cursor: pointer;">
+                    <option value="2">2 бійці</option>
+                    <option value="4" selected>4 бійці</option>
+                    <option value="6">6 бійців</option>
+                    <option value="8">8 бійців</option>
                   </select>
                 </div>
                 <button type="button" id="btnUpdateRoomTargetKills" class="btn-steampunk btn-brass" style="font-size: 11px; padding: 4px 10px; margin-left: auto;">Зберегти налаштування</button>
@@ -873,14 +904,15 @@
               ✓ Скопійовано в буфер обміну!
             </div>
 
-            <div style="font-size: 12px; color: var(--color-brass-bright); font-weight: bold; margin-bottom: 6px;">Бійці у кімнаті:</div>
+            <div id="lobbyRosterTitle" style="font-size: 12px; color: var(--color-brass-bright); font-weight: bold; margin-bottom: 6px;">Бійці у кімнаті (1/4):</div>
             <ul id="lobbyPlayerList" style="list-style: none; max-height: 180px; overflow-y: auto; margin-bottom: 12px; padding: 0;"></ul>
 
             <!-- Prominent Pinned Action Buttons directly attached to Roster -->
             <div style="display: flex; flex-direction: column; gap: 8px;">
               <div style="display: flex; gap: 8px;">
-                <button id="btnToggleReady" class="btn-steampunk btn-iron" style="flex: 1; padding: 10px 14px; font-weight: bold;">Готовий</button>
-                <button id="btnStartMatch" class="btn-steampunk btn-launch" style="flex: 1.5; display: none; padding: 10px 14px; font-size: 15px; font-weight: bold; box-shadow: 0 0 14px rgba(85, 239, 196, 0.6);">⚔ Почати бій</button>
+                <button type="button" id="btnLeaveRoom" class="btn-steampunk btn-iron" style="flex: 1; padding: 10px 14px; font-weight: bold;">🚪 Вийти</button>
+                <button type="button" id="btnToggleReady" class="btn-steampunk btn-iron" style="flex: 1; padding: 10px 14px; font-weight: bold;">Готовий</button>
+                <button type="button" id="btnStartMatch" class="btn-steampunk btn-launch" style="flex: 1.5; display: none; padding: 10px 14px; font-size: 15px; font-weight: bold; box-shadow: 0 0 14px rgba(85, 239, 196, 0.6);">⚔ Почати бій</button>
               </div>
             </div>
           </div>
