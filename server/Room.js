@@ -864,8 +864,8 @@ export class Room {
             x: player.x,
             y: player.y,
             type: 'gunfire',
-            radius: 60,
-            maxRadius: SOUND_CONFIGS?.gunfire?.maxRadius || 240,
+            radius: 40,
+            maxRadius: SOUND_CONFIGS?.gunfire?.maxRadius || 168,
             intensity: 1.0,
             createdAt: Date.now()
           };

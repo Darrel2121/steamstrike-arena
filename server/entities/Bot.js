@@ -16,7 +16,8 @@ import {
   PROJECTILE_SPEED,
   PROJECTILE_RADIUS,
   BOT_DIFFICULTIES,
-  BOT_DIFFICULTY_CONFIGS
+  BOT_DIFFICULTY_CONFIGS,
+  SOUND_CONFIGS
 } from '../../shared/Constants.js';
 import { isPointVisible } from '../../shared/RaycastMath.js';
 import { TILE_TYPES } from '../../shared/MapSchema.js';
@@ -479,8 +480,8 @@ export class Bot extends Player {
               x: this.x,
               y: this.y,
               type: 'gunfire',
-              radius: 60,
-              maxRadius: 240,
+              radius: 40,
+              maxRadius: SOUND_CONFIGS?.gunfire?.maxRadius || 168,
               intensity: 1.0,
               createdAt: Date.now()
             });

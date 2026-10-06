@@ -179,20 +179,20 @@ export const tests = [
     name: 'Sound Wave Lifecycle: Max Radius Clamping at Expiration Boundary',
     fn: async () => {
       const swr = new SoundWaveRenderer();
-      swr.addSound({ x: 100, y: 100, type: 'gunfire' }); // maxRadius: 240, duration: 1.4
+      swr.addSound({ x: 100, y: 100, type: 'gunfire' });
       const wave = swr.waves[0];
 
       // Exact expiration
-      wave.elapsed = 1.4;
+      wave.elapsed = wave.duration;
       let progress = Math.min(1.0, wave.elapsed / wave.duration);
       assert.strictEqual(progress, 1.0);
-      assert.strictEqual(progress * wave.maxRadius, 240);
+      assert.strictEqual(progress * wave.maxRadius, SOUND_CONFIGS.gunfire.maxRadius);
 
       // Overshoot before update
       wave.elapsed = 5.0;
       progress = Math.min(1.0, wave.elapsed / wave.duration);
       assert.strictEqual(progress, 1.0, 'Progress must be clamped to 1.0');
-      assert.strictEqual(progress * wave.maxRadius, 240, 'Radius must never exceed maxRadius');
+      assert.strictEqual(progress * wave.maxRadius, SOUND_CONFIGS.gunfire.maxRadius, 'Radius must never exceed maxRadius');
     }
   },
 

@@ -43,8 +43,8 @@ export const SOUND_CONFIGS = {
     color: 'rgba(80, 227, 230, 0.75)'
   },
   gunfire: {
-    maxRadius: 240,
-    duration: 1.4,
+    maxRadius: 168,
+    duration: 1.2,
     intensity: 1.0,
     color: 'rgba(255, 110, 30, 0.85)'
   },
