@@ -62,6 +62,7 @@ export class BugReportStore {
       category: String(reportData.category || 'general').trim().slice(0, 50),
       description: String(reportData.description || '').trim().slice(0, 4000),
       contact: String(reportData.contact || '').trim().slice(0, 100),
+      status: reportData.status || 'new', // 'new' | 'in_progress' | 'resolved' | 'rejected'
       clientInfo: reportData.clientInfo || {},
       createdAt: new Date().toISOString(),
       timestamp: Date.now()
@@ -80,11 +81,47 @@ export class BugReportStore {
   }
 
   /**
-   * Returns list of recent reports.
-   * @param {number} [limit=50]
+   * Updates status of a bug report.
+   * @param {string} id
+   * @param {string} status
+   * @returns {Promise<Object|null>}
    */
-  getReports(limit = 50) {
+  async updateReportStatus(id, status) {
+    const report = this.reports.find(r => r.id === id);
+    if (!report) return null;
+    report.status = status;
+    report.updatedAt = new Date().toISOString();
+    if (!this.memoryOnly) {
+      this.scheduleSave();
+    }
+    return report;
+  }
+
+  /**
+   * Deletes a bug report.
+   * @param {string} id
+   * @returns {Promise<boolean>}
+   */
+  async deleteReport(id) {
+    const beforeLen = this.reports.length;
+    this.reports = this.reports.filter(r => r.id !== id);
+    const removed = this.reports.length < beforeLen;
+    if (removed && !this.memoryOnly) {
+      this.scheduleSave();
+    }
+    return removed;
+  }
+
+  /**
+   * Returns list of recent reports.
+   * @param {number} [limit=100]
+   */
+  getReports(limit = 100) {
     return this.reports.slice(0, limit);
+  }
+
+  getAllReports() {
+    return [...this.reports];
   }
 
   scheduleSave() {

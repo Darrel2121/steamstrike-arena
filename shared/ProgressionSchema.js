@@ -304,7 +304,17 @@ export function calculateEffectiveCharacterStats(tiers = {}, classId = DEFAULT_C
   return {
     maxHp: Math.round(baseStats.maxHp * cls.hpMultiplier),
     moveSpeed: Math.round(baseStats.moveSpeed * cls.speedMultiplier),
+    walkSpeed: Math.round(cls.walkSpeed * (baseStats.moveSpeed / BASE_CHARACTER_STATS.moveSpeed)),
+    sprintSpeed: Math.round(cls.sprintSpeed * (baseStats.moveSpeed / BASE_CHARACTER_STATS.moveSpeed)),
     lanternRange: Math.round(baseStats.lanternRange * cls.lanternMultiplier),
+    lanternFov: cls.lanternFov || (80 * Math.PI) / 180,
+    lanternAngleDeg: cls.lanternAngleDeg || 80,
+    proximityRadius: cls.proximityRadius || 55,
+    maxSteam: cls.maxSteam || 100,
+    steamDrainRate: cls.steamDrainRate || 25,
+    steamVentRate: cls.steamVentRate || 30,
+    accentColor: cls.accentColor || '#ffcf48',
+    chassisStyle: cls.chassisStyle || 'brass_plate',
     classId: cls.id,
     className: cls.name,
     classDef: cls

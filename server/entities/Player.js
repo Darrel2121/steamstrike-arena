@@ -52,13 +52,32 @@ export class Player {
     this.maxSpeed = options.maxSpeed ?? 180;
     this.sprintMultiplier = options.sprintMultiplier ?? 1.5;
 
-    // Vitality & Stamina
-    this.maxHp = options.maxHp ?? PLAYER_MAX_HP ?? 100;
+    // Character Class & Tactical Ability
+    this.classId = options.classId || DEFAULT_CLASS_ID;
+    const clsDef = getClassDefinition(this.classId);
+    this.classDef = clsDef;
+    this.ability = clsDef.ability;
+    this.passive = clsDef.passive;
+    this.abilityCooldownTimer = 0;
+    this.abilityActiveTimer = 0;
+    this.shieldHp = 0;
+    this.overdriveActive = false;
+    this.sonarActive = false;
+    this.smokeActive = false;
+
+    // Vitality & Stamina (Class-driven defaults)
+    this.maxHp = options.maxHp ?? clsDef.baseHp ?? (PLAYER_MAX_HP ?? 100);
     this.hp = typeof options.hp === 'number' ? Math.max(0, Math.min(this.maxHp, options.hp)) : this.maxHp;
     this.isAlive = options.isAlive !== undefined ? Boolean(options.isAlive && this.hp > 0) : (this.hp > 0);
 
-    this.maxStamina = options.maxStamina ?? PLAYER_STAMINA_MAX ?? 100;
+    this.maxStamina = options.maxStamina ?? clsDef.maxSteam ?? (PLAYER_STAMINA_MAX ?? 100);
     this.stamina = options.stamina ?? this.maxStamina;
+    this.steamDrainRate = options.steamDrainRate ?? clsDef.steamDrainRate ?? 25;
+    this.steamVentRate = options.steamVentRate ?? clsDef.steamVentRate ?? 30;
+    this.lanternFov = options.lanternFov ?? clsDef.lanternFov ?? (80 * Math.PI / 180);
+    this.lanternAngleDeg = options.lanternAngleDeg ?? clsDef.lanternAngleDeg ?? 80;
+    this.lanternRange = options.lanternRange ?? clsDef.lanternRange ?? 420;
+    this.proximityRadius = options.proximityRadius ?? clsDef.proximityRadius ?? 55;
     this.isSprinting = options.isSprinting ?? false;
     this.lanternOn = options.lanternOn !== false;
     this.lanternOffDuration = options.lanternOffDuration ?? 1.0;
@@ -85,19 +104,6 @@ export class Player {
     this.reloadTimer = options.reloadTimer ?? 0;
     this.fireCooldown = 0;
     this.invulnerableTimer = options.invulnerableTimer ?? 0;
-
-    // Character Class & Tactical Ability
-    this.classId = options.classId || DEFAULT_CLASS_ID;
-    const clsDef = getClassDefinition(this.classId);
-    this.classDef = clsDef;
-    this.ability = clsDef.ability;
-    this.passive = clsDef.passive;
-    this.abilityCooldownTimer = 0;
-    this.abilityActiveTimer = 0;
-    this.shieldHp = 0;
-    this.overdriveActive = false;
-    this.sonarActive = false;
-    this.smokeActive = false;
 
     // Network Sync Metadata
     this.lastProcessedSeq = 0;
@@ -360,12 +366,14 @@ export class Player {
       this.invulnerableTimer = Math.max(0, this.invulnerableTimer - dt);
     }
 
-    // 3. Stamina drain / recovery
+    // 3. Stamina drain / recovery with class-specific rates
+    const drainRate = this.steamDrainRate ?? (PLAYER_STAMINA_DRAIN_RUN ?? 25);
+    const ventRate = this.steamVentRate ?? (PLAYER_STAMINA_RECOVER ?? 30);
     const sprinting = isSprinting ?? this.isSprinting;
     if (sprinting) {
-      this.stamina = Math.max(0, this.stamina - (PLAYER_STAMINA_DRAIN_RUN ?? 30) * dt);
+      this.stamina = Math.max(0, this.stamina - drainRate * dt);
     } else {
-      this.stamina = Math.min(this.maxStamina, this.stamina + (PLAYER_STAMINA_RECOVER ?? 20) * dt);
+      this.stamina = Math.min(this.maxStamina, this.stamina + ventRate * dt);
     }
 
     // 4. Tactical Ability Timers

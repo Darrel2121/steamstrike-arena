@@ -35,7 +35,8 @@ export const tests = [
 
       for (const [botId, bot] of room.bots) {
         assert.ok(bot.isAlive, 'Spawned bot must be alive');
-        assert.strictEqual(bot.hp, 100, 'Bot should start with 100 HP');
+        assert.strictEqual(bot.hp, bot.maxHp, 'Bot should start with full HP matching its class');
+        assert.ok(bot.hp >= 80, 'Bot should start with valid positive HP');
         assert.ok(bot.x > 0 && bot.y > 0, 'Bot must spawn at valid non-zero coordinates');
       }
     }

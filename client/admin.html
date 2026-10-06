@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steamstrike — Центр адміністрування та аналітики</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-body">
+  <!-- Top Steampunk Header -->
+  <header class="admin-header">
+    <div class="admin-header-left">
+      <a href="/" class="admin-logo-link" title="Повернутися до гри">
+        <span class="logo-gear">⚙️</span>
+        <span class="logo-text">STEAMSTRIKE</span>
+      </a>
+      <span class="admin-badge">КОНСОЛЬ ГОЛОВНОГО ІНЖЕНЕРА</span>
+    </div>
+
+    <div class="admin-header-right">
+      <div id="adminServerPulse" class="pulse-badge pulse-online">
+        <span class="pulse-dot"></span> Сервер у мережі
+      </div>
+      <a href="/" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 6px 14px; text-decoration: none;">🎮 До гри</a>
+      <button id="btnAdminLogout" class="btn-steampunk btn-copper" style="font-size: 12px; padding: 6px 14px; display: none;">🚪 Вийти</button>
+    </div>
+  </header>
+
+  <!-- Login Overlay (when unauthenticated) -->
+  <div id="adminAuthOverlay" class="admin-auth-overlay">
+    <div class="steampunk-panel admin-auth-card">
+      <div class="auth-header">
+        <div class="gear-icon-large">🔐</div>
+        <h2>Авторизація адміністратора</h2>
+        <p>Введіть секретний ключ доступу до командного вузла Steamstrike</p>
+      </div>
+
+      <form id="adminLoginForm" class="admin-login-form">
+        <div class="form-group">
+          <label for="adminKeyInput">Ключ доступу:</label>
+          <input type="password" id="adminKeyInput" class="steampunk-input" placeholder="Введіть пароль адміністратора" autocomplete="current-password" required>
+        </div>
+
+        <div id="adminAuthError" class="auth-error-msg" style="display: none;"></div>
+
+        <button type="submit" id="btnSubmitAdminLogin" class="btn-steampunk btn-launch" style="width: 100%; margin-top: 12px; padding: 12px; font-weight: bold;">
+          ⚡ Увійти до консолі
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main Admin Dashboard Container (when authenticated) -->
+  <main id="adminMainDashboard" class="admin-main-container" style="display: none;">
+    <!-- Navigation Tabs -->
+    <nav class="admin-nav-tabs">
+      <button class="admin-tab-btn active" data-tab="stats">
+        <span>📊</span> Статистика та бої
+      </button>
+      <button class="admin-tab-btn" data-tab="players">
+        <span>👥</span> Гравці та бани
+      </button>
+      <button class="admin-tab-btn" data-tab="bugs">
+        <span>🐛</span> Багрепорти <span id="badgeNewBugsCount" class="tab-pill" style="display: none;">0</span>
+      </button>
+      <button class="admin-tab-btn" data-tab="news">
+        <span>📰</span> Новини та патчі
+      </button>
+      <button class="admin-tab-btn" data-tab="balance">
+        <span>⚙️</span> Баланс та конфіг
+      </button>
+    </nav>
+
+    <!-- TAB 1: Analytics & Live Stats -->
+    <section id="tab-stats" class="admin-tab-content active">
+      <div class="stats-metric-grid">
+        <div class="metric-card">
+          <div class="metric-icon">🌐</div>
+          <div class="metric-info">
+            <span class="metric-label">Активні кімнати</span>
+            <span id="statActiveRooms" class="metric-val">0</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">👤</div>
+          <div class="metric-info">
+            <span class="metric-label">Гравців у мережі</span>
+            <span id="statActivePlayers" class="metric-val">0</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">🤖</div>
+          <div class="metric-info">
+            <span class="metric-label">Автоматонів у бою</span>
+            <span id="statActiveBots" class="metric-val">0</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">📜</div>
+          <div class="metric-info">
+            <span class="metric-label">Всього профілів</span>
+            <span id="statTotalProfiles" class="metric-val">0</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">🔨</div>
+          <div class="metric-info">
+            <span class="metric-label">Активних блокувань</span>
+            <span id="statTotalBans" class="metric-val">0</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">⏱️</div>
+          <div class="metric-info">
+            <span class="metric-label">Аптайм сервера</span>
+            <span id="statUptime" class="metric-val">0с</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="admin-split-layout">
+        <!-- Active Rooms Table -->
+        <div class="steampunk-panel admin-card-panel">
+          <div class="card-panel-header">
+            <h3><span>🌐</span> Активні бойові арени</h3>
+            <button id="btnRefreshStats" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 10px;">🔄 Оновити</button>
+          </div>
+          <div id="adminRoomsTableContainer" class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>ID кімнати</th>
+                  <th>Карта</th>
+                  <th>Режим</th>
+                  <th>Бійці</th>
+                  <th>Стан</th>
+                </tr>
+              </thead>
+              <tbody id="adminRoomsTableBody">
+                <tr><td colspan="5" style="text-align: center; color: #8e9aa8;">Немає активних кімнат</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Leaderboard Table -->
+        <div class="steampunk-panel admin-card-panel">
+          <div class="card-panel-header">
+            <h3><span>🏆</span> Топ бійців за досвідом</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Позивний</th>
+                  <th>Рівень</th>
+                  <th>XP</th>
+                  <th>Перемог</th>
+                </tr>
+              </thead>
+              <tbody id="adminLeaderboardTableBody">
+                <tr><td colspan="5" style="text-align: center; color: #8e9aa8;">Завантаження...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Players & Moderation -->
+    <section id="tab-players" class="admin-tab-content">
+      <div class="steampunk-panel admin-card-panel">
+        <div class="card-panel-header" style="flex-wrap: wrap; gap: 10px;">
+          <h3><span>👥</span> Реєстр гравців та модерація</h3>
+          <div style="display: flex; gap: 8px; flex: 1; max-width: 400px;">
+            <input type="text" id="playerSearchInput" class="steampunk-input" placeholder="Пошук за позивним або ID..." style="font-size: 12px; padding: 6px 10px;">
+          </div>
+          <button id="btnRefreshPlayers" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 10px;">🔄 Оновити</button>
+        </div>
+
+        <div class="table-responsive" style="max-height: 480px; overflow-y: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Позивний</th>
+                <th>Рівень / XP</th>
+                <th>Клас</th>
+                <th>Зброя</th>
+                <th>Матчів / Перемог</th>
+                <th>Статус</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="adminPlayersTableBody">
+              <tr><td colspan="8" style="text-align: center; color: #8e9aa8;">Завантаження списку гравців...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Active Bans Section -->
+      <div class="steampunk-panel admin-card-panel" style="margin-top: 18px;">
+        <div class="card-panel-header">
+          <h3><span>🔨</span> Активні блокування (Бани)</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Ціль</th>
+                <th>Значення</th>
+                <th>Причина</th>
+                <th>Дата</th>
+                <th>Дії</th>
+              </tr>
+            </thead>
+            <tbody id="adminBansTableBody">
+              <tr><td colspan="5" style="text-align: center; color: #8e9aa8;">Активних блокувань немає</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Bug Reports & Feedback -->
+    <section id="tab-bugs" class="admin-tab-content">
+      <div class="steampunk-panel admin-card-panel">
+        <div class="card-panel-header" style="flex-wrap: wrap; gap: 10px;">
+          <h3><span>🐛</span> Скринька багрепортів та відгуків</h3>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn-filter-bug active btn-steampunk btn-iron" data-filter="all" style="font-size: 11px; padding: 4px 8px;">Всі</button>
+            <button class="btn-filter-bug btn-steampunk btn-iron" data-filter="new" style="font-size: 11px; padding: 4px 8px;">Нові</button>
+            <button class="btn-filter-bug btn-steampunk btn-iron" data-filter="in_progress" style="font-size: 11px; padding: 4px 8px;">В роботі</button>
+            <button class="btn-filter-bug btn-steampunk btn-iron" data-filter="resolved" style="font-size: 11px; padding: 4px 8px;">Вирішено</button>
+          </div>
+          <button id="btnRefreshBugs" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 10px;">🔄 Оновити</button>
+        </div>
+
+        <div id="bugsListContainer" class="bugs-cards-list">
+          <div style="text-align: center; color: #8e9aa8; padding: 30px;">Завантаження звітів...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: News & Patch Notes CMS -->
+    <section id="tab-news" class="admin-tab-content">
+      <div class="admin-split-layout">
+        <!-- News Editor Form -->
+        <div class="steampunk-panel admin-card-panel">
+          <div class="card-panel-header">
+            <h3 id="newsFormHeader"><span>✏️</span> Створити новину / патч</h3>
+            <button id="btnResetNewsForm" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 8px; display: none;">✖ Скасувати редагування</button>
+          </div>
+
+          <form id="adminNewsForm" class="admin-news-form">
+            <input type="hidden" id="newsEditId" value="">
+            
+            <div class="form-group">
+              <label for="newsTitleInput">Заголовок:</label>
+              <input type="text" id="newsTitleInput" class="steampunk-input" placeholder="Наприклад: Оновлення 1.1 - Нові бойові мапи" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="form-group">
+                <label for="newsCategorySelect">Категорія:</label>
+                <select id="newsCategorySelect" class="steampunk-select">
+                  <option value="Оновлення">Оновлення</option>
+                  <option value="Патч">Патч</option>
+                  <option value="Подія">Подія</option>
+                  <option value="Технічне">Технічне</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="newsAuthorInput">Автор:</label>
+                <input type="text" id="newsAuthorInput" class="steampunk-input" value="Головний Інженер">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="newsSummaryInput">Короткий опис (анонс):</label>
+              <textarea id="newsSummaryInput" class="steampunk-textarea" rows="2" placeholder="Короткий зміст новини для картки..." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="newsContentInput">Повний текст новини (списки, опис):</label>
+              <textarea id="newsContentInput" class="steampunk-textarea" rows="6" placeholder="Детальний опис змін, список покращень..." required></textarea>
+            </div>
+
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffcf48; cursor: pointer;">
+                <input type="checkbox" id="newsPinnedCheckbox" style="transform: scale(1.2);"> 📌 Закріпити вгорі списку
+              </label>
+
+              <button type="submit" id="btnSaveNews" class="btn-steampunk btn-launch" style="padding: 8px 18px; font-weight: bold;">
+                💾 Опублікувати новину
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- News Published List -->
+        <div class="steampunk-panel admin-card-panel">
+          <div class="card-panel-header">
+            <h3><span>📰</span> Опубліковані новини</h3>
+            <button id="btnRefreshNews" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 10px;">🔄 Оновити</button>
+          </div>
+          <div id="adminNewsListContainer" class="admin-news-list">
+            <div style="text-align: center; color: #8e9aa8; padding: 20px;">Завантаження новин...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Live Gameplay Config & Presets -->
+    <section id="tab-balance" class="admin-tab-content">
+      <div class="steampunk-panel admin-card-panel">
+        <div class="card-panel-header" style="flex-wrap: wrap; gap: 10px;">
+          <h3><span>⚙️</span> Глобальне налаштування балансу та фізики</h3>
+          <div style="display: flex; gap: 8px;">
+            <button id="btnSaveAllConfig" class="btn-steampunk btn-launch" style="font-size: 12px; padding: 6px 16px; font-weight: bold;">💾 Зберегти зміни</button>
+            <button id="btnResetConfigDefaults" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 6px 14px;">🔄 Скинути до дефолту</button>
+          </div>
+        </div>
+
+        <!-- Presets Row -->
+        <div class="presets-container" style="display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 18px 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px;">
+          <span style="font-size: 12px; font-weight: bold; color: #ffcf48; align-self: center; margin-right: 6px;">⚡ Готові пресети:</span>
+          <button class="btn-steampunk btn-copper btn-preset-action" data-preset="standard">Стандартний баланс</button>
+          <button class="btn-steampunk btn-copper btn-preset-action" data-preset="high_dynamism">Висока динаміка (+швидкість)</button>
+          <button class="btn-steampunk btn-copper btn-preset-action" data-preset="tactical_hardcore">Тактичний хардкор (+урон)</button>
+          <button class="btn-steampunk btn-copper btn-preset-action" data-preset="sniper_duel">Снайперські дуелі (+огляд)</button>
+        </div>
+
+        <div id="adminConfigCategoriesContainer" class="config-categories-grid">
+          <!-- Dynamically populated setting sliders & toggles -->
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Ban Player Modal Dialog -->
+  <div id="modalBanPlayer" class="admin-modal-overlay" style="display: none;">
+    <div class="steampunk-panel admin-dialog-card">
+      <div class="card-panel-header">
+        <h3><span>🔨</span> Блокування гравця</h3>
+        <button type="button" class="btn-close-modal btn-steampunk btn-iron" style="padding: 2px 8px;">✕</button>
+      </div>
+
+      <form id="formBanPlayer" style="margin-top: 12px;">
+        <input type="hidden" id="banTargetType" value="profileId">
+        <input type="hidden" id="banTargetValue" value="">
+
+        <div style="font-size: 13px; color: #ffcf48; margin-bottom: 10px;">
+          Ціль: <strong id="banTargetDisplay" style="color: #ffffff;">-</strong>
+        </div>
+
+        <div class="form-group">
+          <label for="banReasonInput">Причина блокування:</label>
+          <input type="text" id="banReasonInput" class="steampunk-input" value="Порушення правил гри / Чітерство" required>
+        </div>
+
+        <div class="form-group">
+          <label for="banDurationSelect">Термін блокування:</label>
+          <select id="banDurationSelect" class="steampunk-select">
+            <option value="0">Назавжди (Permanent)</option>
+            <option value="86400000">1 доба (24 години)</option>
+            <option value="604800000">7 діб (1 тиждень)</option>
+            <option value="2592000000">30 діб (1 місяць)</option>
+          </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
+          <button type="button" class="btn-close-modal btn-steampunk btn-iron" style="padding: 8px 16px;">Скасувати</button>
+          <button type="submit" class="btn-steampunk btn-copper" style="padding: 8px 16px; font-weight: bold; background: #c0392b;">🔨 Заблокувати</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="adminToast" class="admin-toast" style="display: none;"></div>
+
+  <!-- Scripts -->
+  <script type="module" src="js/admin/AdminDashboard.js"></script>
+</body>
+</html>

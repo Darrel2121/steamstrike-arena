@@ -13,6 +13,8 @@ import { authService } from './auth/AuthService.js';
 import { profileStore } from './db/ProfileStore.js';
 import { bugReportStore } from './db/BugReportStore.js';
 import { gameConfigStore } from './db/GameConfigStore.js';
+import { banStore } from './db/BanStore.js';
+import { newsStore } from './db/NewsStore.js';
 import { GAME_SETTING_CATEGORIES, GAME_SETTINGS_SCHEMA, GAME_SETTING_PRESETS } from '../shared/GameSettings.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -471,6 +473,307 @@ export function startServer(port = process.env.PORT || 3000) {
           });
         }
 
+        // GET /api/news (Public news list)
+        if (pathname === '/api/news' && req.method === 'GET') {
+          return sendJson(200, {
+            success: true,
+            news: newsStore.getNews()
+          });
+        }
+
+        // ======================================================================
+        // ADMIN DASHBOARD & ADVANCED MANAGEMENT ENDPOINTS
+        // ======================================================================
+
+        // GET /api/admin/stats
+        if (pathname === '/api/admin/stats' && req.method === 'GET') {
+          if (!checkAdminAuth()) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+
+          let activePlayersCount = 0;
+          let activeBotsCount = 0;
+          const roomsSummary = [];
+
+          if (gameServer) {
+            for (const [rId, room] of gameServer.rooms) {
+              const humanPlayers = Array.from(room.players.values()).filter(p => !p.isBot).length;
+              const botCount = room.bots ? room.bots.size : 0;
+              activePlayersCount += humanPlayers;
+              activeBotsCount += botCount;
+              roomsSummary.push({
+                id: rId,
+                map: room.map?.name || 'Standard Arena',
+                mode: room.gameMode,
+                state: room.state,
+                humans: humanPlayers,
+                bots: botCount,
+                locked: Boolean(room.password)
+              });
+            }
+          }
+
+          const allProfiles = await profileStore.getAllProfiles();
+          const leaderboard = [...allProfiles]
+            .sort((a, b) => (b.xp || 0) - (a.xp || 0))
+            .slice(0, 10)
+            .map(p => ({
+              id: p.id,
+              username: p.username || 'Невідомий',
+              level: p.level || 1,
+              xp: p.xp || 0,
+              emblem: p.emblem || 'gear',
+              matches: p.careerStats?.matchesPlayed || 0,
+              wins: p.careerStats?.wins || 0,
+              kills: p.careerStats?.kills || 0
+            }));
+
+          const allBugs = bugReportStore.getAllReports();
+          const bugStats = {
+            total: allBugs.length,
+            new: allBugs.filter(b => b.status === 'new').length,
+            in_progress: allBugs.filter(b => b.status === 'in_progress').length,
+            resolved: allBugs.filter(b => b.status === 'resolved').length
+          };
+
+          return sendJson(200, {
+            success: true,
+            stats: {
+              activeRooms: gameServer ? gameServer.rooms.size : 0,
+              activePlayers: activePlayersCount,
+              activeBots: activeBotsCount,
+              totalRegisteredProfiles: allProfiles.length,
+              totalBans: banStore.getBans().length,
+              uptimeSeconds: Math.floor(process.uptime()),
+              memoryUsageMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
+              nodeVersion: process.version,
+              rooms: roomsSummary,
+              leaderboard,
+              bugs: bugStats
+            }
+          });
+        }
+
+        // GET /api/admin/players
+        if (pathname === '/api/admin/players' && req.method === 'GET') {
+          if (!checkAdminAuth()) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+
+          const allProfiles = await profileStore.getAllProfiles();
+          const activeBans = banStore.getBans();
+
+          const playersWithBanInfo = allProfiles.map(p => {
+            const isBanned = activeBans.some(b => 
+              (b.targetType === 'profileId' && b.targetValue === p.id) ||
+              (b.targetType === 'callsign' && p.username && b.targetValue.toLowerCase() === p.username.toLowerCase())
+            );
+            return {
+              id: p.id,
+              username: p.username || 'Cadet',
+              level: p.level || 1,
+              xp: p.xp || 0,
+              emblem: p.emblem || 'gear',
+              equippedClass: p.equippedClass || 'vanguard',
+              equippedWeapon: p.equippedWeapon || 'revolver',
+              isGuest: Boolean(p.isGuest),
+              createdAt: p.createdAt,
+              updatedAt: p.updatedAt,
+              career: p.careerStats || {},
+              isBanned
+            };
+          });
+
+          return sendJson(200, {
+            success: true,
+            players: playersWithBanInfo,
+            bans: activeBans
+          });
+        }
+
+        // POST /api/admin/players/ban
+        if (pathname === '/api/admin/players/ban' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+
+          const banRecord = await banStore.addBan({
+            targetType: body.targetType || 'profileId',
+            targetValue: body.targetValue,
+            reason: body.reason || 'Блокування адміністратором',
+            bannedBy: 'Admin',
+            expiresAt: body.expiresAt || null
+          });
+
+          // Disconnect matching active sockets across all rooms
+          if (gameServer) {
+            for (const [, room] of gameServer.rooms) {
+              for (const [pId, player] of room.players) {
+                if (
+                  (body.targetType === 'profileId' && (player.profile?.id === body.targetValue || pId === body.targetValue)) ||
+                  (body.targetType === 'callsign' && player.name?.toLowerCase() === String(body.targetValue).toLowerCase()) ||
+                  (body.targetType === 'ip' && player.socket?.meta?.ip === body.targetValue)
+                ) {
+                  player.socket?.send(JSON.stringify({
+                    type: 's2c_banned',
+                    reason: banRecord.reason
+                  }));
+                  try { player.socket?.close(4003, 'Banned'); } catch (_) {}
+                  room.removePlayer(pId);
+                }
+              }
+            }
+          }
+
+          return sendJson(200, {
+            success: true,
+            message: `Гравця '${body.targetValue}' успішно заблоковано`,
+            ban: banRecord
+          });
+        }
+
+        // POST /api/admin/players/unban
+        if (pathname === '/api/admin/players/unban' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+
+          const target = body.id || body.targetValue || body.profileId;
+          const removed = await banStore.removeBan(target);
+          return sendJson(200, {
+            success: true,
+            removed,
+            message: removed ? 'Блокування успішно скасовано' : 'Блокування не знайдено'
+          });
+        }
+
+        // POST /api/admin/players/kick
+        if (pathname === '/api/admin/players/kick' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+
+          const playerId = body.playerId || body.profileId;
+          let kicked = false;
+
+          if (gameServer && playerId) {
+            for (const [, room] of gameServer.rooms) {
+              for (const [pId, player] of room.players) {
+                if (pId === playerId || player.profile?.id === playerId || player.name === playerId) {
+                  player.socket?.send(JSON.stringify({
+                    type: 's2c_error',
+                    message: 'Вас було виключено з матчу адміністратором'
+                  }));
+                  try { player.socket?.close(4002, 'Kicked'); } catch (_) {}
+                  room.removePlayer(pId);
+                  kicked = true;
+                }
+              }
+            }
+          }
+
+          return sendJson(200, {
+            success: true,
+            kicked,
+            message: kicked ? 'Гравця успішно виключено з матчу' : 'Гравця не знайдено в активних кімнатах'
+          });
+        }
+
+        // GET /api/admin/bugs
+        if (pathname === '/api/admin/bugs' && req.method === 'GET') {
+          if (!checkAdminAuth()) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          return sendJson(200, {
+            success: true,
+            reports: bugReportStore.getAllReports()
+          });
+        }
+
+        // POST /api/admin/bugs/status
+        if (pathname === '/api/admin/bugs/status' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const updated = await bugReportStore.updateReportStatus(body.id, body.status);
+          if (!updated) return sendJson(404, { success: false, error: 'Звіт не знайдено' });
+          return sendJson(200, {
+            success: true,
+            report: updated
+          });
+        }
+
+        // POST /api/admin/bugs/delete
+        if (pathname === '/api/admin/bugs/delete' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const removed = await bugReportStore.deleteReport(body.id);
+          return sendJson(200, {
+            success: true,
+            removed
+          });
+        }
+
+        // GET /api/admin/news
+        if (pathname === '/api/admin/news' && req.method === 'GET') {
+          if (!checkAdminAuth()) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          return sendJson(200, {
+            success: true,
+            news: newsStore.getNews(100)
+          });
+        }
+
+        // POST /api/admin/news
+        if (pathname === '/api/admin/news' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const article = await newsStore.createNews(body);
+          return sendJson(200, {
+            success: true,
+            article,
+            message: 'Новину успішно опубліковано'
+          });
+        }
+
+        // POST /api/admin/news/update
+        if (pathname === '/api/admin/news/update' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const updated = await newsStore.updateNews(body.id, body);
+          if (!updated) return sendJson(404, { success: false, error: 'Новину не знайдено' });
+          return sendJson(200, {
+            success: true,
+            article: updated,
+            message: 'Новину успішно оновлено'
+          });
+        }
+
+        // POST /api/admin/news/delete
+        if (pathname === '/api/admin/news/delete' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const removed = await newsStore.deleteNews(body.id);
+          return sendJson(200, {
+            success: true,
+            removed,
+            message: removed ? 'Новину успішно видалено' : 'Новину не знайдено'
+          });
+        }
+
         return sendJson(404, { success: false, error: 'API endpoint not found' });
       } catch (err) {
         return sendJson(400, { success: false, error: err.message });
@@ -479,6 +782,8 @@ export function startServer(port = process.env.PORT || 3000) {
 
     if (pathname === '/') {
       pathname = '/index.html';
+    } else if (pathname === '/admin') {
+      pathname = '/admin.html';
     }
 
     // Determine target local filesystem path
@@ -530,8 +835,28 @@ export function startServer(port = process.env.PORT || 3000) {
       }
     } catch (_) {}
 
+    const clientIp = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
+
+    // Check if player or IP is banned
+    const banCheck = banStore.checkBanned({
+      profileId: profile?.id,
+      ip: clientIp,
+      callsign: profile?.username
+    });
+
+    if (banCheck.banned) {
+      try {
+        socket.send(JSON.stringify({
+          type: 's2c_banned',
+          reason: banCheck.reason || 'Ваш акаунт заблоковано адміністрацією'
+        }));
+        socket.close(4003, 'Banned');
+      } catch (_) {}
+      return;
+    }
+
     const meta = {
-      ip: req.socket.remoteAddress,
+      ip: clientIp,
       id: profile?.id || `client_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       profile,
       token

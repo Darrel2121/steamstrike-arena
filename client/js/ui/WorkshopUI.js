@@ -314,10 +314,11 @@ export class WorkshopUI {
               ${cls.description}
             </p>
 
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px; font-size: 10px; font-family: var(--font-mono);">
-              <span style="padding: 2px 5px; background: rgba(46, 196, 182, 0.15); color: #2ec4b6; border-radius: 3px; border: 1px solid rgba(46,196,182,0.3);">${hpMod}</span>
-              <span style="padding: 2px 5px; background: rgba(255, 207, 72, 0.15); color: #ffcf48; border-radius: 3px; border: 1px solid rgba(255,207,72,0.3);">${spdMod}</span>
-              <span style="padding: 2px 5px; background: rgba(255, 170, 43, 0.15); color: #ffaa2b; border-radius: 3px; border: 1px solid rgba(255,170,43,0.3);">${lanMod}</span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 10px; font-size: 10px; font-family: var(--font-mono);">
+              <span style="padding: 3px 5px; background: rgba(46, 196, 182, 0.15); color: #2ec4b6; border-radius: 3px; border: 1px solid rgba(46,196,182,0.3);">❤️ ${cls.baseHp} HP (${hpMod})</span>
+              <span style="padding: 3px 5px; background: rgba(52, 152, 219, 0.15); color: #3498db; border-radius: 3px; border: 1px solid rgba(52,152,219,0.3);">💨 ${cls.maxSteam} PSI (+${cls.steamVentRate}/s)</span>
+              <span style="padding: 3px 5px; background: rgba(255, 207, 72, 0.15); color: #ffcf48; border-radius: 3px; border: 1px solid rgba(255,207,72,0.3);">🏃 ${cls.walkSpeed}-${cls.sprintSpeed} px/s</span>
+              <span style="padding: 3px 5px; background: rgba(255, 170, 43, 0.15); color: #ffaa2b; border-radius: 3px; border: 1px solid rgba(255,170,43,0.3);">🔦 ${cls.lanternAngleDeg}° / ${cls.lanternRange}px</span>
             </div>
 
             <!-- Active Ability Details -->

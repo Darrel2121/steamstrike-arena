@@ -605,6 +605,18 @@ export class ProfileStore {
   async recordMatchReward(profileId, matchResult = {}) {
     return this.recordMatchResult(profileId, matchResult);
   }
+
+  /**
+   * Returns list of all stored profiles (for administration and analytics)
+   */
+  async getAllProfiles() {
+    await this.init();
+    const list = [];
+    for (const [, prof] of this.cache) {
+      list.push({ ...prof });
+    }
+    return list;
+  }
 }
 
 // Singleton export

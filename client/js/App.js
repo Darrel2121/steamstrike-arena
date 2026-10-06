@@ -15,6 +15,7 @@ import { getEmblemDefinition } from '../../shared/ProgressionSchema.js';
 import { WorkshopUI } from './ui/WorkshopUI.js';
 import { AuthModal } from './ui/AuthModal.js';
 import { BugReportModal } from './ui/BugReportModal.js';
+import { NewsModal } from './ui/NewsModal.js';
 import { AdminPanelModal } from './ui/AdminPanelModal.js';
 import { soundFX } from './audio/SoundFX.js';
 
@@ -53,6 +54,7 @@ export class App {
     this.bindDomElements();
     this.authModal = new AuthModal(this.progressionManager);
     this.bugReportModal = new BugReportModal({ app: this });
+    this.newsModal = new NewsModal();
     this.adminPanelModal = new AdminPanelModal({ app: this, apiBase });
     this.workshopUI = new WorkshopUI(this.progressionManager, {
       authModal: this.authModal
@@ -347,14 +349,9 @@ export class App {
     if (this.navButtons.auth) {
       this.navButtons.auth.addEventListener('click', () => this.authModal.open());
     }
-    if (this.btnOpenAdminPanel) {
-      this.btnOpenAdminPanel.addEventListener('click', () => this.adminPanelModal.toggle());
-    }
-    if (this.btnFooterAdmin) {
-      this.btnFooterAdmin.addEventListener('click', (e) => {
-        e.preventDefault();
-        this.adminPanelModal.toggle();
-      });
+    const btnOpenAllNews = document.getElementById('btnOpenAllNews');
+    if (btnOpenAllNews) {
+      btnOpenAllNews.addEventListener('click', () => this.newsModal?.open());
     }
 
     const updateSoundButtons = () => {
@@ -1002,6 +999,8 @@ export class App {
     if (this.progressionManager && this.gameRenderer?.visibilityRenderer) {
       const stats = this.progressionManager.getCalculatedStats();
       this.gameRenderer.visibilityRenderer.lanternRange = stats.lanternRange;
+      if (stats.lanternFov) this.gameRenderer.visibilityRenderer.lanternFov = stats.lanternFov;
+      if (stats.proximityRadius) this.gameRenderer.visibilityRenderer.proximityRadius = stats.proximityRadius;
     }
 
     if (this.gameMapNameDisplay) {
@@ -1113,6 +1112,8 @@ export class App {
       }
       if (this.gameRenderer?.visibilityRenderer) {
         this.gameRenderer.visibilityRenderer.lanternRange = stats.lanternRange;
+        if (stats.lanternFov) this.gameRenderer.visibilityRenderer.lanternFov = stats.lanternFov;
+        if (stats.proximityRadius) this.gameRenderer.visibilityRenderer.proximityRadius = stats.proximityRadius;
       }
     }
 

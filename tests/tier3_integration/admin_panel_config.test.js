@@ -14,7 +14,12 @@ import {
   getDefaultGameSettings,
   sanitizeGameSettings
 } from '../../shared/GameSettings.js';
+import { CHARACTER_CLASSES, getClassDefinition } from '../../shared/CharacterClasses.js';
+import { calculateEffectiveCharacterStats } from '../../shared/ProgressionSchema.js';
 import { GameConfigStore } from '../../server/db/GameConfigStore.js';
+import { banStore } from '../../server/db/BanStore.js';
+import { newsStore } from '../../server/db/NewsStore.js';
+import { bugReportStore } from '../../server/db/BugReportStore.js';
 import { startServer } from '../../server/index.js';
 
 export const suiteName = 'Tier 3: Admin Panel & Runtime Game Settings Configuration';
@@ -263,6 +268,131 @@ export const tests = [
       if (runningServer) {
         await new Promise((res) => runningServer.close(res));
       }
+    }
+  },
+
+  {
+    id: 'ADM.7',
+    name: 'Character Classes Distinct Stats & FOV Verification',
+    fn: async () => {
+      const vCls = getClassDefinition('vanguard');
+      const sCls = getClassDefinition('sharpshooter');
+      const jCls = getClassDefinition('juggernaut');
+      const iCls = getClassDefinition('infiltrator');
+
+      // 1. HP Differentials
+      assert.strictEqual(vCls.baseHp, 100);
+      assert.strictEqual(sCls.baseHp, 80);
+      assert.strictEqual(jCls.baseHp, 145);
+      assert.strictEqual(iCls.baseHp, 90);
+
+      // 2. Steam Differentials
+      assert.strictEqual(vCls.maxSteam, 100);
+      assert.strictEqual(jCls.maxSteam, 130);
+      assert.strictEqual(sCls.maxSteam, 90);
+      assert.strictEqual(iCls.maxSteam, 110);
+
+      // 3. Lantern FOV & Reach Differentials
+      assert.strictEqual(sCls.lanternRange, 550, 'Sharpshooter must have long range lantern');
+      assert.strictEqual(sCls.lanternAngleDeg, 55, 'Sharpshooter must have focused 55 deg spotlight');
+      assert.strictEqual(jCls.lanternAngleDeg, 110, 'Juggernaut must have 110 deg wide floodlight');
+      assert.strictEqual(jCls.proximityRadius, 80, 'Juggernaut must have high proximity awareness');
+
+      // 4. Effective stats calculator
+      const effectiveStats = calculateEffectiveCharacterStats({ healthTier: 2, speedTier: 2, lanternTier: 2 }, 'juggernaut');
+      assert.strictEqual(effectiveStats.classId, 'juggernaut');
+      assert.ok(effectiveStats.maxHp > 140, 'Juggernaut effective HP scales with tiers');
+      assert.strictEqual(effectiveStats.lanternAngleDeg, 110);
+    }
+  },
+
+  {
+    id: 'ADM.8',
+    name: 'News System Persistence and REST API CRUD',
+    fn: async () => {
+      // Create test article
+      const article = await newsStore.createNews({
+        title: 'Тестове оновлення 2.0',
+        category: 'Патч',
+        summary: 'Короткий анонс змін',
+        content: 'Повний список змін та оновлень',
+        author: 'Інженер Тест',
+        pinned: true
+      });
+
+      assert.ok(article.id);
+      assert.strictEqual(article.title, 'Тестове оновлення 2.0');
+      assert.strictEqual(article.pinned, true);
+
+      // Retrieve article
+      const fetched = newsStore.getNewsById(article.id);
+      assert.ok(fetched);
+      assert.strictEqual(fetched.author, 'Інженер Тест');
+
+      // Update article
+      const updated = await newsStore.updateNews(article.id, {
+        title: 'Оновлення 2.0 (Фінальний реліз)'
+      });
+      assert.strictEqual(updated.title, 'Оновлення 2.0 (Фінальний реліз)');
+
+      // Delete article
+      const deleted = await newsStore.deleteNews(article.id);
+      assert.strictEqual(deleted, true);
+      assert.strictEqual(newsStore.getNewsById(article.id), null);
+    }
+  },
+
+  {
+    id: 'ADM.9',
+    name: 'Player Moderation & Ban Store Verification',
+    fn: async () => {
+      const ban = await banStore.addBan({
+        targetType: 'profileId',
+        targetValue: 'test_cheater_123',
+        reason: 'Використання спідхаку',
+        bannedBy: 'Moderator'
+      });
+
+      assert.ok(ban.id);
+      const check = banStore.checkBanned({ profileId: 'test_cheater_123' });
+      assert.strictEqual(check.banned, true);
+      assert.strictEqual(check.reason, 'Використання спідхаку');
+
+      const checkSafe = banStore.checkBanned({ profileId: 'innocent_player_456' });
+      assert.strictEqual(checkSafe.banned, false);
+
+      // Remove ban
+      const removed = await banStore.removeBan(ban.id);
+      assert.strictEqual(removed, true);
+      assert.strictEqual(banStore.checkBanned({ profileId: 'test_cheater_123' }).banned, false);
+    }
+  },
+
+  {
+    id: 'ADM.10',
+    name: 'Bug Reports Store Triage Status and Deletion',
+    fn: async () => {
+      const report = await bugReportStore.addReport({
+        category: 'gameplay',
+        description: 'Персонаж застряг у стіні біля спавну',
+        contact: '@tester_telegram',
+        clientInfo: { browser: 'Chrome 130' }
+      });
+
+      assert.ok(report.id);
+      assert.strictEqual(report.status, 'new');
+
+      // Update status to in_progress
+      const updated = await bugReportStore.updateReportStatus(report.id, 'in_progress');
+      assert.strictEqual(updated.status, 'in_progress');
+
+      // Update status to resolved
+      const resolved = await bugReportStore.updateReportStatus(report.id, 'resolved');
+      assert.strictEqual(resolved.status, 'resolved');
+
+      // Delete report
+      const deleted = await bugReportStore.deleteReport(report.id);
+      assert.strictEqual(deleted, true);
     }
   }
 ];

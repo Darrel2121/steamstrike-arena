@@ -1986,32 +1986,100 @@ export class GameRenderer {
         ctx.fillRect(18, -3, 3, 6);
       }
 
-      // 2. Brass Backpack / Steam Engine Boiler
-      ctx.fillStyle = '#703816';
-      ctx.beginPath();
-      ctx.arc(-8, 0, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#c59b27';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // 2. Class-specific Steampunk Backpack / Steam Engine Boiler
+      const cId = pl.classId || 'vanguard';
 
-      // 3. Main Player Chassis / Body
+      if (cId === 'juggernaut') {
+        // Dual Heavy High-Pressure Boilers
+        ctx.fillStyle = '#5c2d13';
+        ctx.strokeStyle = '#c59b27';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(-9, -5.5, 5.5, 0, Math.PI * 2);
+        ctx.arc(-9, 5.5, 5.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Exhaust caps
+        ctx.fillStyle = '#ff7b00';
+        ctx.fillRect(-14, -7, 3, 3);
+        ctx.fillRect(-14, 4, 3, 3);
+      } else if (cId === 'sharpshooter') {
+        // Slender Pneumatic Air Reservoir & Valve
+        ctx.fillStyle = '#1e2d3d';
+        ctx.strokeStyle = '#5ffbf1';
+        ctx.lineWidth = 1.2;
+        ctx.fillRect(-12, -3.5, 6, 7);
+        ctx.strokeRect(-12, -3.5, 6, 7);
+        ctx.fillStyle = '#5ffbf1';
+        ctx.beginPath();
+        ctx.arc(-9, 0, 1.8, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (cId === 'infiltrator') {
+        // Dual Tactical Alchemical Smoke Pods
+        ctx.fillStyle = '#2b1418';
+        ctx.strokeStyle = '#b33939';
+        ctx.lineWidth = 1.2;
+        ctx.fillRect(-11, -6, 5, 4);
+        ctx.fillRect(-11, 2, 5, 4);
+        ctx.strokeRect(-11, -6, 5, 4);
+        ctx.strokeRect(-11, 2, 5, 4);
+      } else {
+        // Vanguard: Classic Brass Boiler
+        ctx.fillStyle = '#703816';
+        ctx.beginPath();
+        ctx.arc(-8, 0, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#c59b27';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // 3. Main Player Chassis / Body with Class Sizing
+      const bodyRadius = cId === 'juggernaut' ? 15.5 : cId === 'sharpshooter' ? 11.5 : cId === 'infiltrator' ? 12 : 13;
       ctx.fillStyle = bodyColor;
       ctx.beginPath();
-      ctx.arc(0, 0, 13, 0, Math.PI * 2);
+      ctx.arc(0, 0, bodyRadius, 0, Math.PI * 2);
       ctx.fill();
 
-      // Brass/Team outer ring
-      ctx.strokeStyle = ringColor;
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
+      // Class-specific armor plating & overlays
+      if (cId === 'juggernaut') {
+        // Heavy Iron Bulwark Plating & Rivets
+        ctx.strokeStyle = '#c59b27';
+        ctx.lineWidth = 3.2;
+        ctx.stroke();
+        ctx.fillStyle = '#261c14';
+        ctx.fillRect(-3, -8, 8, 16);
+        ctx.strokeStyle = '#ff7b00';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(-3, -8, 8, 16);
+      } else if (cId === 'sharpshooter') {
+        // Duster Coat Hem & Scope Bracket
+        ctx.strokeStyle = '#5ffbf1';
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(95, 251, 241, 0.4)';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(-2, 0, 7, -Math.PI / 2, Math.PI / 2);
+        ctx.stroke();
+      } else if (cId === 'infiltrator') {
+        // Assassin Cloak & Shadow Trim
+        ctx.strokeStyle = '#b33939';
+        ctx.lineWidth = 2.0;
+        ctx.stroke();
+      } else {
+        // Vanguard: Polished Brass Trim
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
 
       // Local player highlight ring inside
       if (isLocal) {
         ctx.strokeStyle = '#2ec4b6';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+        ctx.arc(0, 0, bodyRadius * 0.65, 0, Math.PI * 2);
         ctx.stroke();
       }
 
@@ -2039,18 +2107,39 @@ export class GameRenderer {
         ctx.arc(6, -4, 1, 0, Math.PI * 2);
         ctx.arc(6, 4, 1, 0, Math.PI * 2);
         ctx.fill();
-      } else if (pl.classId === 'sharpshooter') {
-        // Cyan Binocular Optic Sensors
+      } else if (cId === 'juggernaut') {
+        // Heavy Slit Visor with Molten Glow
+        ctx.fillStyle = '#10141a';
+        ctx.fillRect(4, -6, 4, 12);
+        ctx.strokeStyle = '#ff7b00';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(4, -6, 4, 12);
+        ctx.fillStyle = '#ff9f1c';
+        ctx.fillRect(5.5, -4, 2, 8);
+      } else if (cId === 'sharpshooter') {
+        // Cyan Binocular Optic Sensors & Long Range Monocle
         ctx.fillStyle = '#5ffbf1';
         ctx.beginPath();
         ctx.arc(5, -4, 3, 0, Math.PI * 2);
-        ctx.arc(5, 4, 3, 0, Math.PI * 2);
+        ctx.arc(7, 3, 3.5, 0, Math.PI * 2); // Extended monocle
         ctx.fill();
 
         ctx.fillStyle = '#0f1318';
         ctx.beginPath();
         ctx.arc(5, -4, 1.2, 0, Math.PI * 2);
-        ctx.arc(5, 4, 1.2, 0, Math.PI * 2);
+        ctx.arc(7, 3, 1.4, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (cId === 'infiltrator') {
+        // Tactical Dual Crimson Shadow Visor
+        ctx.fillStyle = '#ff4757';
+        ctx.beginPath();
+        ctx.arc(5, -3.5, 2.5, 0, Math.PI * 2);
+        ctx.arc(5, 3.5, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(6, -3.5, 1, 0, Math.PI * 2);
+        ctx.arc(6, 3.5, 1, 0, Math.PI * 2);
         ctx.fill();
       } else {
         // Classic Brass Goggles

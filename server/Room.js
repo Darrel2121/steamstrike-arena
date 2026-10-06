@@ -570,6 +570,7 @@ export class Room {
       const botClasses = ['vanguard', 'sharpshooter', 'juggernaut', 'infiltrator'];
       const botClass = botClasses[botIndex % botClasses.length];
       const botDiff = difficulty || this.botDifficulty || 'normal';
+      const botClsDef = getClassDefinition(botClass);
 
       const bot = new Bot({
         id: botId,
@@ -578,13 +579,15 @@ export class Room {
         y: spawnY,
         angle: 0,
         team: botTeam,
-        hp: 100,
-        maxHp: 100,
+        hp: botClsDef.baseHp || 100,
+        maxHp: botClsDef.baseHp || 100,
         ammo: 6,
         maxAmmo: 6,
         map: this.map,
         classId: botClass,
-        difficulty: botDiff
+        difficulty: botDiff,
+        fov: botClsDef.lanternFov,
+        range: botClsDef.lanternRange
       });
 
       this.bots.set(botId, bot);
