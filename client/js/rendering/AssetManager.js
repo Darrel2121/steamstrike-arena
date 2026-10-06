@@ -17,8 +17,6 @@ export class AssetManager {
       floor: '/assets/floor_steampunk.jpg',
       wall: '/assets/wall_steampunk.jpg',
       obstacle: '/assets/obstacle_steampunk.jpg',
-      player: '/assets/player_scout.png',
-      bot: '/assets/bot_automaton.png',
       pickup: '/assets/pickup_steampunk.png',
       backdrop: '/assets/arena_backdrop.jpg'
     };
@@ -119,11 +117,11 @@ export class AssetManager {
   }
 
   get playerImage() {
-    return this.getImage('player');
+    return null;
   }
 
   get botImage() {
-    return this.getImage('bot');
+    return null;
   }
 
   get pickupImage() {
