@@ -276,7 +276,7 @@ export class InputManager {
     if (e.code === 'KeyE' || keyLower === 'e' || keyLower === 'у') {
       this.abilityRequested = true;
     }
-    if (e.code === 'KeyF' || keyLower === 'f' || keyLower === 'а') {
+    if (e.code === 'KeyQ' || keyLower === 'q' || keyLower === 'й' || e.code === 'KeyF' || keyLower === 'f' || keyLower === 'а') {
       this.triggerLanternToggle();
     }
     if (e.code === 'Space') {

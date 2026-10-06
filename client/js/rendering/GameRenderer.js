@@ -64,6 +64,10 @@ export class GameRenderer {
     this.floatingDamageNumbers = [];
     this.screenShake = 0;
 
+    // Volumetric steam and mechanical exhaust particle system
+    this.steamParticles = [];
+    this.entityExhaustTimers = new Map();
+
     // Subsystems
     this.visibilityRenderer = new VisibilityRenderer(options.visibility || {});
     this.soundWaveRenderer = new SoundWaveRenderer(options.sound || {});
@@ -302,22 +306,105 @@ export class GameRenderer {
     // 3. Update acoustic sound waves simulation
     this.soundWaveRenderer.update(dt);
 
-    // 3.5 Update bullet impact particles & floating combat text
+    // 3.5 Update bullet impact micro-sparks & floating combat text
     if (this.impactParticles && this.impactParticles.length > 0) {
       for (let i = this.impactParticles.length - 1; i >= 0; i--) {
         const p = this.impactParticles[i];
         p.x += (p.vx || 0) * dt;
         p.y += (p.vy || 0) * dt;
-        p.vx = (p.vx || 0) * 0.91;
-        p.vy = (p.vy || 0) * 0.91;
+        p.vx = (p.vx || 0) * 0.93;
+        p.vy = ((p.vy || 0) + (p.isOil ? 120 : (p.isSpark ? 85 : -15))) * 0.93;
         if (p.isSmoke && typeof p.size === 'number' && typeof p.maxSize === 'number') {
-          p.size += (p.maxSize - p.size) * dt * 8.0;
+          p.size += (p.maxSize - p.size) * dt * 7.0;
         }
         p.life -= dt;
         p.alpha = Math.max(0, p.life / p.maxLife);
         if (p.life <= 0) {
           this.impactParticles.splice(i, 1);
         }
+      }
+    }
+
+    // 3.6 Update volumetric steam & exhaust particle engine
+    if (this.steamParticles && this.steamParticles.length > 0) {
+      for (let i = this.steamParticles.length - 1; i >= 0; i--) {
+        const p = this.steamParticles[i];
+        p.x += (p.vx || 0) * dt;
+        p.y += (p.vy || 0) * dt;
+        p.vx = (p.vx || 0) * 0.92;
+        p.vy = ((p.vy || 0) - 22) * 0.92; // gentle thermal lift
+        p.angle += (p.spin || 0) * dt;
+        p.size += (p.maxSize - p.size) * dt * 3.8;
+        p.life -= dt;
+        const norm = Math.max(0, p.life / p.maxLife);
+        // Smooth swell-in and organic fade-out curve
+        p.alpha = Math.sin(norm * Math.PI) * (p.baseAlpha || 0.45);
+        if (p.life <= 0) {
+          this.steamParticles.splice(i, 1);
+        }
+      }
+    }
+
+    // 3.7 Emit continuous mechanical steam exhaust for bots and combatants
+    const allCombatants = state.players || [];
+    for (const pl of allCombatants) {
+      if (!pl || !pl.isAlive || (pl.hp !== undefined && pl.hp <= 0)) continue;
+      const isBot = Boolean(pl.isBot || pl.id?.startsWith('bot_'));
+      const plAngle = pl.angle ?? pl.aimAngle ?? 0;
+      const exX = (pl.renderX ?? pl.x) - Math.cos(plAngle) * 9;
+      const exY = (pl.renderY ?? pl.y) - Math.sin(plAngle) * 9;
+
+      let timer = this.entityExhaustTimers.get(pl.id) || 0;
+      timer -= dt;
+
+      const isSprinting = Boolean(pl.isSprinting);
+      const isMoving = isSprinting || (Math.hypot(pl.vx || 0, pl.vy || 0) > 12);
+      const interval = isSprinting ? 0.05 : (isMoving ? 0.09 : 0.45);
+
+      if (timer <= 0) {
+        timer = interval;
+        const baseAngle = plAngle + Math.PI;
+        const spread = (Math.random() - 0.5) * 0.7;
+        const puffAngle = baseAngle + spread;
+        const speed = isMoving ? (isSprinting ? 60 + Math.random() * 35 : 32 + Math.random() * 20) : (10 + Math.random() * 10);
+        const isLowHp = (pl.hp !== undefined && pl.hp <= 35);
+
+        this.steamParticles.push({
+          x: exX + (Math.random() - 0.5) * 3,
+          y: exY + (Math.random() - 0.5) * 3,
+          vx: Math.cos(puffAngle) * speed,
+          vy: Math.sin(puffAngle) * speed - 15,
+          size: 3.5 + Math.random() * 2,
+          maxSize: isMoving ? (isSprinting ? 24 + Math.random() * 8 : 17 + Math.random() * 6) : (13 + Math.random() * 5),
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 2.2,
+          life: isMoving ? (0.65 + Math.random() * 0.35) : (0.95 + Math.random() * 0.35),
+          maxLife: isMoving ? 1.0 : 1.3,
+          baseAlpha: isMoving ? (isSprinting ? 0.55 : 0.42) : 0.28,
+          isSoot: isLowHp,
+          isBot
+        });
+      }
+      this.entityExhaustTimers.set(pl.id, timer);
+    }
+
+    // Emit faint residual wisps of cooling steam from destroyed wrecks
+    for (const wreck of this.wreckedEntities.values()) {
+      if (Math.random() < dt * 1.2) {
+        this.steamParticles.push({
+          x: (wreck.renderX ?? wreck.x ?? 0) + (Math.random() - 0.5) * 8,
+          y: (wreck.renderY ?? wreck.y ?? 0) + (Math.random() - 0.5) * 8,
+          vx: (Math.random() - 0.5) * 12,
+          vy: -18 - Math.random() * 12,
+          size: 3.0,
+          maxSize: 18 + Math.random() * 8,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 1.5,
+          life: 0.85 + Math.random() * 0.35,
+          maxLife: 1.2,
+          baseAlpha: 0.22,
+          isSoot: true
+        });
       }
     }
 
@@ -396,63 +483,100 @@ export class GameRenderer {
     }
 
     if (!isEntity) {
-      // Wall Impact: High-speed golden ricochet sparks + smoke puff
+      // Wall Impact: High-velocity fine golden micro-sparks + soft smoke puff
       const bVx = hit.vx || 0;
       const bVy = hit.vy || 0;
       const baseAngle = Math.atan2(-bVy, -bVx);
 
-      const sparkCount = 20 + Math.floor(Math.random() * 8);
+      // 36 to 52 sharp, realistic micro-sparks
+      const sparkCount = 38 + Math.floor(Math.random() * 14);
       for (let i = 0; i < sparkCount; i++) {
-        const spread = (Math.random() - 0.5) * Math.PI * 1.1;
+        const spread = (Math.random() - 0.5) * Math.PI * 1.25;
         const angle = baseAngle + spread;
-        const speed = 100 + Math.random() * 320;
-        const colors = ['#ffffff', '#fff275', '#ffcf48', '#ff9f1c', '#ff5722'];
+        const speed = 120 + Math.random() * 460;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 2.2 + Math.random() * 3.0,
-          color: colors[Math.floor(Math.random() * colors.length)],
+          size: 1.0 + Math.random() * 0.7, // Fine 1.0-1.7px needle streak
           alpha: 1.0,
-          life: 0.35 + Math.random() * 0.30,
-          maxLife: 0.65,
+          life: 0.18 + Math.random() * 0.24,
+          maxLife: 0.42,
           isSpark: true
         });
       }
 
-      // Expanding smoke puff
-      this.impactParticles.push({
-        x: hx,
-        y: hy,
-        vx: (Math.random() - 0.5) * 25,
-        vy: (Math.random() - 0.5) * 25,
-        size: 6,
-        maxSize: 26 + Math.random() * 12,
-        color: '#cfd8dc',
-        alpha: 0.70,
-        life: 0.50,
-        maxLife: 0.50,
-        isSmoke: true
-      });
+      // Soft expanding Gaussian vapor puffs
+      for (let s = 0; s < 2; s++) {
+        this.impactParticles.push({
+          x: hx + (Math.random() - 0.5) * 4,
+          y: hy + (Math.random() - 0.5) * 4,
+          vx: (Math.random() - 0.5) * 32,
+          vy: (Math.random() - 0.5) * 32 - 12,
+          size: 3,
+          maxSize: 15 + Math.random() * 8,
+          color: '#d6dfe8',
+          alpha: 0.55,
+          life: 0.38 + Math.random() * 0.15,
+          maxLife: 0.53,
+          isSmoke: true
+        });
+      }
     } else {
-      // Entity Impact: Copper automaton shrapnel + incandescent sparks + dark machine oil
-      const sparkCount = 24 + Math.floor(Math.random() * 10);
+      // Entity Impact: Copper automaton shrapnel + incandescent micro-sparks + machine oil + pressurized steam
+      const sparkCount = 42 + Math.floor(Math.random() * 16);
       for (let i = 0; i < sparkCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 80 + Math.random() * 260;
-        const colors = ['#ffffff', '#ff4757', '#e28743', '#ffcf48', '#ff9f1c', '#2c3437'];
+        const speed = 110 + Math.random() * 400;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 2.5 + Math.random() * 3.2,
-          color: colors[Math.floor(Math.random() * colors.length)],
+          size: 0.9 + Math.random() * 0.7, // Fine 0.9-1.6px micro-sparks
           alpha: 1.0,
-          life: 0.40 + Math.random() * 0.35,
-          maxLife: 0.75,
+          life: 0.20 + Math.random() * 0.26,
+          maxLife: 0.46,
           isSpark: true
+        });
+      }
+
+      // Machine oil droplets
+      for (let o = 0; o < 4; o++) {
+        const oAngle = Math.random() * Math.PI * 2;
+        const oSpeed = 40 + Math.random() * 110;
+        this.impactParticles.push({
+          x: hx,
+          y: hy,
+          vx: Math.cos(oAngle) * oSpeed,
+          vy: Math.sin(oAngle) * oSpeed + 25,
+          size: 1.1 + Math.random() * 0.8,
+          color: '#161920',
+          alpha: 0.85,
+          life: 0.45 + Math.random() * 0.25,
+          maxLife: 0.70,
+          isOil: true
+        });
+      }
+
+      // Pressurized boiler steam blowout jet
+      for (let st = 0; st < 4; st++) {
+        const sAngle = Math.random() * Math.PI * 2;
+        const sSpeed = 50 + Math.random() * 130;
+        this.steamParticles.push({
+          x: hx,
+          y: hy,
+          vx: Math.cos(sAngle) * sSpeed,
+          vy: Math.sin(sAngle) * sSpeed - 20,
+          size: 3.5,
+          maxSize: 18 + Math.random() * 8,
+          angle: Math.random() * Math.PI * 2,
+          spin: (Math.random() - 0.5) * 3,
+          life: 0.45 + Math.random() * 0.25,
+          maxLife: 0.70,
+          baseAlpha: 0.65,
+          isSoot: Math.random() > 0.5
         });
       }
 
@@ -1102,7 +1226,10 @@ export class GameRenderer {
       this.renderSmokeZones(ctx, state.smokeZones);
     }
 
-    // 5. Living Players and Bots (rendered on top of floor wrecks)
+    // 4.5 Volumetric Steam Engine Exhaust Particles (Automaton & Boiler plumes)
+    this.renderSteamParticles(ctx);
+
+    // 5. Living Players and Bots (rendered on top of floor wrecks & steam trails)
     for (const pl of players) {
       if (pl.isAlive && (pl.hp === undefined || pl.hp > 0)) {
         const isLocal = state.localPlayer && state.localPlayer.id === pl.id;
@@ -1325,6 +1452,55 @@ export class GameRenderer {
   }
 
   /**
+   * Renders volumetric mechanical steam puffs emitted by moving/sprinting automatons and boilers.
+   * Uses realistic soft Gaussian multi-lobe cloud gradients with aerodynamic dissipation.
+   * @param {CanvasRenderingContext2D} ctx
+   */
+  renderSteamParticles(ctx) {
+    if (!this.steamParticles || this.steamParticles.length === 0) return;
+
+    for (const p of this.steamParticles) {
+      if (!p || p.alpha <= 0.01) continue;
+
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle || 0);
+
+      const r = Math.max(1.5, p.size || 6);
+
+      // Multi-lobe organic steam cloud structure (3 slightly offset overlapping soft lobes)
+      const lobes = [
+        { x: 0, y: 0, r: r },
+        { x: r * 0.35, y: -r * 0.22, r: r * 0.72 },
+        { x: -r * 0.32, y: r * 0.26, r: r * 0.68 }
+      ];
+
+      for (const lobe of lobes) {
+        const grad = ctx.createRadialGradient(lobe.x, lobe.y, 0, lobe.x, lobe.y, lobe.r);
+        if (p.isSoot) {
+          // Scorched/overheated dark industrial soot steam
+          grad.addColorStop(0, `rgba(65, 70, 80, ${p.alpha * 0.60})`);
+          grad.addColorStop(0.45, `rgba(45, 50, 60, ${p.alpha * 0.32})`);
+          grad.addColorStop(1, 'rgba(25, 30, 38, 0)');
+        } else {
+          // Pure luminous steam vapor with soft atmospheric condensation
+          grad.addColorStop(0, `rgba(240, 248, 255, ${p.alpha * 0.52})`);
+          grad.addColorStop(0.45, `rgba(215, 235, 252, ${p.alpha * 0.28})`);
+          grad.addColorStop(0.85, `rgba(180, 210, 235, ${p.alpha * 0.08})`);
+          grad.addColorStop(1, 'rgba(160, 195, 225, 0)');
+        }
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(lobe.x, lobe.y, lobe.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+  }
+
+  /**
    * Layer 4.8: Renders incandescent ricochet sparks, smoke puffs, and floating combat damage numbers.
    */
   renderImpactParticlesAndDamage(ctx) {
@@ -1343,30 +1519,50 @@ export class GameRenderer {
     }
     ctx.translate(-this.camera.x + shakeX, -this.camera.y + shakeY);
 
-    // 1. Draw Impact Particles (sparks & smoke puffs)
+    // 1. Draw Impact Particles (micro-sparks, oil droplets & smoke puffs)
     for (const p of this.impactParticles) {
       if (p.isSmoke) {
         ctx.fillStyle = p.color || '#b0b8c4';
-        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha * 0.6));
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha * 0.45));
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (p.isOil) {
+        ctx.fillStyle = p.color || '#161920';
+        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha * 0.9));
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        // High-velocity sparks with tail streak
+        // High-velocity sharp incandescent micro-spark
+        const progress = 1 - Math.max(0, p.life / p.maxLife);
+        let strokeColor;
+        if (progress < 0.22) {
+          strokeColor = '#ffffff'; // White-hot
+        } else if (progress < 0.50) {
+          strokeColor = '#fff275'; // Incandescent gold
+        } else if (progress < 0.78) {
+          strokeColor = '#ff9f1c'; // Furnace orange
+        } else {
+          strokeColor = '#e71d36'; // Thermal red ember
+        }
+
         ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
-        ctx.strokeStyle = p.color || '#ffcf48';
-        ctx.lineWidth = Math.max(1, p.size);
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = Math.max(0.8, Math.min(1.6, p.size));
         ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - (p.vx || 0) * 0.035, p.y - (p.vy || 0) * 0.035);
+        ctx.lineTo(p.x - (p.vx || 0) * 0.024, p.y - (p.vy || 0) * 0.024);
         ctx.stroke();
 
-        // White core spark
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
-        ctx.fill();
+        // Tiny white-hot spark apex point
+        if (progress < 0.35) {
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, 0.7, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     ctx.globalAlpha = 1.0;

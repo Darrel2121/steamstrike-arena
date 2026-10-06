@@ -957,14 +957,14 @@ export class HUD {
     const offTimer = player.lanternOffTimer || 0;
     const cdTimer = player.lanternCooldownTimer || 0;
 
-    let lanternText = '🏮 Ліхтар [F]: Світить';
+    let lanternText = '🏮 Ліхтар [Q]: Світить';
     let lanternColor = '#cbd5e1';
 
     if (!isLanternOn) {
-      lanternText = `⚠️ Ліхтар [F]: Згаслий (${offTimer > 0 ? offTimer.toFixed(1) : '1.0'}s)`;
+      lanternText = `⚠️ Ліхтар [Q]: Згаслий (${offTimer > 0 ? offTimer.toFixed(1) : '1.0'}s)`;
       lanternColor = '#ff5a5f';
     } else if (cdTimer > 0) {
-      lanternText = `⏳ Ліхтар [F]: Охолодження (${cdTimer.toFixed(1)}s)`;
+      lanternText = `⏳ Ліхтар [Q]: Охолодження (${cdTimer.toFixed(1)}s)`;
       lanternColor = '#f59e0b';
     }
 
