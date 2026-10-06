@@ -1892,67 +1892,68 @@ export class GameRenderer {
   /**
    * Renders a glowing, high-speed bullet tracer cutting through air and fog.
    */
+  /**
+   * Renders a glowing, high-speed bullet tracer cutting through air and fog.
+   * Scaled down ~30% for ultra-crisp, tight, tactical ballistic visuals.
+   */
   renderProjectile(ctx, b) {
     ctx.save();
     const vx = b.vx || 0;
     const vy = b.vy || 0;
     const speed = Math.hypot(vx, vy) || 1;
-    // Aerodynamic tracer trail proportional to high bullet velocity (1600 - 2500 px/s)
-    const trailLen = Math.max(26, Math.min(54, speed * 0.024));
+    // Tight aerodynamic tracer trail proportional to high bullet velocity
+    const trailLen = Math.max(18, Math.min(38, speed * 0.018));
 
     const tailX = b.x - (vx / speed) * trailLen;
     const tailY = b.y - (vy / speed) * trailLen;
 
-    // 1. Soft atmospheric outer heat glow streak
+    // 1. Soft atmospheric outer heat glow streak (lineWidth 3.8px)
     const outerGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
     outerGrad.addColorStop(0, 'rgba(255, 120, 20, 0.0)');
     outerGrad.addColorStop(0.5, 'rgba(255, 160, 40, 0.35)');
     outerGrad.addColorStop(1.0, 'rgba(255, 210, 80, 0.75)');
 
     ctx.strokeStyle = outerGrad;
-    ctx.lineWidth = 5.5;
+    ctx.lineWidth = 3.8;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
 
-    // 2. Bright incandescent core streak
+    // 2. Bright incandescent core streak (lineWidth 1.5px)
     const coreGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
     coreGrad.addColorStop(0, 'rgba(255, 207, 72, 0.0)');
     coreGrad.addColorStop(0.4, 'rgba(255, 235, 160, 0.85)');
     coreGrad.addColorStop(1.0, 'rgba(255, 255, 240, 1.0)');
 
     ctx.strokeStyle = coreGrad;
-    ctx.lineWidth = 2.2;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
 
-    // 3. Hot radiant projectile head with spark halo
-    const haloGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 7);
+    // 3. Hot radiant projectile head with spark halo (radius 4.8px)
+    const haloGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 4.8);
     haloGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
     haloGrad.addColorStop(0.4, 'rgba(255, 200, 70, 0.60)');
     haloGrad.addColorStop(1.0, 'rgba(255, 140, 30, 0.0)');
 
     ctx.fillStyle = haloGrad;
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 7, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, 4.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // 4. White-hot center pellet
+    // 4. White-hot center pellet (radius 1.5px)
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 2.2, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, 1.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
   }
 
-  /**
-   * Renders a top-down steampunk player/bot avatar with brass chassis and weapon.
-   */
   /**
    * Renders a strict 90-degree top-down bird's-eye steampunk avatar with dynamic step kinematics,
    * anatomical shoulder/arm positioning, brass boiler backpack, and authentic top-down weapons.
@@ -1979,29 +1980,29 @@ export class GameRenderer {
     const wId = pl.weaponId || 'revolver';
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
-    // 0. Drop contact shadow underneath character
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    // 0. Soft directional contact shadow beneath character
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.50)';
     ctx.beginPath();
-    ctx.ellipse(1, 2, 16, 14, 0, 0, Math.PI * 2);
+    ctx.ellipse(1, 2, 17, 15, 0, 0, Math.PI * 2);
     ctx.fill();
 
     // Soft ambient ground glow for team affiliation
     if (pl.team) {
-      const teamGlow = ctx.createRadialGradient(0, 0, 4, 0, 0, 20);
-      teamGlow.addColorStop(0, pl.team === 'team1' ? 'rgba(37, 117, 252, 0.38)' : 'rgba(255, 71, 87, 0.38)');
+      const teamGlow = ctx.createRadialGradient(0, 0, 4, 0, 0, 22);
+      teamGlow.addColorStop(0, pl.team === 'team1' ? 'rgba(37, 117, 252, 0.40)' : 'rgba(255, 71, 87, 0.40)');
       teamGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = teamGlow;
       ctx.beginPath();
-      ctx.arc(0, 0, 20, 0, Math.PI * 2);
+      ctx.arc(0, 0, 22, 0, Math.PI * 2);
       ctx.fill();
     }
 
     // Local player tactical marker ring
     if (isLocal) {
-      ctx.strokeStyle = 'rgba(46, 196, 182, 0.5)';
+      ctx.strokeStyle = 'rgba(46, 196, 182, 0.55)';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.arc(0, 0, 18.5, 0, Math.PI * 2);
+      ctx.arc(0, 0, 19.5, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -2043,57 +2044,70 @@ export class GameRenderer {
   }
 
   /**
-   * Renders a human combatant from a strict 90-degree top-down bird's-eye perspective:
-   * Boots walking underneath, hands extending forward holding weapon, broad shoulders with brass pauldrons,
-   * rear steam engine backpack, central headgear, and dual forward-facing optical goggles.
+   * Renders a human combatant with rich layered shading, brass pauldrons,
+   * realistic hands & weapon grip, detailed steam boiler, and glowing goggles.
    */
   renderTopDownHuman(ctx, pl, isLocal, cId, wId, walkCycle, now) {
     // 1. Walking Boots (Bottom Layer underneath torso)
-    const bootW = 7.5;
-    const bootH = 4.0;
-    const leftBootX = -3 + walkCycle * 4.2;
-    const rightBootX = -3 - walkCycle * 4.2;
+    const bootW = 8.5;
+    const bootH = 4.5;
+    const leftBootX = -3 + walkCycle * 4.5;
+    const rightBootX = -3 - walkCycle * 4.5;
 
-    // Left boot
-    ctx.fillStyle = '#181410';
-    ctx.fillRect(leftBootX - bootW / 2, -10 - bootH / 2, bootW, bootH);
-    ctx.fillStyle = '#c59b27'; // Brass toe cap
-    ctx.fillRect(leftBootX + bootW / 2 - 2, -10 - bootH / 2, 2, bootH);
+    // Left boot with leather shading & brass toe armor
+    ctx.fillStyle = '#14110d';
+    ctx.fillRect(leftBootX - bootW / 2, -10.5 - bootH / 2, bootW, bootH);
+    const lToeGrad = ctx.createLinearGradient(leftBootX, -10.5, leftBootX + bootW / 2, -10.5);
+    lToeGrad.addColorStop(0, '#8a6210');
+    lToeGrad.addColorStop(0.5, '#ffd152');
+    lToeGrad.addColorStop(1, '#664508');
+    ctx.fillStyle = lToeGrad;
+    ctx.fillRect(leftBootX + bootW / 2 - 2.5, -10.5 - bootH / 2, 2.5, bootH);
 
-    // Right boot
-    ctx.fillStyle = '#181410';
-    ctx.fillRect(rightBootX - bootW / 2, 10 - bootH / 2, bootW, bootH);
-    ctx.fillStyle = '#c59b27'; // Brass toe cap
-    ctx.fillRect(rightBootX + bootW / 2 - 2, 10 - bootH / 2, 2, bootH);
+    // Right boot with leather shading & brass toe armor
+    ctx.fillStyle = '#14110d';
+    ctx.fillRect(rightBootX - bootW / 2, 10.5 - bootH / 2, bootW, bootH);
+    const rToeGrad = ctx.createLinearGradient(rightBootX, 10.5, rightBootX + bootW / 2, 10.5);
+    rToeGrad.addColorStop(0, '#8a6210');
+    rToeGrad.addColorStop(0.5, '#ffd152');
+    rToeGrad.addColorStop(1, '#664508');
+    ctx.fillStyle = rToeGrad;
+    ctx.fillRect(rightBootX + bootW / 2 - 2.5, 10.5 - bootH / 2, 2.5, bootH);
 
-    // 2. Arms & Hands gripping weapon
-    let coatColor = '#4a2f18'; // Default Vanguard leather brown
-    let trimColor = '#c59b27'; // Brass trim
+    // 2. Arms & Hands gripping weapon with articulated sleeves & leather bracers
+    let coatGradBase = '#4a2f18';
+    let coatGradHighlight = '#6a4324';
+    let trimColor = '#c59b27';
 
     if (pl.team === 'team1') {
-      coatColor = '#1d3557';
-      trimColor = '#457b9d';
+      coatGradBase = '#152c48';
+      coatGradHighlight = '#254e7d';
+      trimColor = '#64a3e8';
     } else if (pl.team === 'team2') {
-      coatColor = '#5c1d1d';
-      trimColor = '#e63946';
+      coatGradBase = '#4f1414';
+      coatGradHighlight = '#782222';
+      trimColor = '#f2616d';
     } else if (cId === 'juggernaut') {
-      coatColor = '#242830';
+      coatGradBase = '#1f232b';
+      coatGradHighlight = '#343b47';
       trimColor = '#ff7b00';
     } else if (cId === 'sharpshooter') {
-      coatColor = '#1c2833';
+      coatGradBase = '#17222c';
+      coatGradHighlight = '#283c4f';
       trimColor = '#5ffbf1';
     } else if (cId === 'infiltrator') {
-      coatColor = '#16181d';
+      coatGradBase = '#121418';
+      coatGradHighlight = '#22262e';
       trimColor = '#b33939';
     }
 
     // Arm sleeves extending forward to grip points
-    ctx.strokeStyle = coatColor;
-    ctx.lineWidth = 3.8;
+    ctx.strokeStyle = coatGradBase;
+    ctx.lineWidth = 4.2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Right arm (trigger arm) -> shoulder (-1, 8.5) -> elbow (3, 7.5) -> right hand (8, 3.5)
+    // Right arm (trigger arm) -> shoulder (-1, 8.5) -> elbow (3.5, 7.5) -> right hand (8, 3.5)
     ctx.beginPath();
     ctx.moveTo(-1, 8.5);
     ctx.lineTo(3.5, 7.5);
@@ -2107,83 +2121,138 @@ export class GameRenderer {
     ctx.lineTo(13, -2);
     ctx.stroke();
 
-    // Gloved hands
-    ctx.fillStyle = '#1f1a14';
+    // Brass buckles on forearm sleeves
+    ctx.fillStyle = '#ffcf48';
+    ctx.fillRect(2.5, 6.5, 2, 1.5);
+    ctx.fillRect(3.0, -7.5, 2, 1.5);
+
+    // Gloved hands with dark leather gradient
+    const rHandGrad = ctx.createRadialGradient(8, 3.5, 0.5, 8, 3.5, 2.5);
+    rHandGrad.addColorStop(0, '#3a3026');
+    rHandGrad.addColorStop(1, '#16130f');
+    ctx.fillStyle = rHandGrad;
     ctx.beginPath();
-    ctx.arc(8, 3.5, 2.2, 0, Math.PI * 2);
-    ctx.arc(13, -2, 2.2, 0, Math.PI * 2);
+    ctx.arc(8, 3.5, 2.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    const lHandGrad = ctx.createRadialGradient(13, -2, 0.5, 13, -2, 2.5);
+    lHandGrad.addColorStop(0, '#3a3026');
+    lHandGrad.addColorStop(1, '#16130f');
+    ctx.fillStyle = lHandGrad;
+    ctx.beginPath();
+    ctx.arc(13, -2, 2.4, 0, Math.PI * 2);
     ctx.fill();
 
     // Brass knuckle rivets on gloves
     ctx.fillStyle = '#ffcf48';
     ctx.beginPath();
-    ctx.arc(8.5, 3.5, 0.8, 0, Math.PI * 2);
-    ctx.arc(13.5, -2, 0.8, 0, Math.PI * 2);
+    ctx.arc(8.6, 3.5, 0.9, 0, Math.PI * 2);
+    ctx.arc(13.6, -2, 0.9, 0, Math.PI * 2);
     ctx.fill();
 
     // 3. Top-Down Steampunk Weapon
     this.renderTopDownWeapon(ctx, wId, now);
 
-    // 4. Steam Boiler Backpack / Gas Reservoir (X < 0)
+    // 4. Steam Boiler Backpack / Gas Reservoir (X < 0) with Rich Metallic Gradients
     if (cId === 'juggernaut') {
-      // Dual heavy high-pressure iron boilers
-      ctx.fillStyle = '#3a2012';
+      // Dual heavy high-pressure iron boilers with glowing heat core
+      const b1Grad = ctx.createRadialGradient(-8.5, -6, 1, -8.5, -6, 5.5);
+      b1Grad.addColorStop(0, '#5a3818');
+      b1Grad.addColorStop(0.7, '#2c1a0c');
+      b1Grad.addColorStop(1, '#150c06');
+      ctx.fillStyle = b1Grad;
+      ctx.beginPath();
+      ctx.arc(-8.5, -6, 5.2, 0, Math.PI * 2);
+      ctx.arc(-8.5, 6, 5.2, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.strokeStyle = '#c59b27';
       ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(-8.5, -6, 5, 0, Math.PI * 2);
-      ctx.arc(-8.5, 6, 5, 0, Math.PI * 2);
-      ctx.fill();
       ctx.stroke();
-      // Orange firebox core grates
+
+      // Glowing firebox grates
       ctx.fillStyle = '#ff7b00';
-      ctx.fillRect(-12, -7.5, 2.5, 3);
-      ctx.fillRect(-12, 4.5, 2.5, 3);
+      ctx.fillRect(-12.5, -7.5, 3, 3);
+      ctx.fillRect(-12.5, 4.5, 3, 3);
+      ctx.fillStyle = '#ffea75';
+      ctx.fillRect(-11.5, -6.5, 1.5, 1.5);
+      ctx.fillRect(-11.5, 5.5, 1.5, 1.5);
     } else if (cId === 'sharpshooter') {
       // Slim pressurized pneumatic canister with glowing cyan core
-      ctx.fillStyle = '#1c2833';
+      const aetherGrad = ctx.createLinearGradient(-13, -3.5, -7, 3.5);
+      aetherGrad.addColorStop(0, '#152533');
+      aetherGrad.addColorStop(0.5, '#223c52');
+      aetherGrad.addColorStop(1, '#0e1822');
+      ctx.fillStyle = aetherGrad;
+      ctx.fillRect(-12, -3.5, 6.5, 7);
       ctx.strokeStyle = '#5ffbf1';
       ctx.lineWidth = 1.2;
-      ctx.fillRect(-12, -3.5, 6, 7);
-      ctx.strokeRect(-12, -3.5, 6, 7);
+      ctx.strokeRect(-12, -3.5, 6.5, 7);
+
+      // Glowing cyan fluid tube
       ctx.fillStyle = '#5ffbf1';
-      ctx.fillRect(-10, -2, 2.5, 4);
+      ctx.fillRect(-10.5, -2, 3, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-9.5, -1, 1, 2);
     } else if (cId === 'infiltrator') {
-      // Dual matte black smoke pods
-      ctx.fillStyle = '#1f1418';
+      // Dual matte black smoke pods with red release valves
+      ctx.fillStyle = '#14161b';
+      ctx.fillRect(-11.5, -6, 5.5, 4.2);
+      ctx.fillRect(-11.5, 1.8, 5.5, 4.2);
       ctx.strokeStyle = '#b33939';
       ctx.lineWidth = 1.2;
-      ctx.fillRect(-11, -6, 5, 4);
-      ctx.fillRect(-11, 2, 5, 4);
-      ctx.strokeRect(-11, -6, 5, 4);
-      ctx.strokeRect(-11, 2, 5, 4);
+      ctx.strokeRect(-11.5, -6, 5.5, 4.2);
+      ctx.strokeRect(-11.5, 1.8, 5.5, 4.2);
+      ctx.fillStyle = '#ff4757';
+      ctx.fillRect(-12.5, -4.5, 1.5, 1.5);
+      ctx.fillRect(-12.5, 3.2, 1.5, 1.5);
     } else {
-      // Vanguard: Cylindrical brass boiler with copper steam pipe & gauge
-      ctx.fillStyle = '#6b3614';
+      // Vanguard: Polished cylindrical brass boiler with copper coils & pressure gauge
+      const boilerGrad = ctx.createRadialGradient(-8, 0, 1, -8, 0, 7);
+      boilerGrad.addColorStop(0, '#ffd866');
+      boilerGrad.addColorStop(0.5, '#b87e1b');
+      boilerGrad.addColorStop(1, '#573708');
+      ctx.fillStyle = boilerGrad;
       ctx.beginPath();
-      ctx.arc(-8, 0, 6.5, 0, Math.PI * 2);
+      ctx.arc(-8, 0, 6.8, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#c59b27';
+      ctx.strokeStyle = '#ffcf48';
       ctx.lineWidth = 1.4;
       ctx.stroke();
-      // Pressure dial
-      ctx.fillStyle = '#ffcf48';
+
+      // Mini pressure manometer dial
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(-8, 0, 2.2, 0, Math.PI * 2);
+      ctx.arc(-8, 0, 2.4, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#9e2a2b';
-      ctx.fillRect(-8, -2, 1, 3);
+      ctx.strokeStyle = '#181b22';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
+      // Gauge needle vibrating slightly
+      const needleAngle = Math.sin(now * 0.01) * 0.5 - 0.5;
+      ctx.strokeStyle = '#d63031';
+      ctx.lineWidth = 0.9;
+      ctx.beginPath();
+      ctx.moveTo(-8, 0);
+      ctx.lineTo(-8 + Math.cos(needleAngle) * 2.0, Math.sin(needleAngle) * 2.0);
+      ctx.stroke();
+
       // Dual exhaust ports
       ctx.fillStyle = '#3a2012';
-      ctx.fillRect(-13, -5, 3, 2.5);
-      ctx.fillRect(-13, 2.5, 3, 2.5);
+      ctx.fillRect(-13.5, -5, 3.5, 2.5);
+      ctx.fillRect(-13.5, 2.5, 3.5, 2.5);
     }
 
-    // 5. Torso & Shoulder Pauldrons (Top-down anatomical span)
-    const torsoRadiusX = cId === 'juggernaut' ? 9.5 : 8.0;
-    const torsoRadiusY = cId === 'juggernaut' ? 14.0 : 11.5;
+    // 5. Torso & Shoulder Pauldrons (Top-down anatomical span with convex shading)
+    const torsoRadiusX = cId === 'juggernaut' ? 9.8 : 8.2;
+    const torsoRadiusY = cId === 'juggernaut' ? 14.5 : 12.0;
 
-    ctx.fillStyle = coatColor;
+    const torsoGrad = ctx.createRadialGradient(-1, 0, 2, -1, 0, torsoRadiusY);
+    torsoGrad.addColorStop(0, coatGradHighlight);
+    torsoGrad.addColorStop(0.8, coatGradBase);
+    torsoGrad.addColorStop(1, '#0e1014');
+    ctx.fillStyle = torsoGrad;
     ctx.beginPath();
     ctx.ellipse(-1, 0, torsoRadiusX, torsoRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -2193,133 +2262,161 @@ export class GameRenderer {
     ctx.lineWidth = 1.6;
     ctx.stroke();
 
-    // Leather bandolier strap across chest
-    ctx.strokeStyle = '#2b1e15';
-    ctx.lineWidth = 2.0;
+    // Diagonal leather bandolier strap with individual brass cartridges
+    ctx.strokeStyle = '#1c1510';
+    ctx.lineWidth = 2.4;
     ctx.beginPath();
     ctx.moveTo(-4, -9);
     ctx.lineTo(2, 8);
     ctx.stroke();
 
-    // Brass shoulder pauldrons (Left & Right armor plates)
+    // Brass bullets in bandolier
+    ctx.fillStyle = '#ffcf48';
+    ctx.fillRect(-2.5, -6, 1.4, 2.2);
+    ctx.fillRect(-1.0, -2, 1.4, 2.2);
+    ctx.fillRect(0.5, 2, 1.4, 2.2);
+
+    // Ornate Metallic Shoulder Pauldrons (Left & Right armor plates)
     const pauldronY = torsoRadiusY - 2.5;
-    const pauldronRad = cId === 'juggernaut' ? 5.2 : 4.2;
+    const pauldronRad = cId === 'juggernaut' ? 5.4 : 4.4;
 
-    // Left shoulder plate
-    ctx.fillStyle = '#8a6210';
-    ctx.beginPath();
-    ctx.arc(-1, -pauldronY, pauldronRad, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffcf48';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    // Center rivet
-    ctx.fillStyle = '#ffcf48';
-    ctx.beginPath();
-    ctx.arc(-1, -pauldronY, 1.2, 0, Math.PI * 2);
-    ctx.fill();
+    const renderPauldron = (py) => {
+      const pGrad = ctx.createRadialGradient(-1, py, 1, -1, py, pauldronRad);
+      pGrad.addColorStop(0, '#ffea85');
+      pGrad.addColorStop(0.5, '#c59b27');
+      pGrad.addColorStop(1, '#543b09');
+      ctx.fillStyle = pGrad;
+      ctx.beginPath();
+      ctx.arc(-1, py, pauldronRad, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffd866';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
 
-    // Right shoulder plate
-    ctx.fillStyle = '#8a6210';
-    ctx.beginPath();
-    ctx.arc(-1, pauldronY, pauldronRad, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffcf48';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-    // Center rivet
-    ctx.fillStyle = '#ffcf48';
-    ctx.beginPath();
-    ctx.arc(-1, pauldronY, 1.2, 0, Math.PI * 2);
-    ctx.fill();
+      // Center ornamental rivet
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-0.8, py - 0.5, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+    };
 
-    // 6. Head & Headgear (Center top-down)
-    const headRad = 6.2;
-    ctx.fillStyle = '#3a2416'; // Aviator leather cap
-    if (cId === 'juggernaut') ctx.fillStyle = '#2c323d';
-    if (cId === 'sharpshooter') ctx.fillStyle = '#22303c';
-    if (cId === 'infiltrator') ctx.fillStyle = '#14161b';
+    renderPauldron(-pauldronY);
+    renderPauldron(pauldronY);
 
+    // 6. Head & Headgear (Center top-down with seam shading)
+    const headRad = 6.4;
+    let capGradBase = '#3a2416';
+    let capGradTop = '#5c3922';
+
+    if (cId === 'juggernaut') {
+      capGradBase = '#1f242d';
+      capGradTop = '#3a4354';
+    } else if (cId === 'sharpshooter') {
+      capGradBase = '#182430';
+      capGradTop = '#2a3e52';
+    } else if (cId === 'infiltrator') {
+      capGradBase = '#101216';
+      capGradTop = '#1e222a';
+    }
+
+    const headGrad = ctx.createRadialGradient(1, 0, 1, 1, 0, headRad);
+    headGrad.addColorStop(0, capGradTop);
+    headGrad.addColorStop(1, capGradBase);
+    ctx.fillStyle = headGrad;
     ctx.beginPath();
     ctx.arc(1, 0, headRad, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#1b120c';
-    ctx.lineWidth = 1.0;
+    ctx.strokeStyle = '#0f1115';
+    ctx.lineWidth = 1.2;
     ctx.stroke();
 
     // Goggle leather strap encircling the head
-    ctx.strokeStyle = '#1a130e';
-    ctx.lineWidth = 1.8;
+    ctx.strokeStyle = '#120d09';
+    ctx.lineWidth = 2.0;
     ctx.beginPath();
-    ctx.arc(1, 0, headRad - 0.5, -Math.PI * 0.7, Math.PI * 0.7);
+    ctx.arc(1, 0, headRad - 0.4, -Math.PI * 0.72, Math.PI * 0.72);
     ctx.stroke();
 
-    // 7. Forward-Facing Optical Goggles (Facing +X)
+    // 7. Luminous Forward-Facing Optical Goggles (Facing +X)
     let opticColor = '#5ffbf1'; // Cyan standard
-    if (cId === 'vanguard') opticColor = '#ffcf48';
-    if (cId === 'juggernaut') opticColor = '#ff7b00';
-    if (cId === 'infiltrator') opticColor = '#ff4757';
+    let opticGlow = 'rgba(95, 251, 241, 0.45)';
+    if (cId === 'vanguard') {
+      opticColor = '#ffcf48';
+      opticGlow = 'rgba(255, 207, 72, 0.45)';
+    } else if (cId === 'juggernaut') {
+      opticColor = '#ff7b00';
+      opticGlow = 'rgba(255, 123, 0, 0.50)';
+    } else if (cId === 'infiltrator') {
+      opticColor = '#ff4757';
+      opticGlow = 'rgba(255, 71, 87, 0.50)';
+    }
 
-    // Left goggle lens
-    ctx.fillStyle = '#c59b27'; // Brass rim
-    ctx.beginPath();
-    ctx.arc(5.5, -3.2, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = opticColor; // Glass lens
-    ctx.beginPath();
-    ctx.arc(5.5, -3.2, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff'; // Specular highlight
-    ctx.beginPath();
-    ctx.arc(6.2, -3.2, 0.7, 0, Math.PI * 2);
-    ctx.fill();
+    const renderGoggle = (gy) => {
+      // Brass outer housing with beveled metallic gradient
+      const rimGrad = ctx.createRadialGradient(5.5, gy, 1, 5.5, gy, 2.7);
+      rimGrad.addColorStop(0, '#ffea85');
+      rimGrad.addColorStop(0.6, '#c59b27');
+      rimGrad.addColorStop(1, '#543b09');
+      ctx.fillStyle = rimGrad;
+      ctx.beginPath();
+      ctx.arc(5.5, gy, 2.7, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Right goggle lens
-    ctx.fillStyle = '#c59b27'; // Brass rim
-    ctx.beginPath();
-    ctx.arc(5.5, 3.2, 2.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = opticColor; // Glass lens
-    ctx.beginPath();
-    ctx.arc(5.5, 3.2, 1.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff'; // Specular highlight
-    ctx.beginPath();
-    ctx.arc(6.2, 3.2, 0.7, 0, Math.PI * 2);
-    ctx.fill();
+      // Glowing glass lens interior
+      ctx.fillStyle = opticColor;
+      ctx.beginPath();
+      ctx.arc(5.5, gy, 1.9, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ambient lens glow
+      ctx.fillStyle = opticGlow;
+      ctx.beginPath();
+      ctx.arc(6.0, gy, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Specular white reflection dot for pristine glass glare
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(6.3, gy - 0.4, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
+    renderGoggle(-3.2);
+    renderGoggle(3.2);
   }
 
   /**
-   * Renders a mechanical steampunk automaton bot from a strict 90-degree top-down bird's-eye perspective:
-   * Iron/brass spherical chassis, mechanical tread pads, central rotating gear train, steam chimneys,
-   * manipulator arms holding weapon, and glowing frontal robotic optical visor.
+   * Renders a mechanical steampunk automaton bot from a strict 90-degree top-down perspective:
+   * Heavy forged iron octagonal shell, oscillating tread units, interlocking rotating brass gears,
+   * glowing Aether crystal power core, hydraulic manipulator arms, and sweeping robotic eye scanner.
    */
   renderTopDownAutomaton(ctx, pl, walkCycle, now) {
     const isElite = pl.difficulty === 'nightmare' || pl.difficulty === 'hard';
 
-    // 1. Mechanical Tread Stabilizers (Bottom layer)
-    const treadW = 9.0;
-    const treadH = 4.0;
-    const osc = walkCycle * 2.5;
+    // 1. Mechanical Tread Stabilizers with Drive Sprockets (Bottom layer)
+    const treadW = 9.5;
+    const treadH = 4.2;
+    const osc = walkCycle * 2.8;
 
-    ctx.fillStyle = '#1c2028';
-    ctx.strokeStyle = '#4a5260';
-    ctx.lineWidth = 1;
-    ctx.fillRect(-4 + osc, -12 - treadH / 2, treadW, treadH);
-    ctx.strokeRect(-4 + osc, -12 - treadH / 2, treadW, treadH);
-    ctx.fillRect(-4 - osc, 12 - treadH / 2, treadW, treadH);
-    ctx.strokeRect(-4 - osc, 12 - treadH / 2, treadW, treadH);
+    const renderTread = (ty, o) => {
+      ctx.fillStyle = '#14171d';
+      ctx.fillRect(-4 + o, ty - treadH / 2, treadW, treadH);
+      ctx.strokeStyle = '#3e4654';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-4 + o, ty - treadH / 2, treadW, treadH);
 
-    // Tread link notches
-    ctx.fillStyle = '#c59b27';
-    ctx.fillRect(-2 + osc, -12 - treadH / 2, 1.5, treadH);
-    ctx.fillRect(2 + osc, -12 - treadH / 2, 1.5, treadH);
-    ctx.fillRect(-2 - osc, 12 - treadH / 2, 1.5, treadH);
-    ctx.fillRect(2 - osc, 12 - treadH / 2, 1.5, treadH);
+      // Brass drive links
+      ctx.fillStyle = '#ffd152';
+      ctx.fillRect(-2 + o, ty - treadH / 2, 1.5, treadH);
+      ctx.fillRect(2 + o, ty - treadH / 2, 1.5, treadH);
+    };
 
-    // 2. Mechanical Manipulator Piston Arms -> holding weapon
-    ctx.strokeStyle = '#3a414f';
-    ctx.lineWidth = 3.5;
+    renderTread(-12.5, osc);
+    renderTread(12.5, -osc);
+
+    // 2. Hydraulic Manipulator Piston Arms -> holding weapon
+    ctx.strokeStyle = '#2d3340';
+    ctx.lineWidth = 3.8;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(-2, -9);
@@ -2330,87 +2427,137 @@ export class GameRenderer {
     ctx.lineTo(9, 3);
     ctx.stroke();
 
-    // Brass claw hands
-    ctx.fillStyle = '#c59b27';
+    // Chrome hydraulic piston shaft rods
+    ctx.strokeStyle = '#c5d0e0';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.arc(10, -2, 2.2, 0, Math.PI * 2);
-    ctx.arc(9, 3, 2.2, 0, Math.PI * 2);
+    ctx.moveTo(1, -7.5);
+    ctx.lineTo(7, -4);
+    ctx.moveTo(1, 7.5);
+    ctx.lineTo(7, 4);
+    ctx.stroke();
+
+    // Brass claw manipulator hands
+    ctx.fillStyle = '#ffd152';
+    ctx.beginPath();
+    ctx.arc(10, -2, 2.3, 0, Math.PI * 2);
+    ctx.arc(9, 3, 2.3, 0, Math.PI * 2);
     ctx.fill();
 
     // 3. Top-Down Steampunk Weapon
     this.renderTopDownWeapon(ctx, pl.weaponId || 'revolver', now);
 
-    // 4. Rear Brass Steam Exhaust Chimneys (X < 0)
-    ctx.fillStyle = '#5c3814';
-    ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.arc(-8, -6, 3.5, 0, Math.PI * 2);
-    ctx.arc(-8, 6, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    // Smoke exhaust holes
-    ctx.fillStyle = '#0f1115';
-    ctx.beginPath();
-    ctx.arc(-8, -6, 1.8, 0, Math.PI * 2);
-    ctx.arc(-8, 6, 1.8, 0, Math.PI * 2);
-    ctx.fill();
+    // 4. Rear Brass Steam Exhaust Chimneys with Glowing Heat Interior (X < 0)
+    const renderChimney = (cy) => {
+      const cGrad = ctx.createRadialGradient(-8, cy, 1, -8, cy, 3.8);
+      cGrad.addColorStop(0, '#ffd866');
+      cGrad.addColorStop(0.6, '#b87e1b');
+      cGrad.addColorStop(1, '#472d06');
+      ctx.fillStyle = cGrad;
+      ctx.beginPath();
+      ctx.arc(-8, cy, 3.6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffd866';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
 
-    // 5. Main Spherical/Cylindrical Automaton Hull (Strict top-down circular chassis)
-    const hullRad = 13.0;
+      // Glowing ember heat interior
+      ctx.fillStyle = '#ff5722';
+      ctx.beginPath();
+      ctx.arc(-8, cy, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffea75';
+      ctx.beginPath();
+      ctx.arc(-8, cy, 0.8, 0, Math.PI * 2);
+      ctx.fill();
+    };
 
-    // Outer cast iron hull
-    ctx.fillStyle = '#2a303c';
+    renderChimney(-6.2);
+    renderChimney(6.2);
+
+    // 5. Main Heavy Automaton Shell (Strict top-down forged iron & brass rim)
+    const hullRad = 13.5;
+
+    // Outer cast iron hull with bevel
+    const hullGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, hullRad);
+    hullGrad.addColorStop(0, '#384252');
+    hullGrad.addColorStop(0.7, '#202630');
+    hullGrad.addColorStop(1, '#0e1117');
+    ctx.fillStyle = hullGrad;
     ctx.beginPath();
     ctx.arc(0, 0, hullRad, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#8a6210';
+
+    // Brass reinforcement ring
+    ctx.strokeStyle = '#c59b27';
     ctx.lineWidth = 2.4;
     ctx.stroke();
 
-    // Inner brass mechanism chamber
-    ctx.fillStyle = '#4a2f13';
+    // 8 Radial Hex Bolts on hull perimeter
+    ctx.fillStyle = '#ffcf48';
+    for (let i = 0; i < 8; i++) {
+      const bAng = (i * Math.PI) / 4;
+      const bx = Math.cos(bAng) * (hullRad - 1.5);
+      const by = Math.sin(bAng) * (hullRad - 1.5);
+      ctx.beginPath();
+      ctx.arc(bx, by, 0.9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Inner clockwork mechanism chamber
+    ctx.fillStyle = '#1c1308';
     ctx.beginPath();
-    ctx.arc(0, 0, 9.5, 0, Math.PI * 2);
+    ctx.arc(0, 0, 9.8, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.2;
+    ctx.strokeStyle = '#ffcf48';
+    ctx.lineWidth = 1.0;
     ctx.stroke();
 
-    // Central brass gear core with teeth
-    const gearRad = 5.5;
-    ctx.fillStyle = '#c59b27';
-    ctx.beginPath();
-    ctx.arc(0, 0, gearRad, 0, Math.PI * 2);
-    ctx.fill();
-    // Center axle bolt
-    ctx.fillStyle = '#1c2028';
-    ctx.beginPath();
-    ctx.arc(0, 0, 2.2, 0, Math.PI * 2);
-    ctx.fill();
+    // Animated Rotating Clockwork Cogwheel Core (Rotates continuously!)
+    const rot = (now * 0.002) % (Math.PI * 2);
+    const cogRad = 6.2;
+    const teeth = 8;
 
-    // 6. Glowing Frontal Robotic Optical Sensor (Facing +X)
+    ctx.save();
+    ctx.rotate(rot);
+    ctx.fillStyle = '#ffd152';
+    for (let t = 0; t < teeth; t++) {
+      const tAng = (t * Math.PI * 2) / teeth;
+      const tx = Math.cos(tAng) * cogRad;
+      const ty = Math.sin(tAng) * cogRad;
+      ctx.fillRect(tx - 1.2, ty - 1.2, 2.4, 2.4);
+    }
+    ctx.beginPath();
+    ctx.arc(0, 0, cogRad - 0.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Central Pulsing Aether Energy Crystal Core
     const opticColor = isElite ? '#ff2a2a' : '#ff9f1c';
-    const haloColor = isElite ? 'rgba(255, 42, 42, 0.45)' : 'rgba(255, 159, 28, 0.45)';
-
-    // Front sensor visor casing
-    ctx.fillStyle = '#181b22';
-    ctx.fillRect(7, -5, 4, 10);
-    ctx.strokeStyle = '#c59b27';
-    ctx.lineWidth = 1.2;
-    ctx.strokeRect(7, -5, 4, 10);
-
-    // Glowing optic slit
-    ctx.fillStyle = haloColor;
+    const coreGrad = ctx.createRadialGradient(0, 0, 0.5, 0, 0, 3.2);
+    coreGrad.addColorStop(0, '#ffffff');
+    coreGrad.addColorStop(0.5, opticColor);
+    coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = coreGrad;
     ctx.beginPath();
-    ctx.arc(8.5, 0, 5, 0, Math.PI * 2);
+    ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = opticColor;
-    ctx.fillRect(8.5, -3.5, 2, 7);
+    // 6. Sweeping Robotic Optical Visor Scanner (Facing +X)
+    const scanOffset = Math.sin(now * 0.005) * 3.0; // Sweeps left and right
 
+    // Front curved visor casing
+    ctx.fillStyle = '#101318';
+    ctx.fillRect(7.5, -5.5, 4.5, 11);
+    ctx.strokeStyle = '#ffd152';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(7.5, -5.5, 4.5, 11);
+
+    // Glowing sweeping eye beam
+    ctx.fillStyle = opticColor;
+    ctx.fillRect(8.5, scanOffset - 1.5, 2.5, 3.0);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(9.5, -1.5, 1, 3);
+    ctx.fillRect(9.5, scanOffset - 0.6, 1.2, 1.2);
   }
 
   /**
@@ -2423,12 +2570,17 @@ export class GameRenderer {
     ctx.lineWidth = 1.5;
 
     if (wId === 'blunderbuss') {
-      // Distinct flared conical brass trumpet barrel
-      ctx.fillStyle = '#221912'; // Walnut stock
-      ctx.fillRect(3, -1.5, 6, 3);
+      // Distinct flared conical brass trumpet barrel with Damascus steel stock
+      ctx.fillStyle = '#2b1b10'; // Walnut stock
+      ctx.fillRect(3, -1.8, 6, 3.6);
 
-      ctx.fillStyle = '#8a6210';
-      ctx.strokeStyle = '#c59b27';
+      // Flared conical brass bell-mouth
+      const bellGrad = ctx.createLinearGradient(8, 0, 22, 0);
+      bellGrad.addColorStop(0, '#9e7315');
+      bellGrad.addColorStop(0.5, '#ffd866');
+      bellGrad.addColorStop(1, '#694a08');
+      ctx.fillStyle = bellGrad;
+      ctx.strokeStyle = '#ffe48a';
       ctx.beginPath();
       ctx.moveTo(8, -2);
       ctx.lineTo(20, -5.5);
@@ -2444,140 +2596,165 @@ export class GameRenderer {
       ctx.fillStyle = '#ffcf48';
       ctx.fillRect(21, -6, 2.5, 12);
 
+      // Dark muzzle bore interior
+      ctx.fillStyle = '#0f1115';
+      ctx.fillRect(22, -4.5, 1.5, 9);
+
       // Steam hammer valve on side
-      ctx.fillStyle = '#c59b27';
+      ctx.fillStyle = '#ffd152';
       ctx.fillRect(9, 2.5, 3, 2.5);
     } else if (wId === 'needle_gun') {
       // Ultra-long precision sniper needle barrel with rail conduits & optic scope
-      ctx.fillStyle = '#1e242d';
+      ctx.fillStyle = '#171d24';
       ctx.fillRect(5, -1.8, 6, 3.6);
 
       // Long needle rail barrel
-      ctx.fillStyle = '#2b3442';
+      const railGrad = ctx.createLinearGradient(9, 0, 30, 0);
+      railGrad.addColorStop(0, '#2d3745');
+      railGrad.addColorStop(0.7, '#435368');
+      railGrad.addColorStop(1, '#1b222b');
+      ctx.fillStyle = railGrad;
       ctx.strokeStyle = '#5ffbf1';
-      ctx.fillRect(9, -1.2, 20, 2.4);
-      ctx.strokeRect(9, -1.2, 20, 2.4);
+      ctx.fillRect(9, -1.2, 21, 2.4);
+      ctx.strokeRect(9, -1.2, 21, 2.4);
+
+      // Glowing plasma spine
+      ctx.fillStyle = '#5ffbf1';
+      ctx.fillRect(11, -0.6, 18, 1.2);
 
       // Needle tip
-      ctx.fillStyle = '#5ffbf1';
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(29, -1.5);
-      ctx.lineTo(34, 0);
-      ctx.lineTo(29, 1.5);
+      ctx.moveTo(30, -1.5);
+      ctx.lineTo(35, 0);
+      ctx.lineTo(30, 1.5);
       ctx.closePath();
       ctx.fill();
 
       // Optical telescopic scope mounted on top
-      ctx.fillStyle = '#10141a';
+      ctx.fillStyle = '#0f1318';
       ctx.strokeStyle = '#c59b27';
       ctx.fillRect(8, -4.5, 12, 2.5);
       ctx.strokeRect(8, -4.5, 12, 2.5);
       ctx.fillStyle = '#5ffbf1';
       ctx.fillRect(19, -4.5, 1.5, 2.5);
     } else if (wId === 'tesla_rifle') {
-      // Dual copper Tesla induction coils & energy arc tube
-      ctx.fillStyle = '#181e26';
+      // Dual copper Tesla induction coils & animated energy arc tube
+      ctx.fillStyle = '#151a21';
       ctx.strokeStyle = '#00d4ff';
       ctx.fillRect(7, -3, 17, 6);
       ctx.strokeRect(7, -3, 17, 6);
 
       // Copper induction rings
-      ctx.fillStyle = '#c59b27';
+      ctx.fillStyle = '#ffd152';
       ctx.fillRect(13, -4.5, 2.5, 9);
       ctx.fillRect(19, -4.5, 2.5, 9);
 
-      // Glowing electric arc energy core
+      // Glowing electric arc energy core with animated spark
       ctx.fillStyle = '#00d4ff';
       ctx.fillRect(10, -1.2, 13, 2.4);
+      ctx.fillStyle = '#ffffff';
+      const sparkX = 10 + ((now * 0.03) % 12);
+      ctx.fillRect(sparkX, -1.5, 2.5, 3.0);
       ctx.fillRect(24, -2, 3, 4);
     } else if (wId === 'steam_mortar') {
       // Massive reinforced cast-iron mortar cannon
-      ctx.fillStyle = '#261e18';
+      ctx.fillStyle = '#201812';
       ctx.strokeStyle = '#c59b27';
       ctx.fillRect(6, -4.5, 14, 9);
       ctx.strokeRect(6, -4.5, 14, 9);
 
       // Brass reinforcement bands
-      ctx.fillStyle = '#ffcf48';
+      ctx.fillStyle = '#ffd866';
       ctx.fillRect(11, -5.5, 2.5, 11);
       ctx.fillRect(17, -5.5, 2.5, 11);
 
-      // Muzzle bore
-      ctx.fillStyle = '#0f1115';
+      // Deep black muzzle bore
+      ctx.fillStyle = '#080a0d';
       ctx.fillRect(20, -4, 2, 8);
     } else if (wId === 'aether_flamethrower') {
-      // Dual brass fuel pipes & pilot burner with flame tip
-      ctx.fillStyle = '#3a2012';
+      // Dual brass fuel pipes & pilot burner with animated flame tip
+      ctx.fillStyle = '#2f1a0e';
       ctx.strokeStyle = '#ff7b00';
       ctx.fillRect(7, -3.5, 16, 7);
       ctx.strokeRect(7, -3.5, 16, 7);
 
       // Dual fuel tubes
-      ctx.fillStyle = '#c59b27';
+      ctx.fillStyle = '#ffd152';
       ctx.fillRect(12, -2.5, 10, 1.5);
       ctx.fillRect(12, 1.0, 10, 1.5);
 
-      // Pilot burner flame
+      // Flickering pilot burner flame
+      const flameW = 3.0 + Math.sin(now * 0.02) * 1.0;
       ctx.fillStyle = '#ff7b00';
       ctx.beginPath();
-      ctx.arc(25, 0, 3, 0, Math.PI * 2);
+      ctx.arc(25, 0, flameW, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#ffcf48';
+      ctx.fillStyle = '#ffe853';
       ctx.beginPath();
-      ctx.arc(26, 0, 1.5, 0, Math.PI * 2);
+      ctx.arc(26, 0, flameW * 0.5, 0, Math.PI * 2);
       ctx.fill();
     } else if (wId === 'gatling_cannon') {
       // Multi-barrel rotary cluster with center hub
-      ctx.fillStyle = '#1c222b';
+      ctx.fillStyle = '#161a22';
       ctx.strokeStyle = '#c59b27';
       ctx.fillRect(7, -4.5, 17, 9);
       ctx.strokeRect(7, -4.5, 17, 9);
 
-      // Triple rotary barrels
-      ctx.fillStyle = '#6e7787';
+      // Triple rotary barrels with steel shading
+      ctx.fillStyle = '#7a8699';
       ctx.fillRect(24, -4, 4, 2.2);
       ctx.fillRect(24, -1.1, 4, 2.2);
       ctx.fillRect(24, 1.8, 4, 2.2);
+
+      // Front brass retainer ring
+      ctx.fillStyle = '#ffd152';
+      ctx.fillRect(27, -4.5, 1.5, 9);
 
       // Brass ammo belt feed casing
       ctx.fillStyle = '#ffcf48';
       ctx.fillRect(10, 4.5, 5, 2.5);
     } else if (wId === 'steam_carbine') {
       // Long rifled barrel, brass pneumatic bypass & wooden stock
-      ctx.fillStyle = '#261b12'; // Stock
+      ctx.fillStyle = '#24180f'; // Stock
       ctx.fillRect(2, 0, 6, 2.5);
 
-      ctx.fillStyle = '#242a34'; // Receiver
+      ctx.fillStyle = '#1f242d'; // Receiver
       ctx.strokeStyle = '#c59b27';
       ctx.fillRect(7, -2.2, 17, 4.4);
       ctx.strokeRect(7, -2.2, 17, 4.4);
 
       // Brass muzzle brake
-      ctx.fillStyle = '#ffcf48';
+      ctx.fillStyle = '#ffd152';
       ctx.fillRect(24, -3, 3, 6);
 
       // Pneumatic brass bypass pipe
-      ctx.fillStyle = '#c59b27';
+      ctx.fillStyle = '#ffd152';
       ctx.fillRect(10, -3.5, 10, 1.5);
     } else {
       // Clockwork Revolver: Compact steel receiver, 6-chamber cylinder & brass bead sight
-      ctx.fillStyle = '#262d38';
+      ctx.fillStyle = '#202630';
       ctx.strokeStyle = '#c59b27';
       ctx.fillRect(7, -1.8, 11, 3.6);
       ctx.strokeRect(7, -1.8, 11, 3.6);
 
-      // 6-chamber cylinder
-      ctx.fillStyle = '#8a6210';
+      // 6-chamber cylinder with brass chambers
+      const cylGrad = ctx.createRadialGradient(9.5, 0, 0.5, 9.5, 0, 3.2);
+      cylGrad.addColorStop(0, '#ffd866');
+      cylGrad.addColorStop(0.7, '#a87a19');
+      cylGrad.addColorStop(1, '#543b08');
+      ctx.fillStyle = cylGrad;
       ctx.beginPath();
-      ctx.arc(9.5, 0, 3.0, 0, Math.PI * 2);
+      ctx.arc(9.5, 0, 3.2, 0, Math.PI * 2);
       ctx.fill();
-      ctx.fillStyle = '#ffcf48';
+
+      ctx.fillStyle = '#12151b';
       ctx.beginPath();
       ctx.arc(9.5, 0, 1.2, 0, Math.PI * 2);
       ctx.fill();
 
       // Brass front bead sight
-      ctx.fillStyle = '#ffcf48';
+      ctx.fillStyle = '#ffd152';
       ctx.fillRect(17, -2.5, 2.5, 5);
     }
   }

@@ -41,9 +41,7 @@ export class LobbyUI {
       const sync = () => {
         const prof = this.options.progressionManager.getProfile();
         if (prof?.username && this.dom.playerNameInput) {
-          if (!this.dom.playerNameInput.value || this.dom.playerNameInput.value === 'FoundryRanger_1') {
-            this.dom.playerNameInput.value = prof.username;
-          }
+          this.dom.playerNameInput.value = prof.username;
         }
       };
       sync();
@@ -127,6 +125,16 @@ export class LobbyUI {
     this.addTapAndClick(this.dom.btnCopyRoomLink, () => this.handleCopyRoomLink());
     this.addTapAndClick(this.dom.btnLobbyRefreshRooms, () => this.fetchAndRenderRooms());
     this.addTapAndClick(this.dom.btnHomeRefreshRooms, () => this.fetchAndRenderRooms());
+
+    const saveLobbyName = () => {
+      const val = this.dom.playerNameInput?.value?.trim();
+      if (val && this.options.progressionManager) {
+        this.options.progressionManager.updateIdentity({ username: val });
+      }
+    };
+    this.dom.playerNameInput?.addEventListener('input', saveLobbyName);
+    this.dom.playerNameInput?.addEventListener('change', saveLobbyName);
+    this.dom.playerNameInput?.addEventListener('blur', saveLobbyName);
 
     // Host live room config update button
     this.addTapAndClick(this.dom.btnUpdateRoomTargetKills, () => {
@@ -699,7 +707,8 @@ export class LobbyUI {
     if (this.dom.roomPasswordInput && candidatePassword !== null) this.dom.roomPasswordInput.value = password;
     if (homePwdInput && candidatePassword !== null) homePwdInput.value = password;
 
-    const playerName = (this.dom.playerNameInput?.value || homePlayerInput?.value || 'FoundryRanger_1').trim();
+    const prof = this.options.progressionManager?.getProfile();
+    const playerName = (prof?.username || this.dom.playerNameInput?.value || homePlayerInput?.value || 'Механік').trim();
     if (this.dom.playerNameInput) this.dom.playerNameInput.value = playerName;
     if (homePlayerInput) homePlayerInput.value = playerName;
 
@@ -708,7 +717,6 @@ export class LobbyUI {
     this.setButtonBusy(this.dom.btnHomeJoinRoom, '⚡ Приєднання...');
 
     const doJoin = () => {
-      const prof = this.options.progressionManager?.getProfile();
       if (prof) {
         this.networkClient.setLoadout({
           weaponId: prof.equippedWeapon,
@@ -774,7 +782,8 @@ export class LobbyUI {
     if (this.dom.roomPasswordInput && candidatePassword !== null) this.dom.roomPasswordInput.value = password;
     if (homePwdInput && candidatePassword !== null) homePwdInput.value = password;
 
-    const playerName = (this.dom.playerNameInput?.value || homePlayerInput?.value || 'HostEngineer').trim();
+    const prof = this.options.progressionManager?.getProfile();
+    const playerName = (prof?.username || this.dom.playerNameInput?.value || homePlayerInput?.value || 'Механік').trim();
     if (this.dom.playerNameInput) this.dom.playerNameInput.value = playerName;
     if (homePlayerInput) homePlayerInput.value = playerName;
 

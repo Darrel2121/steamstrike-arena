@@ -30,7 +30,7 @@ export const PROXIMITY_RADIUS = 45; // 360-degree awareness bubble around player
 
 // Combat & Projectile Kinematics
 export const PROJECTILE_SPEED = 1800; // px/s
-export const PROJECTILE_RADIUS = 3.5; // px
+export const PROJECTILE_RADIUS = 2.45; // px (reduced ~30% from 3.5)
 export const PROJECTILE_LIFETIME = 1.2; // seconds
 
 // Sound Events & Propagation

@@ -509,13 +509,16 @@ export class App {
         this.progressionManager?.updateIdentity({ username: rand });
       });
 
-      this.homePlayerNameInput?.addEventListener('change', () => {
-        const val = this.homePlayerNameInput.value?.trim();
+      const saveName = () => {
+        const val = this.homePlayerNameInput?.value?.trim();
         if (val) {
           if (this.lobbyUI?.dom?.playerNameInput) this.lobbyUI.dom.playerNameInput.value = val;
           this.progressionManager?.updateIdentity({ username: val });
         }
-      });
+      };
+      this.homePlayerNameInput?.addEventListener('input', saveName);
+      this.homePlayerNameInput?.addEventListener('change', saveName);
+      this.homePlayerNameInput?.addEventListener('blur', saveName);
     }
 
     if (this.btnHeroQuickPlay) {
@@ -528,7 +531,8 @@ export class App {
         this.btnHeroQuickPlay.disabled = true;
         this.btnHeroQuickPlay.innerHTML = '<span class="spin-gear">⚙</span> ЗАПУСК БОЮ...';
 
-        const name = (this.homePlayerNameInput?.value || 'FoundryRanger_1').trim();
+        const prof = this.progressionManager?.getProfile();
+        const name = (this.homePlayerNameInput?.value || prof?.username || 'Механік').trim();
         if (this.lobbyUI?.dom?.playerNameInput) this.lobbyUI.dom.playerNameInput.value = name;
         if (this.progressionManager?.profile && this.progressionManager.profile.username !== name) {
           this.progressionManager.updateIdentity({ username: name });
@@ -1067,10 +1071,10 @@ export class App {
   launchMatchWithMap(map) {
     this.activeMatchMap = map;
     const roomId = (this.lobbyUI?.dom?.roomInput?.value || 'Sector_Custom').trim();
-    const playerName = (this.lobbyUI?.dom?.playerNameInput?.value || 'HostEngineer').trim();
+    const prof = this.progressionManager?.getProfile();
+    const playerName = (prof?.username || this.homePlayerNameInput?.value || this.lobbyUI?.dom?.playerNameInput?.value || 'Механік').trim();
 
     const doCreate = () => {
-      const prof = this.progressionManager?.getProfile();
       if (prof && this.networkClient) {
         this.networkClient.setLoadout({
           weaponId: prof.equippedWeapon,
@@ -1154,7 +1158,8 @@ export class App {
     }
 
     const soloRoomId = `solo_${Date.now().toString(36)}`;
-    const playerName = (this.lobbyUI?.dom?.playerNameInput?.value || 'SoloCadet').trim();
+    const prof = this.progressionManager?.getProfile();
+    const playerName = (prof?.username || this.homePlayerNameInput?.value || this.lobbyUI?.dom?.playerNameInput?.value || 'Механік').trim();
     const isHomeContext = (this.currentView === 'home');
     const gameMode = isHomeContext
       ? (document.getElementById('homeGameModeSelect')?.value || document.getElementById('lobbyGameModeSelect')?.value || 'ffa_dm')
