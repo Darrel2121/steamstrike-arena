@@ -1457,43 +1457,49 @@ export class GameRenderer {
    * @param {CanvasRenderingContext2D} ctx
    */
   renderSteamParticles(ctx) {
-    if (!this.steamParticles || this.steamParticles.length === 0) return;
+    if (!this.steamParticles || this.steamParticles.length === 0 || !ctx) return;
 
     for (const p of this.steamParticles) {
-      if (!p || p.alpha <= 0.01) continue;
+      if (!p || typeof p.x !== 'number' || typeof p.y !== 'number' || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+      const alpha = Math.max(0, Math.min(1, typeof p.alpha === 'number' ? p.alpha : 0));
+      if (alpha <= 0.01) continue;
 
       ctx.save();
       ctx.translate(p.x, p.y);
-      ctx.rotate(p.angle || 0);
+      const angle = Number.isFinite(p.angle) ? p.angle : 0;
+      ctx.rotate(angle);
 
-      const r = Math.max(1.5, p.size || 6);
+      const r = Math.max(2.0, Number.isFinite(p.size) ? p.size : 6.0);
 
       // Multi-lobe organic steam cloud structure (3 slightly offset overlapping soft lobes)
       const lobes = [
         { x: 0, y: 0, r: r },
-        { x: r * 0.35, y: -r * 0.22, r: r * 0.72 },
-        { x: -r * 0.32, y: r * 0.26, r: r * 0.68 }
+        { x: r * 0.35, y: -r * 0.22, r: Math.max(1.0, r * 0.72) },
+        { x: -r * 0.32, y: r * 0.26, r: Math.max(1.0, r * 0.68) }
       ];
 
       for (const lobe of lobes) {
-        const grad = ctx.createRadialGradient(lobe.x, lobe.y, 0, lobe.x, lobe.y, lobe.r);
-        if (p.isSoot) {
-          // Scorched/overheated dark industrial soot steam
-          grad.addColorStop(0, `rgba(65, 70, 80, ${p.alpha * 0.60})`);
-          grad.addColorStop(0.45, `rgba(45, 50, 60, ${p.alpha * 0.32})`);
-          grad.addColorStop(1, 'rgba(25, 30, 38, 0)');
-        } else {
-          // Pure luminous steam vapor with soft atmospheric condensation
-          grad.addColorStop(0, `rgba(240, 248, 255, ${p.alpha * 0.52})`);
-          grad.addColorStop(0.45, `rgba(215, 235, 252, ${p.alpha * 0.28})`);
-          grad.addColorStop(0.85, `rgba(180, 210, 235, ${p.alpha * 0.08})`);
-          grad.addColorStop(1, 'rgba(160, 195, 225, 0)');
-        }
+        const lr = Math.max(1.0, lobe.r);
+        try {
+          const grad = ctx.createRadialGradient(lobe.x, lobe.y, 0, lobe.x, lobe.y, lr);
+          if (p.isSoot) {
+            // Scorched/overheated dark industrial soot steam
+            grad.addColorStop(0, `rgba(65, 70, 80, ${(alpha * 0.60).toFixed(3)})`);
+            grad.addColorStop(0.45, `rgba(45, 50, 60, ${(alpha * 0.32).toFixed(3)})`);
+            grad.addColorStop(1, 'rgba(25, 30, 38, 0)');
+          } else {
+            // Pure luminous steam vapor with soft atmospheric condensation
+            grad.addColorStop(0, `rgba(240, 248, 255, ${(alpha * 0.52).toFixed(3)})`);
+            grad.addColorStop(0.45, `rgba(215, 235, 252, ${(alpha * 0.28).toFixed(3)})`);
+            grad.addColorStop(0.85, `rgba(180, 210, 235, ${(alpha * 0.08).toFixed(3)})`);
+            grad.addColorStop(1, 'rgba(160, 195, 225, 0)');
+          }
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(lobe.x, lobe.y, lobe.r, 0, Math.PI * 2);
-        ctx.fill();
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(lobe.x, lobe.y, lr, 0, Math.PI * 2);
+          ctx.fill();
+        } catch (_) {}
       }
 
       ctx.restore();
@@ -1508,8 +1514,9 @@ export class GameRenderer {
         (!this.floatingDamageNumbers || this.floatingDamageNumbers.length === 0)) {
       return;
     }
+    if (!ctx) return;
 
-    const zoom = this.camera.zoom || 1.0;
+    const zoom = Number.isFinite(this.camera?.zoom) ? this.camera.zoom : 1.0;
     const shakeX = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake : 0;
     const shakeY = this.screenShake > 0 ? (Math.random() - 0.5) * this.screenShake : 0;
 
@@ -1521,21 +1528,27 @@ export class GameRenderer {
 
     // 1. Draw Impact Particles (micro-sparks, oil droplets & smoke puffs)
     for (const p of this.impactParticles) {
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+      const alpha = Math.max(0, Math.min(1, Number.isFinite(p.alpha) ? p.alpha : 0));
+      if (alpha <= 0.01) continue;
+
       if (p.isSmoke) {
         ctx.fillStyle = p.color || '#b0b8c4';
-        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha * 0.45));
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.45));
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, Math.max(1, p.size || 3), 0, Math.PI * 2);
         ctx.fill();
       } else if (p.isOil) {
         ctx.fillStyle = p.color || '#161920';
-        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha * 0.9));
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.9));
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, Math.max(0.8, p.size || 1.2), 0, Math.PI * 2);
         ctx.fill();
       } else {
         // High-velocity sharp incandescent micro-spark
-        const progress = 1 - Math.max(0, p.life / p.maxLife);
+        const maxLife = (p.maxLife && p.maxLife > 0) ? p.maxLife : 0.4;
+        const life = Math.max(0, p.life || 0);
+        const progress = Math.max(0, Math.min(1, 1 - (life / maxLife)));
         let strokeColor;
         if (progress < 0.22) {
           strokeColor = '#ffffff'; // White-hot
@@ -1547,13 +1560,15 @@ export class GameRenderer {
           strokeColor = '#e71d36'; // Thermal red ember
         }
 
-        ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
+        ctx.globalAlpha = alpha;
         ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = Math.max(0.8, Math.min(1.6, p.size));
+        ctx.lineWidth = Math.max(0.8, Math.min(1.8, p.size || 1.2));
         ctx.lineCap = 'round';
+        const vx = Number.isFinite(p.vx) ? p.vx : 0;
+        const vy = Number.isFinite(p.vy) ? p.vy : 0;
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - (p.vx || 0) * 0.024, p.y - (p.vy || 0) * 0.024);
+        ctx.lineTo(p.x - vx * 0.024, p.y - vy * 0.024);
         ctx.stroke();
 
         // Tiny white-hot spark apex point

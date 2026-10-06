@@ -876,7 +876,7 @@ export class App {
 
     if (viewName === 'game') {
       if (this.gameIdleOverlay) {
-        this.gameIdleOverlay.style.display = (this.gameLoopActive || this.activeMatchMap) ? 'none' : 'flex';
+        this.gameIdleOverlay.style.display = this.gameLoopActive ? 'none' : 'flex';
       }
       this.requestLandscapeOrientation();
       this.checkLandscapeOrientationPrompt();
@@ -1137,102 +1137,105 @@ export class App {
 
     const loop = (now) => {
       if (!this.gameLoopActive) return;
-
-      // Calculate real elapsed frame delta (seconds)
-      const dt = Math.min(0.1, Math.max(0.001, (now - this.lastFrameTime) / 1000));
-      this.lastFrameTime = now;
-
-      // 1. Obtain predicted local player for screen aiming
-      const localPlayerPredicted = this.networkClient.getLocalPredictedPlayer();
-      const playerScreenPos = this.gameRenderer?.getLocalPlayerScreenPosition(localPlayerPredicted)
-        || { x: 400, y: 400 };
-
-      // 2. Poll input and send to network client (freeze inputs when match concludes)
-      if (!this.isMatchOver) {
-        const input = this.inputManager.pollInput(playerScreenPos.x, playerScreenPos.y);
-        const isDead = localPlayerPredicted && (localPlayerPredicted.isAlive === false || (localPlayerPredicted.hp !== undefined && localPlayerPredicted.hp <= 0));
-        if (isDead) {
-          input.moveX = 0;
-          input.moveY = 0;
-          input.firing = false;
-          input.sprint = false;
-          input.ability = false;
-          input.reload = false;
-          input.aimAngle = this.lastDeathAngle ?? localPlayerPredicted.angle ?? 0;
-        } else if (localPlayerPredicted) {
-          this.lastDeathAngle = localPlayerPredicted.angle;
-
-          // Sound triggers on local actions
-          const currentAmmo = localPlayerPredicted.ammo ?? 6;
-          const isReloading = Boolean(localPlayerPredicted.isReloading);
-
-          // Gunfire audio on ammo consumption or initial trigger
-          if (typeof this.lastLocalAmmo === 'number' && currentAmmo < this.lastLocalAmmo && !isReloading) {
-            soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
-          } else if (input.firing && !this.lastInputWasFiring && currentAmmo > 0 && !isReloading) {
-            soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
-          }
-          this.lastLocalAmmo = currentAmmo;
-
-          // Reload audio on state change or manual trigger
-          if (isReloading && !this.lastLocalIsReloading) {
-            soundFX.playReload();
-          } else if (input.reload && !isReloading && currentAmmo < (localPlayerPredicted.maxAmmo ?? 6)) {
-            soundFX.playReload();
-          }
-          this.lastLocalIsReloading = isReloading;
-
-          if (input.ability && !localPlayerPredicted.abilityActive && (localPlayerPredicted.abilityCooldown || 0) <= 0) {
-            soundFX.playAbility(localPlayerPredicted.classId || 'vanguard');
-          }
-
-          // Steam Lantern audio cues on state transition or input trigger
-          const currentLanternOn = localPlayerPredicted.lanternOn !== false;
-          if (this.lastLocalLanternOn !== undefined && this.lastLocalLanternOn !== currentLanternOn) {
-            if (!currentLanternOn) {
-              soundFX.playLanternExtinguish();
-            } else {
-              soundFX.playLanternIgnite();
-            }
-          }
-          this.lastLocalLanternOn = currentLanternOn;
-
-          if (input.toggleLantern) {
-            if (currentLanternOn && (localPlayerPredicted.lanternCooldownTimer || 0) <= 0) {
-              soundFX.playLanternExtinguish();
-            } else if (!currentLanternOn) {
-              soundFX.playLanternIgnite();
-            }
-          }
-        }
-        this.lastInputWasFiring = Boolean(input.firing);
-
-        if (this.networkClient.isConnected) {
-          this.networkClient.sendInput(input);
-        }
-      }
-
-      // 3. Obtain interpolated states (local player at predicted pos, remote players interpolated)
-      const state = this.networkClient.getInterpolatedState();
-      const localPlayer = state.localPlayer || localPlayerPredicted;
-
-      // 4. Update renderer (camera tracking, acoustic wave decay, HUD updates, bullet hit impacts)
-      if (this.gameRenderer) {
-        this.gameRenderer.update(dt, {
-          localPlayer,
-          players: state.players,
-          soundEvents: state.soundEvents,
-          hitEvents: state.hitEvents
-        });
-
-        // 5. Render frame using canonical options object
-        this.gameRenderer.render({
-          ...state,
-          localPlayer
-        });
-      }
-
       this.animationFrameId = requestAnimationFrame(loop);
+
+      try {
+        // Calculate real elapsed frame delta (seconds)
+        const dt = Math.min(0.1, Math.max(0.001, (now - this.lastFrameTime) / 1000));
+        this.lastFrameTime = now;
+
+        // 1. Obtain predicted local player for screen aiming
+        const localPlayerPredicted = this.networkClient.getLocalPredictedPlayer();
+        const playerScreenPos = this.gameRenderer?.getLocalPlayerScreenPosition(localPlayerPredicted)
+          || { x: 400, y: 400 };
+
+        // 2. Poll input and send to network client (freeze inputs when match concludes)
+        if (!this.isMatchOver) {
+          const input = this.inputManager.pollInput(playerScreenPos.x, playerScreenPos.y);
+          const isDead = localPlayerPredicted && (localPlayerPredicted.isAlive === false || (localPlayerPredicted.hp !== undefined && localPlayerPredicted.hp <= 0));
+          if (isDead) {
+            input.moveX = 0;
+            input.moveY = 0;
+            input.firing = false;
+            input.sprint = false;
+            input.ability = false;
+            input.reload = false;
+            input.aimAngle = this.lastDeathAngle ?? localPlayerPredicted.angle ?? 0;
+          } else if (localPlayerPredicted) {
+            this.lastDeathAngle = localPlayerPredicted.angle;
+
+            // Sound triggers on local actions
+            const currentAmmo = localPlayerPredicted.ammo ?? 6;
+            const isReloading = Boolean(localPlayerPredicted.isReloading);
+
+            // Gunfire audio on ammo consumption or initial trigger
+            if (typeof this.lastLocalAmmo === 'number' && currentAmmo < this.lastLocalAmmo && !isReloading) {
+              soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
+            } else if (input.firing && !this.lastInputWasFiring && currentAmmo > 0 && !isReloading) {
+              soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
+            }
+            this.lastLocalAmmo = currentAmmo;
+
+            // Reload audio on state change or manual trigger
+            if (isReloading && !this.lastLocalIsReloading) {
+              soundFX.playReload();
+            } else if (input.reload && !isReloading && currentAmmo < (localPlayerPredicted.maxAmmo ?? 6)) {
+              soundFX.playReload();
+            }
+            this.lastLocalIsReloading = isReloading;
+
+            if (input.ability && !localPlayerPredicted.abilityActive && (localPlayerPredicted.abilityCooldown || 0) <= 0) {
+              soundFX.playAbility(localPlayerPredicted.classId || 'vanguard');
+            }
+
+            // Steam Lantern audio cues on state transition or input trigger
+            const currentLanternOn = localPlayerPredicted.lanternOn !== false;
+            if (this.lastLocalLanternOn !== undefined && this.lastLocalLanternOn !== currentLanternOn) {
+              if (!currentLanternOn) {
+                soundFX.playLanternExtinguish();
+              } else {
+                soundFX.playLanternIgnite();
+              }
+            }
+            this.lastLocalLanternOn = currentLanternOn;
+
+            if (input.toggleLantern) {
+              if (currentLanternOn && (localPlayerPredicted.lanternCooldownTimer || 0) <= 0) {
+                soundFX.playLanternExtinguish();
+              } else if (!currentLanternOn) {
+                soundFX.playLanternIgnite();
+              }
+            }
+          }
+          this.lastInputWasFiring = Boolean(input.firing);
+
+          if (this.networkClient.isConnected) {
+            this.networkClient.sendInput(input);
+          }
+        }
+
+        // 3. Obtain interpolated states (local player at predicted pos, remote players interpolated)
+        const state = this.networkClient.getInterpolatedState();
+        const localPlayer = state.localPlayer || localPlayerPredicted;
+
+        // 4. Update renderer (camera tracking, acoustic wave decay, HUD updates, bullet hit impacts)
+        if (this.gameRenderer) {
+          this.gameRenderer.update(dt, {
+            localPlayer,
+            players: state.players,
+            soundEvents: state.soundEvents,
+            hitEvents: state.hitEvents
+          });
+
+          // 5. Render frame using canonical options object
+          this.gameRenderer.render({
+            ...state,
+            localPlayer
+          });
+        }
+      } catch (err) {
+        console.error('Frame loop error:', err);
+      }
     };
 
     this.animationFrameId = requestAnimationFrame(loop);
