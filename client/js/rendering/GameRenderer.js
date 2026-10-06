@@ -312,8 +312,8 @@ export class GameRenderer {
         const p = this.impactParticles[i];
         p.x += (p.vx || 0) * dt;
         p.y += (p.vy || 0) * dt;
-        p.vx = (p.vx || 0) * 0.93;
-        p.vy = ((p.vy || 0) + (p.isOil ? 120 : (p.isSpark ? 85 : -15))) * 0.93;
+        p.vx = (p.vx || 0) * 0.84;
+        p.vy = ((p.vy || 0) + (p.isOil ? 80 : (p.isSpark ? 40 : -10))) * 0.84;
         if (p.isSmoke && typeof p.size === 'number' && typeof p.maxSize === 'number') {
           p.size += (p.maxSize - p.size) * dt * 7.0;
         }
@@ -488,21 +488,21 @@ export class GameRenderer {
       const bVy = hit.vy || 0;
       const baseAngle = Math.atan2(-bVy, -bVx);
 
-      // 36 to 52 sharp, realistic micro-sparks
-      const sparkCount = 38 + Math.floor(Math.random() * 14);
+      // 14 to 19 compact micro-sparks (short range)
+      const sparkCount = 14 + Math.floor(Math.random() * 6);
       for (let i = 0; i < sparkCount; i++) {
-        const spread = (Math.random() - 0.5) * Math.PI * 1.25;
+        const spread = (Math.random() - 0.5) * Math.PI * 1.1;
         const angle = baseAngle + spread;
-        const speed = 120 + Math.random() * 460;
+        const speed = 35 + Math.random() * 85;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 1.0 + Math.random() * 0.7, // Fine 1.0-1.7px needle streak
+          size: 0.8 + Math.random() * 0.5, // Fine 0.8-1.3px needle streak
           alpha: 1.0,
-          life: 0.18 + Math.random() * 0.24,
-          maxLife: 0.42,
+          life: 0.10 + Math.random() * 0.10,
+          maxLife: 0.20,
           isSpark: true
         });
       }
@@ -512,70 +512,70 @@ export class GameRenderer {
         this.impactParticles.push({
           x: hx + (Math.random() - 0.5) * 4,
           y: hy + (Math.random() - 0.5) * 4,
-          vx: (Math.random() - 0.5) * 32,
-          vy: (Math.random() - 0.5) * 32 - 12,
-          size: 3,
-          maxSize: 15 + Math.random() * 8,
+          vx: (Math.random() - 0.5) * 24,
+          vy: (Math.random() - 0.5) * 24 - 10,
+          size: 2.5,
+          maxSize: 12 + Math.random() * 6,
           color: '#d6dfe8',
-          alpha: 0.55,
-          life: 0.38 + Math.random() * 0.15,
-          maxLife: 0.53,
+          alpha: 0.50,
+          life: 0.32 + Math.random() * 0.12,
+          maxLife: 0.44,
           isSmoke: true
         });
       }
     } else {
       // Entity Impact: Copper automaton shrapnel + incandescent micro-sparks + machine oil + pressurized steam
-      const sparkCount = 42 + Math.floor(Math.random() * 16);
+      const sparkCount = 16 + Math.floor(Math.random() * 8);
       for (let i = 0; i < sparkCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 110 + Math.random() * 400;
+        const speed = 30 + Math.random() * 75;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 0.9 + Math.random() * 0.7, // Fine 0.9-1.6px micro-sparks
+          size: 0.8 + Math.random() * 0.5, // Fine 0.8-1.3px micro-sparks
           alpha: 1.0,
-          life: 0.20 + Math.random() * 0.26,
-          maxLife: 0.46,
+          life: 0.10 + Math.random() * 0.12,
+          maxLife: 0.22,
           isSpark: true
         });
       }
 
       // Machine oil droplets
-      for (let o = 0; o < 4; o++) {
+      for (let o = 0; o < 3; o++) {
         const oAngle = Math.random() * Math.PI * 2;
-        const oSpeed = 40 + Math.random() * 110;
+        const oSpeed = 25 + Math.random() * 60;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(oAngle) * oSpeed,
-          vy: Math.sin(oAngle) * oSpeed + 25,
-          size: 1.1 + Math.random() * 0.8,
+          vy: Math.sin(oAngle) * oSpeed + 15,
+          size: 1.0 + Math.random() * 0.6,
           color: '#161920',
           alpha: 0.85,
-          life: 0.45 + Math.random() * 0.25,
-          maxLife: 0.70,
+          life: 0.35 + Math.random() * 0.20,
+          maxLife: 0.55,
           isOil: true
         });
       }
 
       // Pressurized boiler steam blowout jet
-      for (let st = 0; st < 4; st++) {
+      for (let st = 0; st < 3; st++) {
         const sAngle = Math.random() * Math.PI * 2;
-        const sSpeed = 50 + Math.random() * 130;
+        const sSpeed = 30 + Math.random() * 80;
         this.steamParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(sAngle) * sSpeed,
-          vy: Math.sin(sAngle) * sSpeed - 20,
-          size: 3.5,
-          maxSize: 18 + Math.random() * 8,
+          vy: Math.sin(sAngle) * sSpeed - 15,
+          size: 3.0,
+          maxSize: 14 + Math.random() * 6,
           angle: Math.random() * Math.PI * 2,
-          spin: (Math.random() - 0.5) * 3,
-          life: 0.45 + Math.random() * 0.25,
-          maxLife: 0.70,
-          baseAlpha: 0.65,
+          spin: (Math.random() - 0.5) * 2.5,
+          life: 0.35 + Math.random() * 0.20,
+          maxLife: 0.55,
+          baseAlpha: 0.60,
           isSoot: Math.random() > 0.5
         });
       }
@@ -1568,7 +1568,7 @@ export class GameRenderer {
         const vy = Number.isFinite(p.vy) ? p.vy : 0;
         ctx.beginPath();
         ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x - vx * 0.024, p.y - vy * 0.024);
+        ctx.lineTo(p.x - vx * 0.015, p.y - vy * 0.015);
         ctx.stroke();
 
         // Tiny white-hot spark apex point

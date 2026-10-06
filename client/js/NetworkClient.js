@@ -535,6 +535,7 @@ export class NetworkClient {
       firing: !!input.firing,
       reload: !!input.reload,
       ability: Boolean(input.ability || input.useAbility),
+      toggleLantern: Boolean(input.toggleLantern),
       dt: dtMs,
       timestamp: Date.now()
     };
@@ -807,6 +808,17 @@ export class NetworkClient {
       isReloading: serverPlayer?.isReloading ?? false,
       isInvulnerable: serverPlayer?.isInvulnerable ?? false,
       isHost: serverPlayer?.isHost ?? false,
+      lanternOn: serverPlayer ? (serverPlayer.lanternOn !== false) : true,
+      lanternOffTimer: serverPlayer?.lanternOffTimer || 0,
+      lanternCooldownTimer: serverPlayer?.lanternCooldownTimer || 0,
+      classId: serverPlayer?.classId || this.equippedClass || 'vanguard',
+      abilityActive: Boolean(serverPlayer?.abilityActive),
+      abilityCooldown: serverPlayer?.abilityCooldown || 0,
+      shieldHp: serverPlayer?.shieldHp || 0,
+      sonarActive: Boolean(serverPlayer?.sonarActive),
+      smokeActive: Boolean(serverPlayer?.smokeActive),
+      overdriveActive: Boolean(serverPlayer?.overdriveActive),
+      emblem: serverPlayer?.emblem || 'gear',
       isLocal: true
     };
   }
