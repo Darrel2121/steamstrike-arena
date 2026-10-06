@@ -1408,6 +1408,17 @@ kbd {
   display: block !important;
 }
 
+/* Force hide touch controls during match outcome / victory / defeat */
+.mobile-touch-controls.hidden,
+.match-over .mobile-touch-controls,
+.game-canvas-container.match-over .mobile-touch-controls,
+#mobileTouchControls.hidden {
+  display: none !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 .touch-joystick-zone {
   position: absolute;
   left: 0;

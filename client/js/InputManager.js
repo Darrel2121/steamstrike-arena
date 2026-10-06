@@ -303,8 +303,20 @@ export class InputManager {
   }
 
   onTouchStart(e) {
-    if (typeof window !== 'undefined' && window.app && window.app.currentView && window.app.currentView !== 'game') {
-      return;
+    if (typeof window !== 'undefined' && window.app) {
+      if (window.app.currentView && window.app.currentView !== 'game') {
+        return;
+      }
+      if (window.app.isMatchOver) {
+        if (e.touches && e.touches[0]) {
+          const t = e.touches[0];
+          const handled = window.app.handleMatchOutcomeAction?.(t.clientX, t.clientY);
+          if (handled && e.cancelable) {
+            e.preventDefault();
+          }
+        }
+        return;
+      }
     }
 
     this.isTouchDevice = true;
@@ -376,8 +388,9 @@ export class InputManager {
   }
 
   onTouchMove(e) {
-    if (typeof window !== 'undefined' && window.app && window.app.currentView && window.app.currentView !== 'game') {
-      return;
+    if (typeof window !== 'undefined' && window.app) {
+      if (window.app.currentView && window.app.currentView !== 'game') return;
+      if (window.app.isMatchOver) return;
     }
 
     if (!e.touches) return;
@@ -427,6 +440,21 @@ export class InputManager {
   }
 
   onTouchEnd(e) {
+    if (typeof window !== 'undefined' && window.app) {
+      if (window.app.currentView && window.app.currentView !== 'game') return;
+      if (window.app.isMatchOver) {
+        if (e.changedTouches && e.changedTouches[0]) {
+          const t = e.changedTouches[0];
+          const handled = window.app.handleMatchOutcomeAction?.(t.clientX, t.clientY);
+          if (handled && e.cancelable) {
+            e.preventDefault();
+          }
+        }
+        this.reset();
+        return;
+      }
+    }
+
     if (!e.touches || e.touches.length === 0) {
       this.isMouseDown = false;
       this.touchMoveId = null;
@@ -561,9 +589,28 @@ export class InputManager {
     };
   }
 
-  destroy() {
-    this.detach();
+  reset() {
     this.keys.clear();
+    this.isMouseDown = false;
+    this.isSpaceDown = false;
+    this.reloadRequested = false;
+    this.abilityRequested = false;
+    this.lanternRequested = false;
+    this.touchMoveId = null;
+    this.touchMoveOrigin = null;
+    this.touchMoveVector = { x: 0, y: 0 };
+    this.touchAimId = null;
+    if (this.joystickBase) {
+      this.joystickBase.style.display = 'none';
+    }
+    if (this.joystickThumb) {
+      this.joystickThumb.style.transform = 'translate3d(0, 0, 0)';
+    }
+  }
+
+  destroy() {
+    this.reset();
+    this.detach();
   }
 }
 

@@ -242,22 +242,43 @@ export class App {
         targetWorldWidth: 520
       });
 
-      this.gameCanvas.addEventListener('click', (e) => {
-        if (this.isMatchOver && this.gameRenderer?.hud) {
-          const rect = this.gameCanvas.getBoundingClientRect();
-          const scaleX = this.gameCanvas.width / (rect.width || 1);
-          const scaleY = this.gameCanvas.height / (rect.height || 1);
-          const cx = (e.clientX - rect.left) * scaleX;
-          const cy = (e.clientY - rect.top) * scaleY;
+      this.handleMatchOutcomeAction = (clientX, clientY) => {
+        if (!this.isMatchOver || !this.gameRenderer?.hud) return false;
+        const rect = this.gameCanvas.getBoundingClientRect();
+        const scaleX = this.gameCanvas.width / (rect.width || 1);
+        const scaleY = this.gameCanvas.height / (rect.height || 1);
+        const cx = (clientX - rect.left) * scaleX;
+        const cy = (clientY - rect.top) * scaleY;
 
-          const action = this.gameRenderer.hud.checkButtonClick(cx, cy);
-          if (action === 'restart') {
-            this.restartCurrentMatch();
-          } else if (action === 'lobby') {
-            this.returnToLobbyFromMatch();
-          }
+        const action = this.gameRenderer.hud.checkButtonClick(cx, cy);
+        if (action === 'restart') {
+          this.restartCurrentMatch();
+          return true;
+        } else if (action === 'lobby') {
+          this.returnToLobbyFromMatch();
+          return true;
+        }
+        return false;
+      };
+
+      this.gameCanvas.addEventListener('click', (e) => {
+        if (this.isMatchOver) {
+          this.handleMatchOutcomeAction(e.clientX, e.clientY);
         }
       });
+
+      this.gameCanvas.addEventListener('pointerdown', (e) => {
+        if (this.isMatchOver) {
+          this.handleMatchOutcomeAction(e.clientX, e.clientY);
+        }
+      });
+
+      this.gameCanvas.addEventListener('touchend', (e) => {
+        if (this.isMatchOver && e.changedTouches && e.changedTouches[0]) {
+          const t = e.changedTouches[0];
+          this.handleMatchOutcomeAction(t.clientX, t.clientY);
+        }
+      }, { passive: true });
 
       this.gameCanvas.addEventListener('mousemove', (e) => {
         if (this.isMatchOver && this.gameRenderer?.hud) {
@@ -1256,14 +1277,28 @@ export class App {
     this.isMatchOver = true;
     const isWinner = outcome.winnerId && outcome.winnerId === this.localPlayerId;
 
+    if (this.inputManager) {
+      this.inputManager.reset();
+    }
+
     // Completely hide mobile touch controls & joystick when match is over
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
+      mobileTouchControls.classList.add('hidden');
       mobileTouchControls.style.display = 'none';
     }
     const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
     if (virtualJoystickContainer) {
+      virtualJoystickContainer.classList.add('hidden');
       virtualJoystickContainer.style.display = 'none';
+    }
+    const viewGame = document.getElementById('view-game');
+    if (viewGame) {
+      viewGame.classList.add('match-over');
+    }
+    const canvasContainer = this.gameCanvas?.parentElement;
+    if (canvasContainer) {
+      canvasContainer.classList.add('match-over');
     }
 
     if (isWinner) {
@@ -1301,14 +1336,28 @@ export class App {
   restartCurrentMatch() {
     this.isMatchOver = false;
 
+    if (this.inputManager) {
+      this.inputManager.reset();
+    }
+
     // Restore mobile touch controls & joystick
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
+      mobileTouchControls.classList.remove('hidden');
       mobileTouchControls.style.display = '';
     }
     const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
     if (virtualJoystickContainer) {
+      virtualJoystickContainer.classList.remove('hidden');
       virtualJoystickContainer.style.display = '';
+    }
+    const viewGame = document.getElementById('view-game');
+    if (viewGame) {
+      viewGame.classList.remove('match-over');
+    }
+    const canvasContainer = this.gameCanvas?.parentElement;
+    if (canvasContainer) {
+      canvasContainer.classList.remove('match-over');
     }
 
     if (this.gameRenderer) {
@@ -1339,14 +1388,28 @@ export class App {
       this.networkClient.leaveRoom();
     }
 
+    if (this.inputManager) {
+      this.inputManager.reset();
+    }
+
     // Restore mobile touch controls & joystick
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
+      mobileTouchControls.classList.remove('hidden');
       mobileTouchControls.style.display = '';
     }
     const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
     if (virtualJoystickContainer) {
+      virtualJoystickContainer.classList.remove('hidden');
       virtualJoystickContainer.style.display = '';
+    }
+    const viewGame = document.getElementById('view-game');
+    if (viewGame) {
+      viewGame.classList.remove('match-over');
+    }
+    const canvasContainer = this.gameCanvas?.parentElement;
+    if (canvasContainer) {
+      canvasContainer.classList.remove('match-over');
     }
 
     if (this.gameRenderer) {

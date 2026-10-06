@@ -216,8 +216,13 @@ export class HUD {
    */
   checkButtonClick(x, y) {
     if (!this.matchOutcome || !this.buttonBounds) return null;
+    const margin = 12; // Generous touch target margin for mobile and desktop
     for (const [btnKey, rect] of Object.entries(this.buttonBounds)) {
-      if (rect && x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h) {
+      if (rect &&
+          x >= (rect.x - margin) &&
+          x <= (rect.x + rect.w + margin) &&
+          y >= (rect.y - margin) &&
+          y <= (rect.y + rect.h + margin)) {
         return btnKey;
       }
     }
