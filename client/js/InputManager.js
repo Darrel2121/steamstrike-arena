@@ -11,21 +11,15 @@ export class InputManager {
     this.targetElement = targetElement || (typeof window !== 'undefined' ? window : null);
 
     this.keys = new Set();
-    this.mouseX = 0;
-    this.mouseY = 0;
+    this.mouseX = typeof window !== 'undefined' ? Math.round(window.innerWidth / 2) : 400;
+    this.mouseY = typeof window !== 'undefined' ? Math.max(0, Math.round(window.innerHeight / 2) - 150) : 250;
     this.isMouseDown = false;
     this.isSpaceDown = false;
     this.reloadRequested = false;
     this.abilityRequested = false;
     this.lanternRequested = false;
     this.lastPollTime = performance.now();
-
-    // Mobile touch controls & dual thumbsticks
-    this.touchMoveId = null;
-    this.touchMoveOrigin = null;
-    this.touchMoveVector = { x: 0, y: 0 };
-    this.touchAimId = null;
-    this.isTouchSprint = false;
+    this.mouseMoved = false;
     this.isTouchDevice = Boolean(
       typeof window !== 'undefined' && (
         ('ontouchstart' in window) ||
@@ -33,6 +27,14 @@ export class InputManager {
         (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
       )
     );
+    this.lastInputSource = this.isTouchDevice ? 'touch' : 'mouse';
+
+    // Mobile touch controls & dual thumbsticks
+    this.touchMoveId = null;
+    this.touchMoveOrigin = null;
+    this.touchMoveVector = { x: 0, y: 0 };
+    this.touchAimId = null;
+    this.isTouchSprint = false;
     this.isTouchFiring = false;
     this.lastFacingAngle = 0;
     this.lastPlayerScreenX = 400;
@@ -268,6 +270,7 @@ export class InputManager {
   }
 
   onKeyDown(e) {
+    this.lastInputSource = 'mouse';
     this.keys.add(e.code);
     const keyLower = typeof e.key === 'string' ? e.key.toLowerCase() : '';
     if (e.code === 'KeyR' || keyLower === 'r' || keyLower === 'к') {
@@ -303,6 +306,7 @@ export class InputManager {
   }
 
   onTouchStart(e) {
+    this.lastInputSource = 'touch';
     if (typeof window !== 'undefined' && window.app) {
       if (window.app.currentView && window.app.currentView !== 'game') {
         return;
@@ -490,10 +494,12 @@ export class InputManager {
   }
 
   onMouseMove(e) {
+    this.lastInputSource = 'mouse';
     this.updateMouseFromClient(e.clientX, e.clientY);
   }
 
   onMouseDown(e) {
+    this.lastInputSource = 'mouse';
     if (e.button === 0) { // Primary fire
       this.isMouseDown = true;
     }
@@ -557,21 +563,24 @@ export class InputManager {
     const toggleLantern = this.lanternRequested;
     this.lanternRequested = false;
 
-    // Calculate aim angle
+    // Calculate aim angle: distinguish between active touch controls and desktop mouse
+    const hasTouchMovement = this.touchMoveVector && (this.touchMoveVector.x !== 0 || this.touchMoveVector.y !== 0);
+    const isTouchActive = this.touchAimId !== null || this.touchMoveId !== null || hasTouchMovement || (this.isTouchDevice && !this.mouseMoved) || (this.lastInputSource === 'touch');
+
     let aimAngle;
     if (this.touchAimId !== null) {
       // Direct touch aiming on right screen
       aimAngle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
       this.lastFacingAngle = aimAngle;
-    } else if (this.isTouchDevice && (Math.hypot(moveX, moveY) > 0.05)) {
-      // In mobile version: character turns together with movement!
+    } else if (isTouchActive && (Math.hypot(moveX, moveY) > 0.05)) {
+      // Mobile touch only: character faces movement direction when moved via virtual joystick
       aimAngle = Math.atan2(moveY, moveX);
       this.lastFacingAngle = aimAngle;
-    } else if (this.isTouchDevice) {
-      // In mobile version when stopped: preserve last facing angle
+    } else if (isTouchActive) {
+      // Mobile touch only when stopped: preserve last facing angle
       aimAngle = this.lastFacingAngle;
     } else {
-      // Desktop: aim towards mouse cursor
+      // Desktop PC / Laptop (default): aim STRICTLY towards mouse cursor position, completely independent of WASD movement!
       aimAngle = Math.atan2(this.mouseY - playerScreenY, this.mouseX - playerScreenX);
       this.lastFacingAngle = aimAngle;
     }
