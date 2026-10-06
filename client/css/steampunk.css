@@ -235,6 +235,41 @@ body {
   text-shadow: 0 0 8px rgba(255, 207, 72, 0.5);
 }
 
+/* Open Beta Steam Badge */
+.badge-beta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(231, 29, 54, 0.22) 0%, rgba(255, 159, 28, 0.30) 100%);
+  border: 1px solid #ff9f1c;
+  color: #ffcf48;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(255, 159, 28, 0.35), inset 0 0 5px rgba(255, 207, 72, 0.2);
+  vertical-align: middle;
+  line-height: 1.2;
+  white-space: nowrap;
+  animation: betaPulse 2.5s infinite ease-in-out;
+}
+
+@keyframes betaPulse {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(255, 159, 28, 0.35), inset 0 0 4px rgba(255, 207, 72, 0.2);
+    border-color: #ff9f1c;
+    color: #ffcf48;
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(255, 110, 30, 0.7), inset 0 0 8px rgba(255, 207, 72, 0.4);
+    border-color: #ffe082;
+    color: #ffffff;
+  }
+}
+
 .header-nav {
   display: flex;
   gap: 10px;
