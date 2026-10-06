@@ -26,6 +26,12 @@ async function runDeployAttempt(attempt = 1) {
     console.log('\n--- Uploading root bootstrap files ---');
     await client.uploadFrom('app.js', 'app.js');
     await client.uploadFrom('package.json', 'package.json');
+    if (fs.existsSync('robots.txt')) {
+      await client.uploadFrom('robots.txt', 'robots.txt');
+    }
+    if (fs.existsSync('sitemap.xml')) {
+      await client.uploadFrom('sitemap.xml', 'sitemap.xml');
+    }
     if (fs.existsSync('package-lock.json')) {
       await client.uploadFrom('package-lock.json', 'package-lock.json');
     }

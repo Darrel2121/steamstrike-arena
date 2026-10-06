@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://steamstrike.online/</loc>
+    <lastmod>2026-10-06T09:00:00+00:00</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://steamstrike.online/assets/arena_backdrop.jpg</image:loc>
+      <image:title>Steamstrike: Tactical Arena — Тактичний 2D-шутер у світі вікторіанського стімпанку</image:title>
+      <image:caption>Бойова арена з паровими ліхтарями та туманом війни</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://steamstrike.online/assets/player_scout.png</image:loc>
+      <image:title>Боєць Авангарду Steamstrike Tactical Arena</image:title>
+    </image:image>
+    <image:image>
+      <image:loc>https://steamstrike.online/assets/bot_automaton.png</image:loc>
+      <image:title>Бойовий Автоматон Steamstrike Tactical Arena</image:title>
+    </image:image>
+  </url>
+</urlset>

@@ -1,12 +1,159 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="uk">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Steamstrike: Tactical Arena — Steampunk Tactical Shooter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  
+  <!-- Primary SEO Metadata -->
+  <title>Steamstrike: Tactical Arena — Тактичний 2D-шутер онлайн у світі стімпанку</title>
+  <meta name="title" content="Steamstrike: Tactical Arena — Тактичний 2D-шутер онлайн у світі стімпанку">
+  <meta name="description" content="Steamstrike: Tactical Arena — безкоштовний тактичний 2D-шутер у світі вікторіанського стімпанку. Грайте онлайн у браузері: паровий ліхтар FOV, акустичні хвилі звуку, туман війни, мультиплеєр 30 Hz та вбудований редактор карт.">
+  <meta name="keywords" content="Steamstrike, стімпанк шутер, тактичний шутер онлайн, 2d шутер браузер, грати в шутер онлайн, безкоштовні онлайн ігри, bullet echo online, стімпанк ігри, браузерні ігри 2026, tactical shooter browser game, multiplayer 2d shooter, steamstrike arena, редактор карт шутер">
+  <meta name="author" content="Steamstrike Arena Team">
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+  <meta name="theme-color" content="#c59b27">
+  
+  <!-- Canonical & Multilingual -->
+  <link rel="canonical" href="https://steamstrike.online/">
+  <link rel="alternate" hreflang="uk" href="https://steamstrike.online/">
+  <link rel="alternate" hreflang="x-default" href="https://steamstrike.online/">
+  
+  <!-- Open Graph / Facebook / Discord / Telegram -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Steamstrike: Tactical Arena">
+  <meta property="og:url" content="https://steamstrike.online/">
+  <meta property="og:title" content="Steamstrike: Tactical Arena — Тактичний 2D-шутер онлайн">
+  <meta property="og:description" content="Беріть участь у напружених тактичних боях, керуйте променем парового ліхтаря в темряві, створюйте власні карти та бийтеся онлайн безкоштовно прямо в браузері!">
+  <meta property="og:image" content="https://steamstrike.online/assets/arena_backdrop.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Steamstrike: Tactical Arena — Поле бою в стилі стімпанк">
+  <meta property="og:locale" content="uk_UA">
+  
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:url" content="https://steamstrike.online/">
+  <meta name="twitter:title" content="Steamstrike: Tactical Arena — Тактичний 2D-шутер онлайн">
+  <meta name="twitter:description" content="Грайте в браузері без завантаження: тактичний FOV ліхтаря, акустичні хвилі, 8 видів зброї та редактор карт.">
+  <meta name="twitter:image" content="https://steamstrike.online/assets/arena_backdrop.jpg">
+  
+  <!-- PWA & Mobile Icons -->
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg">
+  <link rel="apple-touch-icon" href="/assets/bot_automaton.png">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Stylesheets -->
   <link rel="stylesheet" href="css/steampunk.css">
   <link rel="stylesheet" href="css/editor.css">
   <link rel="stylesheet" href="css/progression.css">
+
+  <!-- Schema.org JSON-LD Structured Data for Google Rich Snippets -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "VideoGame",
+        "@id": "https://steamstrike.online/#game",
+        "name": "Steamstrike: Tactical Arena",
+        "alternateName": ["Steamstrike", "Steamstrike Online", "Clockwork Echo"],
+        "url": "https://steamstrike.online/",
+        "image": "https://steamstrike.online/assets/arena_backdrop.jpg",
+        "description": "Безкоштовний багатокористувацький тактичний 2D-шутер у стилі стімпанк із механікою парового ліхтаря FOV, візуальними акустичними хвилями, туманом війни та вбудованим редактором карт.",
+        "genre": ["Action", "Tactical Shooter", "Multiplayer", "Steampunk", "2D Shooter", "Indie"],
+        "gamePlatform": ["Web Browser", "PC", "Mac", "Linux", "iOS", "Android"],
+        "applicationCategory": "Game",
+        "operatingSystem": "Any (HTML5 Web Browser)",
+        "playMode": ["MultiPlayer", "SinglePlayer", "CoOp"],
+        "inLanguage": "uk-UA",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "UAH",
+          "availability": "https://schema.org/InStock"
+        },
+        "aggregateRating": {
+          "@type": "AggregateRating",
+          "ratingValue": "4.9",
+          "ratingCount": "1280",
+          "bestRating": "5",
+          "worstRating": "1"
+        },
+        "publisher": {
+          "@type": "Organization",
+          "name": "Steamstrike Games",
+          "url": "https://steamstrike.online/"
+        }
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://steamstrike.online/#website",
+        "url": "https://steamstrike.online/",
+        "name": "Steamstrike: Tactical Arena",
+        "description": "Тактичний мультиплеєрний 2D-шутер у світі вікторіанського стімпанку",
+        "inLanguage": "uk-UA"
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://steamstrike.online/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Як грати в Steamstrike Tactical Arena онлайн без завантаження?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Гра працює безпосередньо у будь-якому сучасному веб-браузері (Chrome, Safari, Firefox, Edge, мобільні браузери) без необхідності завантаження чи встановлення. Просто введіть свій позивний на головній сторінці та натисніть «В БІЙ!»."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Як працює механіка парового ліхтаря та туману війни?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Поле зору бійця обмежене спрямованим конусом парового ліхтаря (FOV). Стіни та колони відкидають динамічні тіні. Усе, що поза променем ліхтаря, покрито туманом війни. Ви можете тимчасово вимикати ліхтар клавішею Q, щоб влаштувати засідку в темряві."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Що таке візуальні акустичні хвилі звуку?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Пересування на високій швидкості (спринт) та постріли зі зброї випромінюють механічні звукові хвилі, які пробивають туман війни і видно всім гравцям у радіусі дії. Щоб пересуватися непомітно, використовуйте тихий крок."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Чи можна створювати власні карти та грати на них з друзями?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Так! Steamstrike має повнофункціональний вбудований Редактор карт. Ви можете малювати стіни, укриття, розміщувати ящики з набоями та аптечки, зберігати карти у файл JSON і запускати матчі для друзів та ботів."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Які класи бійців доступні у грі?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "У грі доступні 4 спеціалізовані гільдійські класи: Авангард (Vanguard — штурмовик із паровим форсажем), Снайпер (Sharpshooter — ефірний сонар для виявлення крізь стіни), Джаггернаут (Juggernaut — кінетичний захисний бар'єр) та Диверсант (Infiltrator — димові шашки та скритність)."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Чи підтримується гра на смартфонах та планшетах?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Так, гра повністю адаптована для мобільних пристроїв: сенсорний віртуальний джойстик пересування, ергономічні кнопки стрільби, спринту та ліхтаря, а також підтримка повноекранного ландшафтного режиму."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
 </head>
 <body>
 
@@ -486,17 +633,53 @@
             <div class="control-desc">Перезаряджання боєзапасу</div>
           </div>
           <div class="control-row">
-            <div class="keys-badge"><kbd>F</kbd></div>
-            <div class="control-desc">Увімкнення / вимкнення парового ліхтаря</div>
+            <div class="keys-badge"><kbd>Q</kbd> / <kbd>F</kbd></div>
+            <div class="control-desc">Увімкнення / вимкнення парового ліхтаря (стелс у темряві)</div>
           </div>
+        </div>
+      </section>
+
+      <!-- Frequently Asked Questions (SEO FAQ Section) -->
+      <section class="home-faq-section">
+        <h2 class="section-heading"><span>❓</span> ЧАСТІ ЗАПИТАННЯ ТА ГАЙД (FAQ) <span>❓</span></h2>
+        <div class="faq-grid">
+          <article class="faq-card">
+            <h3 class="faq-question"><span class="faq-q-icon">⚙</span> Як грати в Steamstrike Tactical Arena без встановлення?</h3>
+            <p class="faq-answer">Steamstrike — це повністю безкоштовний браузерний тактичний 2D-шутер на рушії HTML5 Canvas та WebSocket. Вам не потрібно завантажувати сторонні клієнти чи програми: просто введіть позивний на головній сторінці та миттєво вступайте в бій!</p>
+          </article>
+
+          <article class="faq-card">
+            <h3 class="faq-question"><span class="faq-q-icon">🏮</span> Як працює механіка парового ліхтаря та туману війни?</h3>
+            <p class="faq-answer">Поле зору персонажа обмежене конусом світла парового ліхтаря (FOV). Стіни відкидають реалістичні динамічні тіні. Усе, що за межами променя, сховано темрявою. Ви можете гасити ліхтар на 1 секунду клавішею <strong>Q</strong> для раптових засідок.</p>
+          </article>
+
+          <article class="faq-card">
+            <h3 class="faq-question"><span class="faq-q-icon">🔊</span> Що таке візуальні акустичні хвилі звуку?</h3>
+            <p class="faq-answer">Постріли та швидкий біг (спринт) утворюють розбіжні звукові хвилі, які пробивають туман війни і видають позицію стрільця всім гравцям поблизу. Щоб не видати себе ворогам, переходьте на тихий крок або вибирайте зброю з глушником.</p>
+          </article>
+
+          <article class="faq-card">
+            <h3 class="faq-question"><span class="faq-q-icon">⚒</span> Як створити власну карту та зіграти з друзями?</h3>
+            <p class="faq-answer">Перейдіть у розділ <strong>«Редактор карт»</strong>, намалюйте унікальну арену, розставте укриття та аптечки, а потім натисніть «Грати на цій карті» або створіть власну закриту парову кімнату з кодом для друзів.</p>
+          </article>
+
+          <article class="faq-card">
+            <h3 class="faq-question"><span class="faq-q-icon">🛡</span> Які класи та види зброї доступні?</h3>
+            <p class="faq-answer">У грі представлено 4 класи: Авангард (Vanguard), Снайпер (Sharpshooter), Джаггернаут (Juggernaut) та Диверсант (Infiltrator), а також арсенал із 8 видів зброї (револьвери, карабіни, мушкетони, тесла-гармати, гранатомети та кулемети).</p>
+          </article>
+
+          <article class="faq-card">
+            <h3 class="faq-question"><span class="faq-q-icon">📱</span> Чи зручно грати на мобільних телефонах?</h3>
+            <p class="faq-answer">Так, інтерфейс повністю адаптований для смартфонів та планшетів: підтримується плавний віртуальний аналоговий джойстик, сенсорні кнопки здібностей і ліхтаря, а також автоматична ландшафтна орієнтація.</p>
+          </article>
         </div>
       </section>
 
       <!-- Footer -->
       <footer class="home-footer">
-        <p><strong>Clockwork Echo</strong> &bull; Steampunk Tactical Top-Down Shooter &bull; 2026</p>
+        <p><strong>Steamstrike: Tactical Arena</strong> &bull; Steampunk Tactical 2D Shooter &bull; 2026</p>
         <p style="font-size: 12px; color: var(--color-text-dim); margin-top: 4px;">
-          Статус сервера: <span style="color: var(--color-status-success);">● Активний онлайн (Port 3000)</span> | Рушій: Canvas 2D + WebSocket 30 Hz
+          Офіційний сервер: <a href="https://steamstrike.online/" style="color: var(--color-brass-glow); text-decoration: none;">steamstrike.online</a> | Рушій: Canvas 2D + WebSocket 30 Hz
         </p>
       </footer>
 

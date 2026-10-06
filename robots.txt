@@ -1,0 +1,11 @@
+# Robots.txt for Steamstrike: Tactical Arena (https://steamstrike.online)
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /css/
+Allow: /js/
+Allow: /shared/
+Disallow: /api/
+
+# Sitemaps
+Sitemap: https://steamstrike.online/sitemap.xml

@@ -1268,6 +1268,49 @@ kbd {
   color: var(--color-text-brass);
 }
 
+/* SEO FAQ Section */
+.home-faq-section {
+  width: 100%;
+  margin-top: 10px;
+}
+.faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  width: 100%;
+}
+.faq-card {
+  background: rgba(18, 22, 30, 0.92);
+  border: 1px solid rgba(197, 155, 39, 0.35);
+  border-radius: 6px;
+  padding: 16px 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+.faq-card:hover {
+  border-color: var(--color-brass-glow);
+  transform: translateY(-2px);
+}
+.faq-question {
+  margin: 0 0 8px 0;
+  font-size: 15px;
+  font-weight: bold;
+  color: var(--color-brass-bright);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.faq-question .faq-q-icon {
+  color: var(--color-brass-glow);
+  font-size: 16px;
+}
+.faq-answer {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--color-text-dim);
+}
+
 /* Footer */
 .home-footer {
   width: 100%;
