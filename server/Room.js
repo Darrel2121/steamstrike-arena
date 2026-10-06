@@ -1132,11 +1132,35 @@ export class Room {
           for (const player of this.players.values()) {
             if (player.isAlive && pickup.checkOverlap(player) && pickup.canCollect(player)) {
               pickup.collect(player);
+              this.soundEvents.push({
+                id: 'snd_pk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                sourceId: player.id,
+                x: pickup.x,
+                y: pickup.y,
+                type: 'pickup',
+                pickupType: pickup.type,
+                radius: 20,
+                maxRadius: 45,
+                intensity: 0.6,
+                createdAt: Date.now()
+              });
             }
           }
           for (const bot of this.bots.values()) {
             if (bot.isAlive && pickup.checkOverlap(bot) && pickup.canCollect(bot)) {
               pickup.collect(bot);
+              this.soundEvents.push({
+                id: 'snd_pk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                sourceId: bot.id,
+                x: pickup.x,
+                y: pickup.y,
+                type: 'pickup',
+                pickupType: pickup.type,
+                radius: 20,
+                maxRadius: 45,
+                intensity: 0.6,
+                createdAt: Date.now()
+              });
             }
           }
         }

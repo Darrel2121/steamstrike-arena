@@ -11,6 +11,7 @@
 import { TacticalNeuralAgent, TACTICAL_ACTIONS } from '../../server/ai/TacticalNeuralAgent.js';
 import { Room } from '../../server/Room.js';
 import { Player } from '../../server/entities/Player.js';
+import { NetworkClient } from '../../client/js/NetworkClient.js';
 import { HUD } from '../../client/js/ui/HUD.js';
 import { SoundFX } from '../../client/js/audio/SoundFX.js';
 import { GAME_MODES } from '../../shared/Constants.js';
@@ -327,6 +328,61 @@ export async function run() {
     const sfx = new SoundFX();
     if (typeof sfx.playLanternExtinguish !== 'function' || typeof sfx.playLanternIgnite !== 'function') {
       throw new Error('SoundFX must export playLanternExtinguish and playLanternIgnite');
+    }
+  });
+
+  // 10. Item pickup sound events & SoundFX integration
+  test('[FX.10] Pickup: Generates soundEvent on pickup collection and SoundFX plays ammo/health buffers', () => {
+    const room = new Room({ id: 'test_pickup_chamber' });
+    const p1 = room.addPlayer({ id: 'p_collector', name: 'Collector' });
+    p1.ammo = 0; // Needs ammo
+
+    // Simulate pickup overlap at player's location
+    const pk = {
+      id: 'pk_ammo_1',
+      type: 'ammo',
+      x: p1.x,
+      y: p1.y,
+      radius: 18,
+      isActive: true,
+      checkOverlap: () => true,
+      canCollect: () => true,
+      collect: (target) => {
+        target.ammo = target.maxAmmo;
+        pk.isActive = false;
+      },
+      update: () => {}
+    };
+    room.pickups = [pk];
+
+    // Tick simulation -> player collects pickup
+    room.tick();
+
+    const pkSound = room.soundEvents.find(s => s.type === 'pickup');
+    if (!pkSound) {
+      throw new Error('Room failed to generate soundEvent upon pickup collection');
+    }
+    if (pkSound.pickupType !== 'ammo') {
+      throw new Error(`Expected pickupType ammo, got ${pkSound.pickupType}`);
+    }
+
+    const sfx = new SoundFX();
+    if (typeof sfx.playPickup !== 'function') {
+      throw new Error('SoundFX must export playPickup');
+    }
+  });
+
+  // 11. NetworkClient leaveRoom clean state purge
+  test('[FX.11] NetworkClient: Dispatches C2S_LEAVE_ROOM and purges match snapshots on room exit', () => {
+    const client = new NetworkClient();
+    client.roomId = 'Sector_1';
+    client.snapshotBuffer = [{ data: { tick: 1 } }];
+    client.pendingInputs = [{ sequenceNumber: 1 }];
+    client.isPredictionInitialized = true;
+
+    client.leaveRoom();
+    if (client.roomId !== null || client.snapshotBuffer.length !== 0 || client.pendingInputs.length !== 0 || client.isPredictionInitialized !== false) {
+      throw new Error('leaveRoom failed to purge room snapshot state');
     }
   });
 

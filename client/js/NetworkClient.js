@@ -1006,6 +1006,21 @@ export class NetworkClient {
   }
 
   /**
+   * Leaves current game room, clears snapshot buffers, and notifies server.
+   */
+  leaveRoom() {
+    if (this.isConnected && this.isSocketReady && this.roomId) {
+      this.send(PROTOCOL_MSG_TYPES.C2S_LEAVE_ROOM, { roomId: this.roomId });
+    }
+    this.roomId = null;
+    this.snapshotBuffer = [];
+    this.pendingInputs = [];
+    this.isPredictionInitialized = false;
+    this.isLocallyDead = false;
+    this.clientRespawnTimer = 0;
+  }
+
+  /**
    * Closes connection cleanly.
    */
   disconnect() {

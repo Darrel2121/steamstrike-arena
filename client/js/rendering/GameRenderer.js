@@ -273,8 +273,10 @@ export class GameRenderer {
           this.processedSoundIds.add(sndId);
           this.soundWaveRenderer.addSound(snd);
 
-          // Spatial audio playback for remote combatants (bots / other players)
-          if (localPlayer && snd.sourceId !== localPlayer.id) {
+          // Audio playback for combat sound events
+          if (snd.type === 'pickup') {
+            soundFX.playPickup(snd.pickupType || 'ammo', snd.x, snd.y);
+          } else if (localPlayer && snd.sourceId !== localPlayer.id) {
             if (snd.type === 'gunfire') {
               soundFX.playGunshot('revolver', snd.x, snd.y);
             } else if (snd.type === 'reload') {
@@ -1659,17 +1661,14 @@ export class GameRenderer {
     }
 
     if (sprite) {
-      // Tactical base ring under entity
-      ctx.strokeStyle = ringColor;
-      ctx.lineWidth = isLocal ? 2.5 : 1.8;
-      ctx.beginPath();
-      ctx.arc(0, 0, 16, 0, Math.PI * 2);
-      ctx.stroke();
-
-      if (isLocal) {
-        ctx.fillStyle = 'rgba(46, 196, 182, 0.18)';
+      // Soft ambient ground glow for team affiliation (seamless & aesthetic)
+      if (pl.team) {
+        const teamGlow = ctx.createRadialGradient(0, 0, 6, 0, 0, 18);
+        teamGlow.addColorStop(0, pl.team === 'team1' ? 'rgba(37, 117, 252, 0.40)' : 'rgba(255, 71, 87, 0.40)');
+        teamGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = teamGlow;
         ctx.beginPath();
-        ctx.arc(0, 0, 16, 0, Math.PI * 2);
+        ctx.arc(0, 0, 18, 0, Math.PI * 2);
         ctx.fill();
       }
 

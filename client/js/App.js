@@ -802,6 +802,13 @@ export class App {
   switchView(viewName) {
     if (this.currentView === 'game' && viewName !== 'game') {
       this.stopGameLoop({ keepOverlayHidden: true });
+      if (this.networkClient) {
+        this.networkClient.leaveRoom();
+      }
+      if (this.gameRenderer) {
+        this.gameRenderer.clearMatchOutcome();
+        this.gameRenderer.clearWrecks();
+      }
     }
     this.currentView = viewName;
 
@@ -1325,6 +1332,10 @@ export class App {
     this.isMatchOver = false;
     this.activeMatchMap = null;
 
+    if (this.networkClient) {
+      this.networkClient.leaveRoom();
+    }
+
     // Restore mobile touch controls & joystick
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
@@ -1344,7 +1355,7 @@ export class App {
   }
 
   handleElimination(payload) {
-    if (!payload) return;
+    if (!payload || this.currentView !== 'game') return;
     const { victimId, killerId, victimName, killerName, respawnTimer } = payload;
     const isVictimLocal = victimId === this.localPlayerId;
     const isKillerLocal = killerId === this.localPlayerId;
@@ -1383,7 +1394,7 @@ export class App {
   }
 
   handleDamage(payload) {
-    if (!payload) return;
+    if (!payload || this.currentView !== 'game') return;
     if (payload.targetId === this.localPlayerId) {
       soundFX.playImpact(true);
       if (payload.remainingHp <= 30 && payload.remainingHp > 0) {

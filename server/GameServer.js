@@ -370,6 +370,15 @@ export class GameServer {
           break;
         }
 
+        case PROTOCOL_MSG_TYPES.C2S_LEAVE_ROOM: {
+          if (currentRoom) {
+            currentRoom.removePlayer(clientId);
+            cleanupEmptyRoom(currentRoom);
+            currentRoom = null;
+          }
+          break;
+        }
+
         default:
           break;
       }

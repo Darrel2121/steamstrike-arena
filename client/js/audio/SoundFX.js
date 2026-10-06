@@ -139,27 +139,44 @@ export class SoundFX {
       return Math.tanh(s * 1.8) * 0.90 * Math.exp(-t * 5.5);
     }));
 
-    // 5. Reload (3-Stage Steampunk Mechanical Ratchet Sequence)
-    this.audioBuffers.set('reload', this.createAudioBuffer(0.52, (t, w, p, br) => {
-      // Stage 1: Cylinder latch release (0.00 - 0.12s)
-      let s1 = (t >= 0 && t < 0.12) ? Math.exp(-t * 22) * w * 1.1 : 0;
-      // Stage 2: Brass shell insertion chimes (0.16s & 0.28s)
+    // 5. Reload (4-Phase Tactile Steampunk Mechanical Ratchet & Cylinder Lock)
+    this.audioBuffers.set('reload', this.createAudioBuffer(0.60, (t, w, p, br) => {
+      // Phase 1: Cylinder latch lever release & swing-out (0.00 - 0.14s)
+      const s1 = (t >= 0 && t < 0.14)
+        ? (Math.sin(2 * Math.PI * 420 * t) * Math.exp(-t * 35) * 0.70
+           + Math.sin(2 * Math.PI * 880 * t) * Math.exp(-t * 45) * 0.40
+           + Math.exp(-t * 90) * w * 1.5)
+        : 0;
+
+      // Phase 2: Spent brass casing ejection & cascade chime (0.14 - 0.32s)
       let s2 = 0;
-      if (t >= 0.16 && t < 0.24) {
-        const dt1 = t - 0.16;
-        s2 += Math.sin(2 * Math.PI * 1380 * dt1) * Math.exp(-dt1 * 48) * 0.50;
+      if (t >= 0.14 && t < 0.24) {
+        const dt1 = t - 0.14;
+        s2 += Math.sin(2 * Math.PI * 1150 * dt1) * Math.exp(-dt1 * 34) * 0.50
+            + Math.sin(2 * Math.PI * 2300 * dt1) * Math.exp(-dt1 * 42) * 0.25;
       }
-      if (t >= 0.28 && t < 0.36) {
-        const dt2 = t - 0.28;
-        s2 += Math.sin(2 * Math.PI * 1640 * dt2) * Math.exp(-dt2 * 48) * 0.50;
+      if (t >= 0.22 && t < 0.32) {
+        const dt2 = t - 0.22;
+        s2 += Math.sin(2 * Math.PI * 980 * dt2) * Math.exp(-dt2 * 34) * 0.50
+            + Math.sin(2 * Math.PI * 1960 * dt2) * Math.exp(-dt2 * 42) * 0.25;
       }
-      // Stage 3: Heavy cylinder lock snap (0.38 - 0.52s)
-      let s3 = 0;
-      if (t >= 0.38) {
-        const dt3 = t - 0.38;
-        s3 = Math.exp(-dt3 * 95) * w * 2.0 + Math.exp(-dt3 * 38) * br * 4.0;
+
+      // Phase 3: Clockwork cylinder indexing clicks (0.32 - 0.44s)
+      const s3 = ((t >= 0.32 && t < 0.35 ? Math.exp(-(t - 0.32) * 180) * w * 1.8 : 0)
+        + (t >= 0.36 && t < 0.39 ? Math.exp(-(t - 0.36) * 180) * w * 1.8 : 0)
+        + (t >= 0.40 && t < 0.43 ? Math.exp(-(t - 0.40) * 180) * w * 1.8 : 0));
+
+      // Phase 4: Solid cylinder slam & lock shut (0.44 - 0.60s)
+      let s4 = 0;
+      if (t >= 0.44) {
+        const dt4 = t - 0.44;
+        s4 = Math.exp(-dt4 * 55) * br * 8.5
+           + Math.sin(2 * Math.PI * 340 * dt4) * Math.exp(-dt4 * 26) * 0.75
+           + Math.sin(2 * Math.PI * 720 * dt4) * Math.exp(-dt4 * 38) * 0.35
+           + Math.exp(-dt4 * 110) * w * 2.0;
       }
-      return Math.tanh((s1 + s2 + s3) * 1.6) * 0.88;
+
+      return Math.tanh((s1 + s2 + s3 + s4) * 1.6) * 0.90;
     }));
 
     // 6. Wall Impact (Masonry dust & stone fracturing thud)
@@ -262,6 +279,27 @@ export class SoundFX {
       const flareWhoosh = t > 0.04 ? Math.exp(-(t - 0.04) * 10) * p * 0.75 : 0;
       const warmHum = t > 0.04 ? Math.sin(2 * Math.PI * 180 * (t - 0.04)) * Math.exp(-(t - 0.04) * 6) * 0.3 : 0;
       return Math.tanh((flintSpark + flintPing + flareWhoosh + warmHum) * 1.5) * 0.85;
+    }));
+
+    // 16. Pickup Ammo (Iron Chest Latch & Brass Cartridge Cascade Chimes)
+    this.audioBuffers.set('pickup_ammo', this.createAudioBuffer(0.38, (t, w, p, br) => {
+      const latch = Math.exp(-t * 110) * w * 1.5 + Math.sin(2 * Math.PI * 540 * t) * Math.exp(-t * 38) * 0.65;
+      const brass1 = t > 0.06 ? Math.sin(2 * Math.PI * 1440 * (t - 0.06)) * Math.exp(-(t - 0.06) * 32) * 0.50 : 0;
+      const brass2 = t > 0.13 ? Math.sin(2 * Math.PI * 1820 * (t - 0.13)) * Math.exp(-(t - 0.13) * 36) * 0.45 : 0;
+      const brass3 = t > 0.20 ? Math.sin(2 * Math.PI * 1280 * (t - 0.20)) * Math.exp(-(t - 0.20) * 38) * 0.40 : 0;
+      return Math.tanh((latch + brass1 + brass2 + brass3) * 1.5) * 0.88;
+    }));
+
+    // 17. Pickup Health (Alchemical Glass Potion Cork Pop & Sparkle Shimmer)
+    this.audioBuffers.set('pickup_health', this.createAudioBuffer(0.44, (t, w, p, br) => {
+      const corkPop = Math.sin(2 * Math.PI * (420 + t * 500) * t) * Math.exp(-t * 40) * 0.90
+        + Math.exp(-t * 85) * br * 4.5;
+      const crystalHarmonic = t > 0.04
+        ? (Math.sin(2 * Math.PI * 880 * (t - 0.04)) * 0.50 + Math.sin(2 * Math.PI * 1760 * (t - 0.04)) * 0.30)
+          * Math.exp(-(t - 0.04) * 14)
+        : 0;
+      const steamFizz = t > 0.06 ? Math.exp(-(t - 0.06) * 18) * p * 0.65 : 0;
+      return Math.tanh((corkPop + crystalHarmonic + steamFizz) * 1.5) * 0.88;
     }));
   }
 
@@ -407,6 +445,17 @@ export class SoundFX {
    */
   playLanternIgnite(worldX = null, worldY = null) {
     this.playBuffer('lantern_ignite', worldX, worldY, 0.90, 0.03);
+  }
+
+  /**
+   * Tactical Item Pickup Acoustic Sound (Ammo chest vs Health elixir).
+   * @param {'ammo'|'health'} [type='ammo']
+   * @param {number|null} [worldX=null]
+   * @param {number|null} [worldY=null]
+   */
+  playPickup(type = 'ammo', worldX = null, worldY = null) {
+    const key = type === 'health' ? 'pickup_health' : 'pickup_ammo';
+    this.playBuffer(key, worldX, worldY, 0.88, 0.03);
   }
 
   /**
