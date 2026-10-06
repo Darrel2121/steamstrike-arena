@@ -1299,11 +1299,13 @@ export class App {
       }
     };
 
+    soundFX.startSoundtrack();
     this.animationFrameId = requestAnimationFrame(loop);
   }
 
   stopGameLoop(options = {}) {
     this.gameLoopActive = false;
+    soundFX.stopSoundtrack();
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;

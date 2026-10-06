@@ -1221,6 +1221,11 @@ export class GameRenderer {
       this.renderDestroyedAvatar(ctx, wreck);
     }
 
+    // 3.5 Render Steam Core in Wave Defense mode
+    if (state.steamCore) {
+      this.renderSteamCore(ctx, state.steamCore);
+    }
+
     // 4. Physical Infiltrator Smoke Zones (billowing steam & soot clouds)
     if (Array.isArray(state.smokeZones) && state.smokeZones.length > 0) {
       this.renderSmokeZones(ctx, state.smokeZones);
@@ -1236,6 +1241,134 @@ export class GameRenderer {
         this.renderPlayerAvatar(ctx, pl, isLocal);
       }
     }
+  }
+
+  /**
+   * Renders the massive Steampunk Steam Core Reactor in Wave Defense mode.
+   * Features heavy cast iron armor plates, brass gears, internal cyan energy core,
+   * active steam exhaust venting, and overhead health bar with numerical readout.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Object} core
+   */
+  renderSteamCore(ctx, core) {
+    if (!core) return;
+    const cx = core.x;
+    const cy = core.y;
+    const radius = core.radius || 36;
+    const hp = Math.max(0, core.hp || 0);
+    const maxHp = core.maxHp || 1000;
+    const isAlive = core.isAlive !== false && hp > 0;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // 1. Drop shadow / industrial ground scorch
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.beginPath();
+    ctx.arc(0, 4, radius + 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Outer Iron Base & Riveted Chassis
+    const baseGrad = ctx.createRadialGradient(0, 0, radius * 0.4, 0, 0, radius);
+    baseGrad.addColorStop(0, '#3a414d');
+    baseGrad.addColorStop(0.7, '#20242b');
+    baseGrad.addColorStop(1, '#111418');
+
+    ctx.fillStyle = baseGrad;
+    ctx.strokeStyle = '#c59b27';
+    ctx.lineWidth = 3.0;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // 3. Rotating Brass Gear Ring
+    const gearTeeth = 10;
+    const gearRot = isAlive ? (now * 0.001) : 0;
+    ctx.fillStyle = '#b87333';
+    ctx.strokeStyle = '#c59b27';
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < gearTeeth; i++) {
+      const a = gearRot + (i / gearTeeth) * Math.PI * 2;
+      const gx = Math.cos(a) * (radius - 2);
+      const gy = Math.sin(a) * (radius - 2);
+      ctx.beginPath();
+      ctx.arc(gx, gy, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // 4. Glowing Internal Steam Crystal Core
+    if (isAlive) {
+      const pulse = 0.5 + 0.5 * Math.sin(now * 0.005);
+      const glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, radius * 0.65);
+      glowGrad.addColorStop(0, '#ffffff');
+      glowGrad.addColorStop(0.3, '#5ffbf1');
+      glowGrad.addColorStop(0.8, 'rgba(46, 196, 182, 0.6)');
+      glowGrad.addColorStop(1, 'rgba(46, 196, 182, 0)');
+
+      ctx.fillStyle = glowGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * (0.60 + pulse * 0.08), 0, Math.PI * 2);
+      ctx.fill();
+
+      // Energy crystal lattice
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, 6 + pulse * 2, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Extinguished dark smoking core
+      ctx.fillStyle = '#14171d';
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 5. Four Cardinal Steam Vents
+    ctx.fillStyle = '#c59b27';
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2;
+      const vx = Math.cos(a) * (radius - 6);
+      const vy = Math.sin(a) * (radius - 6);
+      ctx.beginPath();
+      ctx.arc(vx, vy, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 6. Overhead Health Bar & Status
+    const barW = 64;
+    const barH = 7;
+    const barY = -radius - 16;
+    const fillRatio = maxHp > 0 ? (hp / maxHp) : 0;
+    const barCol = fillRatio > 0.5 ? '#2ec4b6' : (fillRatio > 0.25 ? '#ffcf48' : '#e71d36');
+
+    // Bar Background
+    ctx.fillStyle = 'rgba(10, 13, 18, 0.9)';
+    ctx.strokeStyle = '#c59b27';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-barW / 2, barY, barW, barH, 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Bar Fill
+    if (fillRatio > 0) {
+      ctx.fillStyle = barCol;
+      ctx.beginPath();
+      ctx.roundRect(-barW / 2 + 1, barY + 1, (barW - 2) * fillRatio, barH - 2, 1.5);
+      ctx.fill();
+    }
+
+    // Overhead Title
+    ctx.fillStyle = '#ffcf48';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(`РЕАКТОР [${Math.round(hp)}/${maxHp}]`, 0, barY - 2);
+
+    ctx.restore();
   }
 
   /**

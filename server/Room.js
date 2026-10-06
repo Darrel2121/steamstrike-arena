@@ -6,7 +6,7 @@
 import { createDefaultMap, getPresetMap, TILE_TYPES } from '../shared/MapSchema.js';
 import { PROTOCOL_MSG_TYPES, serializePacket } from '../shared/Protocol.js';
 import { extractSegmentsFromMap, circleSegmentIntersect } from './physics/Geometry.js';
-import { TILE_SIZE, PROJECTILE_SPEED, LANTERN_RANGE, SOUND_CONFIGS, GAME_MODES, GAME_MODE_CONFIGS } from '../shared/Constants.js';
+import { TILE_SIZE, PROJECTILE_SPEED, LANTERN_RANGE, SOUND_CONFIGS, GAME_MODES, GAME_MODE_CONFIGS, STEAM_CORE_MAX_HP, STEAM_CORE_RADIUS, STEAM_CORE_REPAIR_PER_WAVE, WAVE_PREP_DURATION } from '../shared/Constants.js';
 import { Player } from './entities/Player.js';
 import { Bot } from './entities/Bot.js';
 import { Projectile } from './entities/Projectile.js';
@@ -45,9 +45,18 @@ export class Room {
 
     // Game Mode & Ruleset
     this.gameMode = options.gameMode || GAME_MODES.SOLO_ELIM;
-    this.targetKills = options.targetKills ?? (this.gameMode === GAME_MODES.TEAM_DM ? 15 : (this.gameMode === GAME_MODES.FFA_DM ? 10 : 0));
+    this.targetKills = options.targetKills ?? (this.gameMode === GAME_MODES.TEAM_DM ? 15 : (this.gameMode === GAME_MODES.FFA_DM ? 10 : (this.gameMode === GAME_MODES.WAVE_DEFENSE ? 5 : 0)));
     this.teamScores = { team1: 0, team2: 0 };
     this.password = options.password ? String(options.password).trim() : null;
+
+    // PvE Wave Defense State
+    this.steamCore = null;
+    this.currentWave = 0;
+    this.maxWaves = 5;
+    this.waveState = 'NOT_STARTED'; // 'NOT_STARTED', 'PREPARATION', 'WAVE_ACTIVE', 'CLEARED', 'FAILED'
+    this.waveCountdown = 0;
+    this.waveSpawnQueue = [];
+    this.waveSpawnTimer = 0;
 
     this.state = 'LOBBY'; // 'LOBBY', 'IN_PROGRESS', 'GAME_OVER'
     this.players = new Map();
@@ -73,11 +82,218 @@ export class Room {
   }
 
   isTeamMode() {
-    return this.gameMode === GAME_MODES.TEAM_DM || this.gameMode === GAME_MODES.TEAM_ELIM;
+    return this.gameMode === GAME_MODES.TEAM_DM || this.gameMode === GAME_MODES.TEAM_ELIM || this.gameMode === GAME_MODES.WAVE_DEFENSE;
   }
 
   isRespawnMode() {
-    return this.gameMode === GAME_MODES.TEAM_DM || this.gameMode === GAME_MODES.FFA_DM;
+    return this.gameMode === GAME_MODES.TEAM_DM || this.gameMode === GAME_MODES.FFA_DM || this.gameMode === GAME_MODES.WAVE_DEFENSE;
+  }
+
+  isWaveDefense() {
+    return this.gameMode === GAME_MODES.WAVE_DEFENSE;
+  }
+
+  /**
+   * Initializes the Steam Core placed at the arena center.
+   */
+  initSteamCore() {
+    const tileSize = this.map.tileSize || TILE_SIZE || 40;
+    const mapW = this.map.width * tileSize;
+    const mapH = this.map.height * tileSize;
+    this.steamCore = {
+      x: Math.round(mapW / 2),
+      y: Math.round(mapH / 2),
+      radius: STEAM_CORE_RADIUS || 36,
+      hp: STEAM_CORE_MAX_HP || 1000,
+      maxHp: STEAM_CORE_MAX_HP || 1000,
+      isAlive: true
+    };
+    return this.steamCore;
+  }
+
+  /**
+   * Applies damage to Steam Core and evaluates destruction outcome.
+   * @param {number} amount
+   * @param {string|null} attackerId
+   */
+  damageSteamCore(amount, attackerId = null) {
+    if (!this.steamCore || !this.steamCore.isAlive) return;
+    const actualDmg = Math.min(this.steamCore.hp, Math.max(0, amount));
+    this.steamCore.hp = Math.max(0, this.steamCore.hp - actualDmg);
+    if (this.steamCore.hp <= 0) {
+      this.steamCore.hp = 0;
+      this.steamCore.isAlive = false;
+      this.waveState = 'FAILED';
+    }
+
+    if (attackerId && this.matchStats?.has(attackerId)) {
+      this.matchStats.get(attackerId).damageDealt += actualDmg;
+    }
+
+    this.hitEvents.push({
+      id: 'hit_core_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+      x: this.steamCore.x,
+      y: this.steamCore.y,
+      type: 'entity',
+      damage: actualDmg,
+      shooterId: attackerId,
+      targetId: 'steam_core',
+      remainingHp: this.steamCore.hp
+    });
+
+    this.broadcast(PROTOCOL_MSG_TYPES.S2C_DAMAGE_EVENT, {
+      targetId: 'steam_core',
+      attackerId: attackerId || null,
+      damage: actualDmg,
+      remainingHp: this.steamCore.hp
+    });
+
+    if (!this.steamCore.isAlive) {
+      this.evaluateMatchOutcome();
+    }
+  }
+
+  /**
+   * Initiates wave composition and begins staggered spawning.
+   * @param {number} waveNum
+   */
+  startWave(waveNum) {
+    this.currentWave = waveNum;
+    this.waveState = 'WAVE_ACTIVE';
+    this.waveCountdown = 0;
+    this.waveSpawnTimer = 0.5;
+
+    const queue = [];
+    if (waveNum === 1) {
+      for (let i = 0; i < 5; i++) queue.push({ type: 'trooper', classId: 'vanguard', weaponId: 'carbine', hp: 100 });
+    } else if (waveNum === 2) {
+      for (let i = 0; i < 4; i++) queue.push({ type: 'trooper', classId: 'vanguard', weaponId: 'carbine', hp: 110 });
+      for (let i = 0; i < 3; i++) queue.push({ type: 'spider', classId: 'infiltrator', weaponId: 'needle', hp: 70 });
+    } else if (waveNum === 3) {
+      for (let i = 0; i < 4; i++) queue.push({ type: 'trooper', classId: 'vanguard', weaponId: 'carbine', hp: 120 });
+      for (let i = 0; i < 3; i++) queue.push({ type: 'spider', classId: 'infiltrator', weaponId: 'needle', hp: 80 });
+      for (let i = 0; i < 2; i++) queue.push({ type: 'juggernaut', classId: 'juggernaut', weaponId: 'blunderbuss', hp: 250 });
+    } else if (waveNum === 4) {
+      for (let i = 0; i < 4; i++) queue.push({ type: 'trooper', classId: 'sharpshooter', weaponId: 'carbine', hp: 130 });
+      for (let i = 0; i < 4; i++) queue.push({ type: 'spider', classId: 'infiltrator', weaponId: 'needle', hp: 90 });
+      for (let i = 0; i < 3; i++) queue.push({ type: 'juggernaut', classId: 'juggernaut', weaponId: 'blunderbuss', hp: 280 });
+    } else {
+      queue.push({ type: 'colossus_boss', classId: 'juggernaut', weaponId: 'blunderbuss', hp: 600, name: 'Колос-Патріарх', isBoss: true });
+      for (let i = 0; i < 4; i++) queue.push({ type: 'juggernaut', classId: 'juggernaut', weaponId: 'blunderbuss', hp: 300 });
+      for (let i = 0; i < 4; i++) queue.push({ type: 'trooper', classId: 'sharpshooter', weaponId: 'carbine', hp: 140 });
+      for (let i = 0; i < 4; i++) queue.push({ type: 'spider', classId: 'infiltrator', weaponId: 'needle', hp: 100 });
+    }
+
+    this.waveSpawnQueue = queue;
+  }
+
+  /**
+   * Spawns an invader enemy bot for current wave.
+   * @param {Object} spec
+   * @returns {Bot|null}
+   */
+  spawnWaveEnemy(spec) {
+    if (!spec) return null;
+    const botIdx = this.bots.size;
+    const botId = `invader_${this.currentWave}_${botIdx + 1}_${Date.now().toString(36)}`;
+
+    const tileSize = this.map.tileSize || TILE_SIZE || 40;
+    const mapW = this.map.width * tileSize;
+    const mapH = this.map.height * tileSize;
+
+    const perimeterSpawns = [
+      { x: tileSize * 2, y: tileSize * 2 },
+      { x: mapW - tileSize * 2, y: tileSize * 2 },
+      { x: tileSize * 2, y: mapH - tileSize * 2 },
+      { x: mapW - tileSize * 2, y: mapH - tileSize * 2 },
+      { x: Math.round(mapW / 2), y: tileSize * 2 },
+      { x: Math.round(mapW / 2), y: mapH - tileSize * 2 },
+      { x: tileSize * 2, y: Math.round(mapH / 2) },
+      { x: mapW - tileSize * 2, y: Math.round(mapH / 2) }
+    ];
+
+    const chosen = perimeterSpawns[Math.floor(Math.random() * perimeterSpawns.length)];
+    const spawnX = Math.max(tileSize, Math.min(mapW - tileSize, chosen.x + (Math.random() * 40 - 20)));
+    const spawnY = Math.max(tileSize, Math.min(mapH - tileSize, chosen.y + (Math.random() * 40 - 20)));
+
+    const clsDef = getClassDefinition(spec.classId || 'vanguard');
+    const weaponDef = getWeapon(spec.weaponId || 'carbine');
+    const angleToCenter = Math.atan2((mapH / 2) - spawnY, (mapW / 2) - spawnX);
+
+    const bot = new Bot({
+      id: botId,
+      name: spec.name || (spec.type === 'spider' ? `Швидкохід_${botIdx + 1}` : spec.type === 'juggernaut' ? `Бронехід_${botIdx + 1}` : `Штурмовик_${botIdx + 1}`),
+      x: spawnX,
+      y: spawnY,
+      angle: angleToCenter,
+      team: 'invaders',
+      hp: spec.hp || 100,
+      maxHp: spec.hp || 100,
+      ammo: weaponDef?.magazine || 6,
+      maxAmmo: weaponDef?.magazine || 6,
+      map: this.map,
+      classId: spec.classId || 'vanguard',
+      difficulty: 'hard',
+      fov: clsDef?.lanternFov || 80,
+      range: clsDef?.lanternRange || 420
+    });
+
+    if (spec.weaponId) {
+      bot.weaponId = spec.weaponId;
+      bot.weapon = weaponDef;
+    }
+    if (spec.isBoss) {
+      bot.isBoss = true;
+    }
+
+    this.bots.set(botId, bot);
+
+    if (this.matchStats) {
+      this.matchStats.set(bot.id, {
+        id: bot.id,
+        name: bot.name,
+        team: 'invaders',
+        isBot: true,
+        kills: 0,
+        damageDealt: 0,
+        placement: 2,
+        survivalSeconds: 0,
+        eliminatedAt: null
+      });
+    }
+
+    return bot;
+  }
+
+  /**
+   * Returns count of active living invader bots.
+   * @returns {number}
+   */
+  getAliveWaveEnemiesCount() {
+    let count = 0;
+    for (const b of this.bots.values()) {
+      if (b.isAlive && b.hp > 0 && b.team === 'invaders') {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  /**
+   * Marks current wave as completed, repairs Steam Core, and transitions state.
+   */
+  completeWave() {
+    if (this.steamCore && this.steamCore.isAlive) {
+      this.steamCore.hp = Math.min(this.steamCore.maxHp, this.steamCore.hp + (STEAM_CORE_REPAIR_PER_WAVE || 250));
+    }
+
+    if (this.currentWave >= this.maxWaves) {
+      this.waveState = 'CLEARED';
+      this.evaluateMatchOutcome();
+    } else {
+      this.waveState = 'PREPARATION';
+      this.waveCountdown = WAVE_PREP_DURATION || 12;
+    }
   }
 
   setGameMode(gameMode, targetKills = null, fillWithBots = null, botDifficulty = null) {
@@ -617,27 +833,39 @@ export class Room {
     this.matchResultsRecorded = false;
     this.lastMatchOutcome = null;
 
-    if (options?.fillBots === false || options?.fillWithBots === false) {
+    if (this.isWaveDefense()) {
+      this.initSteamCore();
       this.bots.clear();
-    } else if (this.autoFillBots || options?.fillBots || options?.fillWithBots) {
-      this.fillWithBots(options?.botDifficulty || this.botDifficulty);
-    }
-
-    // Ensure team assignments if in team mode
-    if (this.isTeamMode()) {
-      let t1 = 0;
-      let t2 = 0;
+      this.currentWave = 0;
+      this.waveState = 'PREPARATION';
+      this.waveCountdown = 3.0;
+      this.waveSpawnQueue = [];
       for (const p of this.players.values()) {
-        if (!p.team) {
-          p.team = t1 <= t2 ? 'team1' : 'team2';
-        }
-        if (p.team === 'team1') t1++; else t2++;
+        p.team = 'defenders';
       }
-      for (const b of this.bots.values()) {
-        if (!b.team) {
-          b.team = t1 <= t2 ? 'team1' : 'team2';
+    } else {
+      if (options?.fillBots === false || options?.fillWithBots === false) {
+        this.bots.clear();
+      } else if (this.autoFillBots || options?.fillBots || options?.fillWithBots) {
+        this.fillWithBots(options?.botDifficulty || this.botDifficulty);
+      }
+
+      // Ensure team assignments if in team mode
+      if (this.isTeamMode()) {
+        let t1 = 0;
+        let t2 = 0;
+        for (const p of this.players.values()) {
+          if (!p.team) {
+            p.team = t1 <= t2 ? 'team1' : 'team2';
+          }
+          if (p.team === 'team1') t1++; else t2++;
         }
-        if (b.team === 'team1') t1++; else t2++;
+        for (const b of this.bots.values()) {
+          if (!b.team) {
+            b.team = t1 <= t2 ? 'team1' : 'team2';
+          }
+          if (b.team === 'team1') t1++; else t2++;
+        }
       }
     }
 
@@ -1009,6 +1237,21 @@ export class Room {
       proj.update(dtSec);
       const rayEnd = { x: proj.x, y: proj.y };
 
+      // Wave Defense: Steam Core hit detection by invaders
+      if (this.isWaveDefense() && this.steamCore && this.steamCore.isAlive) {
+        const shooter = this.players.get(proj.shooterId) || this.bots.get(proj.shooterId);
+        if (shooter && shooter.team === 'invaders') {
+          const coreCenter = { x: this.steamCore.x, y: this.steamCore.y };
+          if (circleSegmentIntersect(coreCenter, this.steamCore.radius, rayStart, rayEnd)) {
+            proj.isAlive = false;
+            proj.x = this.steamCore.x;
+            proj.y = this.steamCore.y;
+            this.damageSteamCore(proj.damage || 35, proj.shooterId);
+            continue;
+          }
+        }
+      }
+
       const bulletRay = { start: rayStart, end: rayEnd, shooterId: proj.shooterId };
       const targets = livingTargets.filter(c => c.id !== proj.shooterId);
 
@@ -1179,6 +1422,30 @@ export class Room {
       this.smokeZones = this.smokeZones.filter(z => (now - (z.createdAt || now)) < ((z.duration || 5.0) * 1000));
     }
 
+    // Advance Wave Defense state machine
+    if (this.isWaveDefense() && this.state === 'IN_PROGRESS') {
+      if (this.waveState === 'PREPARATION') {
+        this.waveCountdown -= dtSec;
+        if (this.waveCountdown <= 0) {
+          this.startWave(this.currentWave + 1);
+        }
+      } else if (this.waveState === 'WAVE_ACTIVE') {
+        if (this.waveSpawnQueue.length > 0) {
+          this.waveSpawnTimer -= dtSec;
+          if (this.waveSpawnTimer <= 0) {
+            this.waveSpawnTimer = 0.8;
+            const nextEnemy = this.waveSpawnQueue.shift();
+            this.spawnWaveEnemy(nextEnemy);
+          }
+        } else {
+          // If queue empty and all invaders eliminated, complete wave
+          if (this.getAliveWaveEnemiesCount() === 0) {
+            this.completeWave();
+          }
+        }
+      }
+    }
+
     // Check match conditions on every tick in respawn modes (e.g. target kills)
     if (this.isRespawnMode() && this.state === 'IN_PROGRESS') {
       this.evaluateMatchOutcome();
@@ -1253,7 +1520,22 @@ export class Room {
       soundEvents: this.soundEvents || [],
       hitEvents: this.hitEvents || [],
       smokeZones: this.smokeZones || [],
-      pickups: (this.pickups || []).filter(pk => pk.isActive).map(pk => (typeof pk.toSnapshot === 'function' ? pk.toSnapshot() : pk))
+      pickups: (this.pickups || []).filter(pk => pk.isActive).map(pk => (typeof pk.toSnapshot === 'function' ? pk.toSnapshot() : pk)),
+      steamCore: this.steamCore ? {
+        x: this.steamCore.x,
+        y: this.steamCore.y,
+        hp: this.steamCore.hp,
+        maxHp: this.steamCore.maxHp,
+        radius: this.steamCore.radius,
+        isAlive: this.steamCore.isAlive
+      } : null,
+      waveInfo: this.isWaveDefense() ? {
+        currentWave: this.currentWave,
+        maxWaves: this.maxWaves,
+        waveState: this.waveState,
+        countdown: Math.max(0, Math.ceil(this.waveCountdown)),
+        enemiesRemaining: this.getAliveWaveEnemiesCount() + this.waveSpawnQueue.length
+      } : null
     };
 
     this.hitEvents = [];
@@ -1378,7 +1660,7 @@ export class Room {
   }
 
   /**
-   * Evaluates if the match has concluded across all 4 game modes.
+   * Evaluates if the match has concluded across all game modes.
    * @returns {{ isOver: boolean, winnerId: string|null, draw?: boolean, results?: Array }}
    */
   evaluateMatchOutcome() {
@@ -1393,7 +1675,18 @@ export class Room {
     let winningTeam = null;
     let draw = false;
 
-    if (this.gameMode === GAME_MODES.TEAM_DM) {
+    if (this.gameMode === GAME_MODES.WAVE_DEFENSE) {
+      if (this.steamCore && !this.steamCore.isAlive) {
+        isGameOver = true;
+        winningTeam = 'invaders';
+        draw = false;
+      } else if (this.currentWave >= this.maxWaves && this.waveState === 'CLEARED') {
+        isGameOver = true;
+        winningTeam = 'defenders';
+        draw = false;
+        winnerId = this.players.values().next().value?.id || null;
+      }
+    } else if (this.gameMode === GAME_MODES.TEAM_DM) {
       if (this.teamScores.team1 >= this.targetKills) {
         isGameOver = true;
         winningTeam = 'team1';

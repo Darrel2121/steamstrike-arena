@@ -592,6 +592,52 @@ export class Bot extends Player {
 
     const tileSize = map.tileSize || TILE_SIZE || 40;
 
+    // PvE Invader Bot: Objective is the Steam Core
+    if (this.team === 'invaders' && room && room.steamCore && room.steamCore.isAlive) {
+      const core = room.steamCore;
+      const distToCore = Math.hypot(core.x - this.x, core.y - this.y);
+
+      // If within firing distance of Steam Core, attack it
+      if (distToCore <= 280) {
+        this.angle = Math.atan2(core.y - this.y, core.x - this.x);
+        if (this.fireCooldown <= 0 && !this.isReloading && this.ammo > 0) {
+          const proj = this.attemptFire(dt);
+          if (proj && room) {
+            if (room.projectiles) room.projectiles.push(proj);
+            if (room.soundEvents) {
+              room.soundEvents.push({
+                id: 'snd_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+                sourceId: this.id,
+                x: this.x,
+                y: this.y,
+                type: 'gunfire',
+                radius: 40,
+                maxRadius: SOUND_CONFIGS?.gunfire?.maxRadius || 168,
+                intensity: 1.0,
+                createdAt: Date.now()
+              });
+            }
+          }
+        } else if (this.ammo <= 0 && !this.isReloading) {
+          this.reload();
+        }
+        return;
+      }
+
+      // If no path to steam core, compute one towards the core
+      if (!this.waypoints || this.waypoints.length === 0 || this.waypointIndex >= this.waypoints.length) {
+        const startTile = { col: Math.floor(this.x / tileSize), row: Math.floor(this.y / tileSize) };
+        const goalTile = { col: Math.floor(core.x / tileSize), row: Math.floor(core.y / tileSize) };
+        const path = this.findPath(map, startTile, goalTile);
+        if (path && path.length > 1) {
+          this.waypoints = path;
+          this.waypointIndex = 1;
+        }
+      }
+      this.followWaypoints(dt, room);
+      return;
+    }
+
     if (!this.waypoints || this.waypoints.length === 0 || this.waypointIndex >= this.waypoints.length) {
       this.patrolTimer -= dt;
       if (this.patrolTimer <= 0) {

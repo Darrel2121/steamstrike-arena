@@ -78,13 +78,20 @@ export const THEME_COLORS = {
 // Storage Keys
 export const STORAGE_KEY_CUSTOM_MAP = 'clockwork_tactical_custom_map';
 
-// Game Modes (Four distinct match rulesets)
+// Game Modes (Five distinct match rulesets including PvE Wave Defense)
 export const GAME_MODES = {
   SOLO_ELIM: 'solo_elim', // Кожен за себе (Остаточна смерть / Battle Royale)
   TEAM_ELIM: 'team_elim', // Командний бій (Остаточна смерть / Last Team Standing)
   FFA_DM: 'ffa_dm',       // Кожен сам за себе (Відродження / Deathmatch)
-  TEAM_DM: 'team_dm'      // Командний бій (Відродження / Team Deathmatch)
+  TEAM_DM: 'team_dm',     // Командний бій (Відродження / Team Deathmatch)
+  WAVE_DEFENSE: 'wave_defense' // PvE: Оборона Парового Реактора від хвиль ворогів
 };
+
+// PvE Steam Core & Wave Constants
+export const STEAM_CORE_MAX_HP = 1000;
+export const STEAM_CORE_RADIUS = 36;
+export const STEAM_CORE_REPAIR_PER_WAVE = 250;
+export const WAVE_PREP_DURATION = 12; // 12 seconds intermission between waves
 
 export const GAME_MODE_CONFIGS = {
   [GAME_MODES.SOLO_ELIM]: {
@@ -126,6 +133,16 @@ export const GAME_MODE_CONFIGS = {
     hasRespawn: true,
     defaultTargetKills: 15,
     description: 'Командне протистояння з відродженням. Перемагає команда, що першою досягне ліміту кілів'
+  },
+  [GAME_MODES.WAVE_DEFENSE]: {
+    id: 'wave_defense',
+    name: 'Оборона Парового Реактора (PvE)',
+    shortName: 'Оборона Реактора',
+    badge: 'PVE ОБОРОНА',
+    isTeam: true,
+    hasRespawn: true,
+    defaultTargetKills: 5,
+    description: 'Захищайте центральне Парове Ядро від наступаючих хвиль ворожих автоматонів. Переживіть 5 хвиль для перемоги!'
   }
 };
 

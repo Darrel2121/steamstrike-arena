@@ -507,6 +507,96 @@ export class SoundFX {
       }
     } catch (_) {}
   }
+
+  /**
+   * Starts procedural Steampunk atmospheric soundtrack (ambient drone & mechanical clockwork).
+   */
+  startSoundtrack() {
+    this.init();
+    if (!this.ctx || this.soundtrackActive) return;
+    try {
+      this.soundtrackActive = true;
+      this.musicGain = this.ctx.createGain();
+      this.musicGain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+      this.musicGain.connect(this.masterGain);
+
+      // Low brass drone osc 1 (A1: 55Hz)
+      this.droneOsc1 = this.ctx.createOscillator();
+      this.droneOsc1.type = 'sawtooth';
+      this.droneOsc1.frequency.setValueAtTime(55, this.ctx.currentTime);
+
+      // Drone filter
+      this.droneFilter = this.ctx.createBiquadFilter();
+      this.droneFilter.type = 'lowpass';
+      this.droneFilter.frequency.setValueAtTime(160, this.ctx.currentTime);
+      this.droneFilter.Q.setValueAtTime(4.0, this.ctx.currentTime);
+
+      this.droneOsc1.connect(this.droneFilter);
+      this.droneFilter.connect(this.musicGain);
+      this.droneOsc1.start();
+
+      // Subtle slow LFO for filter breath
+      this.droneLfo = this.ctx.createOscillator();
+      this.droneLfo.frequency.setValueAtTime(0.12, this.ctx.currentTime);
+      const lfoGain = this.ctx.createGain();
+      lfoGain.gain.setValueAtTime(60, this.ctx.currentTime);
+      this.droneLfo.connect(lfoGain);
+      lfoGain.connect(this.droneFilter.frequency);
+      this.droneLfo.start();
+
+      // Clockwork ticking rhythmic pulse generator
+      this.clockworkTimer = setInterval(() => {
+        if (!this.soundtrackActive || !this.ctx || this.isMuted) return;
+        try {
+          const t = this.ctx.currentTime;
+          const clickOsc = this.ctx.createOscillator();
+          const clickGain = this.ctx.createGain();
+          clickOsc.type = 'triangle';
+          clickOsc.frequency.setValueAtTime(880, t);
+          clickOsc.frequency.exponentialRampToValueAtTime(110, t + 0.03);
+          clickGain.gain.setValueAtTime(0.04, t);
+          clickGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+          clickOsc.connect(clickGain);
+          clickGain.connect(this.musicGain);
+          clickOsc.start(t);
+          clickOsc.stop(t + 0.035);
+        } catch (_) {}
+      }, 500); // 120 BPM mechanical escapement tick
+    } catch (_) {}
+  }
+
+  /**
+   * Stops the procedural atmospheric soundtrack.
+   */
+  stopSoundtrack() {
+    this.soundtrackActive = false;
+    if (this.clockworkTimer) {
+      clearInterval(this.clockworkTimer);
+      this.clockworkTimer = null;
+    }
+    if (this.droneOsc1) {
+      try { this.droneOsc1.stop(); this.droneOsc1.disconnect(); } catch (_) {}
+      this.droneOsc1 = null;
+    }
+    if (this.droneLfo) {
+      try { this.droneLfo.stop(); this.droneLfo.disconnect(); } catch (_) {}
+      this.droneLfo = null;
+    }
+    if (this.musicGain) {
+      try { this.musicGain.disconnect(); } catch (_) {}
+      this.musicGain = null;
+    }
+  }
+
+  toggleSoundtrack() {
+    if (this.soundtrackActive) {
+      this.stopSoundtrack();
+      return false;
+    } else {
+      this.startSoundtrack();
+      return true;
+    }
+  }
 }
 
 export const soundFX = new SoundFX();

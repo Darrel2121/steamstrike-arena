@@ -1484,7 +1484,53 @@ export class HUD {
 
     const topY = 22;
 
-    if (mode === 'team_dm') {
+    if (mode === 'wave_defense') {
+      const waveInfo = matchContext.waveInfo || {};
+      const curWave = waveInfo.currentWave || 1;
+      const maxWaves = waveInfo.maxWaves || 5;
+      const waveState = waveInfo.waveState || 'PREPARATION';
+      const countdown = waveInfo.countdown || 0;
+      const enemies = waveInfo.enemiesRemaining ?? 0;
+      const core = matchContext.steamCore;
+      const coreHp = core ? Math.max(0, Math.round(core.hp)) : 1000;
+      const coreMaxHp = core ? core.maxHp : 1000;
+
+      // 1. Center Wave Info & Countdown / Enemies
+      ctx.textAlign = 'center';
+      ctx.font = `bold 15px ${sansFont}`;
+      ctx.fillStyle = '#ffcf48';
+      let statusText = `ХВИЛЯ ${curWave}/${maxWaves}`;
+      if (waveState === 'PREPARATION') {
+        statusText += ` • ПІДГОТОВКА: ${countdown}с`;
+      } else if (waveState === 'WAVE_ACTIVE') {
+        statusText += ` • ВОРОГІВ: ${enemies}`;
+      } else if (waveState === 'CLEARED') {
+        statusText += ` • ПЕРЕМОГА! ВСІ ХВИЛІ ВІДБИТО!`;
+      }
+      strokeIfSupported(ctx, statusText, width / 2, topY);
+      ctx.fillText(statusText, width / 2, topY);
+
+      // 2. Steam Core Health readout
+      const coreRatio = coreMaxHp > 0 ? (coreHp / coreMaxHp) : 0;
+      const coreColor = coreRatio > 0.5 ? '#2ec4b6' : (coreRatio > 0.25 ? '#ffcf48' : '#ef4444');
+      ctx.textAlign = 'right';
+      ctx.font = `bold 14px ${sansFont}`;
+      ctx.fillStyle = coreColor;
+      strokeIfSupported(ctx, `🔮 ЯДРО: ${coreHp}/${coreMaxHp} HP`, width / 2 - 160, topY);
+      ctx.fillText(`🔮 ЯДРО: ${coreHp}/${coreMaxHp} HP`, width / 2 - 160, topY);
+
+      // 3. Living Defenders count
+      let defAlive = 0;
+      for (const p of players) {
+        if (p.isAlive && (p.hp === undefined || p.hp > 0)) defAlive++;
+      }
+      ctx.textAlign = 'left';
+      ctx.font = `bold 14px ${sansFont}`;
+      ctx.fillStyle = '#60a5fa';
+      strokeIfSupported(ctx, `🛡️ ЗАХИСНИКИ: ${defAlive}`, width / 2 + 160, topY);
+      ctx.fillText(`🛡️ ЗАХИСНИКИ: ${defAlive}`, width / 2 + 160, topY);
+
+    } else if (mode === 'team_dm') {
       const t1 = teamScores.team1 || 0;
       const t2 = teamScores.team2 || 0;
 
