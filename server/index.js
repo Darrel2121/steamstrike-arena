@@ -138,6 +138,16 @@ export function startServer(port = process.env.PORT || 3000) {
       const userPayload = token ? authService.verifyToken(token) : null;
 
       try {
+        // GET /api/health or GET /health (Wakeup & Liveness Check)
+        if ((pathname === '/api/health' || pathname === '/health') && req.method === 'GET') {
+          return sendJson(200, {
+            status: 'ok',
+            uptime: Math.round(process.uptime()),
+            timestamp: Date.now(),
+            service: 'Steamstrike Battle Server'
+          });
+        }
+
         // POST /api/auth/guest
         if (pathname === '/api/auth/guest' && req.method === 'POST') {
           const body = await parseJsonBody(req);

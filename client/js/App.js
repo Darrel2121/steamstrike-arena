@@ -64,9 +64,31 @@ export class App {
     this.initMapEditor();
     this.initGameRenderer();
     this.attachEventListeners();
+    this.initServerWakeup();
 
     this.switchView('home');
     this.checkUrlInvitation();
+  }
+
+  initServerWakeup() {
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    if (isLocal) return;
+
+    const RENDER_BACKEND = 'https://steamstrike-server.onrender.com';
+    // Immediate background wake-up ping
+    fetch(`${RENDER_BACKEND}/api/health`, { mode: 'cors' })
+      .then(() => {
+        console.log('[Steamstrike] ⚡ Battle server is awake and active!');
+        this.isServerAwake = true;
+      })
+      .catch((err) => {
+        console.log('[Steamstrike] ⏳ Server is waking up in background...', err.message);
+      });
+
+    // Keepalive ping every 7 minutes while user is on page
+    setInterval(() => {
+      fetch(`${RENDER_BACKEND}/api/health`, { mode: 'cors' }).catch(() => {});
+    }, 7 * 60 * 1000);
   }
 
   bindDomElements() {
@@ -969,6 +991,10 @@ export class App {
       clearTimeout(this.soloWarmupTimer);
       this.soloWarmupTimer = null;
     }
+    if (this.soloColdStartTimer) {
+      clearTimeout(this.soloColdStartTimer);
+      this.soloColdStartTimer = null;
+    }
     if (this.gameLoadingOverlay) {
       this.gameLoadingOverlay.style.display = 'none';
     }
@@ -1098,11 +1124,17 @@ export class App {
     }
 
     if (this.soloWarmupTimer) clearTimeout(this.soloWarmupTimer);
+    if (this.soloColdStartTimer) clearTimeout(this.soloColdStartTimer);
     this.soloWarmupTimer = setTimeout(() => {
       if (this.gameLoadingDesc && !this.gameLoopActive) {
-        this.gameLoadingDesc.textContent = 'Розпалювання парових котлів та розгортання бойових автоматонів...';
+        this.gameLoadingDesc.textContent = '⚡ Пробудження сервера після сну... (холодний старт ~15–20 сек). Зачекайте, арена відкриється автоматично!';
       }
-    }, 2500);
+    }, 3000);
+    this.soloColdStartTimer = setTimeout(() => {
+      if (this.gameLoadingDesc && !this.gameLoopActive) {
+        this.gameLoadingDesc.textContent = '⚙ Парові котли розігріто! Розгортання бойових автоматонів...';
+      }
+    }, 14000);
 
     if (this.progressionManager) {
       const stats = this.progressionManager.getCalculatedStats();
