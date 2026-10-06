@@ -63,6 +63,7 @@ export class GameRenderer {
     this.impactParticles = [];
     this.floatingDamageNumbers = [];
     this.screenShake = 0;
+    this.gunfirePings = [];
 
     // Volumetric steam and mechanical exhaust particle system
     this.steamParticles = [];
@@ -277,12 +278,20 @@ export class GameRenderer {
           this.processedSoundIds.add(sndId);
           this.soundWaveRenderer.addSound(snd);
 
-          // Audio playback for combat sound events
+          // Audio playback and mini-map ping for combat sound events
           if (snd.type === 'pickup') {
             soundFX.playPickup(snd.pickupType || 'ammo', snd.x, snd.y);
           } else if (localPlayer && snd.sourceId !== localPlayer.id) {
             if (snd.type === 'gunfire') {
               soundFX.playGunshot('revolver', snd.x, snd.y);
+              // Register enemy gunfire acoustic ping for mini-map radar
+              this.gunfirePings.push({
+                x: snd.x,
+                y: snd.y,
+                sourceId: snd.sourceId,
+                life: 2.0,
+                maxLife: 2.0
+              });
             } else if (snd.type === 'reload') {
               soundFX.playReload(snd.x, snd.y);
             } else if (snd.type === 'ability') {
@@ -293,6 +302,17 @@ export class GameRenderer {
       }
       if (this.processedSoundIds.size > 200) {
         this.processedSoundIds.clear();
+      }
+    }
+
+    // 2.2 Update gunfire acoustic pings for mini-map
+    if (this.gunfirePings && this.gunfirePings.length > 0) {
+      for (let i = this.gunfirePings.length - 1; i >= 0; i--) {
+        const ping = this.gunfirePings[i];
+        ping.life -= dt;
+        if (ping.life <= 0) {
+          this.gunfirePings.splice(i, 1);
+        }
       }
     }
 
@@ -359,28 +379,28 @@ export class GameRenderer {
 
       const isSprinting = Boolean(pl.isSprinting);
       const isMoving = isSprinting || (Math.hypot(pl.vx || 0, pl.vy || 0) > 12);
-      const interval = isSprinting ? 0.05 : (isMoving ? 0.09 : 0.45);
+      const interval = isSprinting ? 0.12 : (isMoving ? 0.22 : 0.65);
 
       if (timer <= 0) {
         timer = interval;
         const baseAngle = plAngle + Math.PI;
-        const spread = (Math.random() - 0.5) * 0.7;
+        const spread = (Math.random() - 0.5) * 0.6;
         const puffAngle = baseAngle + spread;
-        const speed = isMoving ? (isSprinting ? 60 + Math.random() * 35 : 32 + Math.random() * 20) : (10 + Math.random() * 10);
+        const speed = isMoving ? (isSprinting ? 40 + Math.random() * 20 : 22 + Math.random() * 15) : (8 + Math.random() * 8);
         const isLowHp = (pl.hp !== undefined && pl.hp <= 35);
 
         this.steamParticles.push({
-          x: exX + (Math.random() - 0.5) * 3,
-          y: exY + (Math.random() - 0.5) * 3,
+          x: exX + (Math.random() - 0.5) * 2,
+          y: exY + (Math.random() - 0.5) * 2,
           vx: Math.cos(puffAngle) * speed,
-          vy: Math.sin(puffAngle) * speed - 15,
-          size: 3.5 + Math.random() * 2,
-          maxSize: isMoving ? (isSprinting ? 24 + Math.random() * 8 : 17 + Math.random() * 6) : (13 + Math.random() * 5),
+          vy: Math.sin(puffAngle) * speed - 10,
+          size: 2.2 + Math.random() * 1.5,
+          maxSize: isMoving ? (isSprinting ? 14 + Math.random() * 4 : 10 + Math.random() * 3) : (8 + Math.random() * 3),
           angle: Math.random() * Math.PI * 2,
-          spin: (Math.random() - 0.5) * 2.2,
-          life: isMoving ? (0.65 + Math.random() * 0.35) : (0.95 + Math.random() * 0.35),
-          maxLife: isMoving ? 1.0 : 1.3,
-          baseAlpha: isMoving ? (isSprinting ? 0.55 : 0.42) : 0.28,
+          spin: (Math.random() - 0.5) * 1.8,
+          life: isMoving ? (0.45 + Math.random() * 0.25) : (0.75 + Math.random() * 0.25),
+          maxLife: isMoving ? 0.7 : 1.0,
+          baseAlpha: isMoving ? (isSprinting ? 0.35 : 0.28) : 0.18,
           isSoot: isLowHp,
           isBot
         });
@@ -483,100 +503,63 @@ export class GameRenderer {
     }
 
     if (!isEntity) {
-      // Wall Impact: High-velocity fine golden micro-sparks + soft smoke puff
+      // Wall Impact: High-velocity incandescent micro-sparks spray (no blurry smoke puffs)
       const bVx = hit.vx || 0;
       const bVy = hit.vy || 0;
       const baseAngle = Math.atan2(-bVy, -bVx);
 
-      // 14 to 19 compact micro-sparks (short range)
-      const sparkCount = 14 + Math.floor(Math.random() * 6);
+      // 18 to 26 crisp incandescent micro-sparks
+      const sparkCount = 18 + Math.floor(Math.random() * 8);
       for (let i = 0; i < sparkCount; i++) {
-        const spread = (Math.random() - 0.5) * Math.PI * 1.1;
+        const spread = (Math.random() - 0.5) * Math.PI * 1.2;
         const angle = baseAngle + spread;
-        const speed = 35 + Math.random() * 85;
+        const speed = 55 + Math.random() * 110;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 0.8 + Math.random() * 0.5, // Fine 0.8-1.3px needle streak
+          size: 0.8 + Math.random() * 0.4, // Crisp 0.8-1.2px tiny spark needle
           alpha: 1.0,
-          life: 0.10 + Math.random() * 0.10,
-          maxLife: 0.20,
+          life: 0.12 + Math.random() * 0.14,
+          maxLife: 0.26,
           isSpark: true
         });
       }
-
-      // Soft expanding Gaussian vapor puffs
-      for (let s = 0; s < 2; s++) {
-        this.impactParticles.push({
-          x: hx + (Math.random() - 0.5) * 4,
-          y: hy + (Math.random() - 0.5) * 4,
-          vx: (Math.random() - 0.5) * 24,
-          vy: (Math.random() - 0.5) * 24 - 10,
-          size: 2.5,
-          maxSize: 12 + Math.random() * 6,
-          color: '#d6dfe8',
-          alpha: 0.50,
-          life: 0.32 + Math.random() * 0.12,
-          maxLife: 0.44,
-          isSmoke: true
-        });
-      }
     } else {
-      // Entity Impact: Copper automaton shrapnel + incandescent micro-sparks + machine oil + pressurized steam
-      const sparkCount = 16 + Math.floor(Math.random() * 8);
+      // Entity Impact: Copper automaton shrapnel & bright golden micro-sparks + machine oil
+      const sparkCount = 22 + Math.floor(Math.random() * 10);
       for (let i = 0; i < sparkCount; i++) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = 30 + Math.random() * 75;
+        const speed = 45 + Math.random() * 95;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(angle) * speed,
           vy: Math.sin(angle) * speed,
-          size: 0.8 + Math.random() * 0.5, // Fine 0.8-1.3px micro-sparks
+          size: 0.8 + Math.random() * 0.4, // Crisp 0.8-1.2px micro-sparks
           alpha: 1.0,
-          life: 0.10 + Math.random() * 0.12,
-          maxLife: 0.22,
+          life: 0.14 + Math.random() * 0.14,
+          maxLife: 0.28,
           isSpark: true
         });
       }
 
       // Machine oil droplets
-      for (let o = 0; o < 3; o++) {
+      for (let o = 0; o < 2; o++) {
         const oAngle = Math.random() * Math.PI * 2;
-        const oSpeed = 25 + Math.random() * 60;
+        const oSpeed = 20 + Math.random() * 45;
         this.impactParticles.push({
           x: hx,
           y: hy,
           vx: Math.cos(oAngle) * oSpeed,
-          vy: Math.sin(oAngle) * oSpeed + 15,
-          size: 1.0 + Math.random() * 0.6,
+          vy: Math.sin(oAngle) * oSpeed + 10,
+          size: 0.9 + Math.random() * 0.4,
           color: '#161920',
           alpha: 0.85,
-          life: 0.35 + Math.random() * 0.20,
-          maxLife: 0.55,
+          life: 0.30 + Math.random() * 0.15,
+          maxLife: 0.45,
           isOil: true
-        });
-      }
-
-      // Pressurized boiler steam blowout jet
-      for (let st = 0; st < 3; st++) {
-        const sAngle = Math.random() * Math.PI * 2;
-        const sSpeed = 30 + Math.random() * 80;
-        this.steamParticles.push({
-          x: hx,
-          y: hy,
-          vx: Math.cos(sAngle) * sSpeed,
-          vy: Math.sin(sAngle) * sSpeed - 15,
-          size: 3.0,
-          maxSize: 14 + Math.random() * 6,
-          angle: Math.random() * Math.PI * 2,
-          spin: (Math.random() - 0.5) * 2.5,
-          life: 0.35 + Math.random() * 0.20,
-          maxLife: 0.55,
-          baseAlpha: 0.60,
-          isSoot: Math.random() > 0.5
         });
       }
 
@@ -814,6 +797,8 @@ export class GameRenderer {
     // ========================================================================
     // LAYER 6: Steampunk Tactical HUD (Screen-Space UI)
     // ========================================================================
+    state.map = this.map;
+    state.gunfirePings = this.gunfirePings;
     this.hud.render(ctx, localPlayer, width, height, state);
   }
 

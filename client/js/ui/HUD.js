@@ -271,16 +271,19 @@ export class HUD {
     // Update DOM-based mobile touch controls (ammo badge, ability cooldown)
     this.updateMobileTouchUI(player);
 
-    // 1. Bottom-Left: Alchemical Health Vial
-    this.renderHealthVial(ctx, 30, height - 120, hp, maxHp);
+    // 1. Bottom-Left Stack: Alchemical Health Vial + Steam Pressure Gauge (side-by-side, elevated)
+    this.renderHealthVial(ctx, 24, height - 250, hp, maxHp);
 
-    // Optional Team Badge next to health vial
+    // Optional Team Badge elevated above health vial
     if (player.team) {
-      this.renderTeamBadge(ctx, 30, height - 145, player.team);
+      this.renderTeamBadge(ctx, 24, height - 275, player.team);
     }
 
-    // 2. Bottom-Center: Brass Steam Pressure Gauge (Dynamic Manometer with Jitter & Low Pressure Warning)
-    this.renderSteamGauge(ctx, width / 2, height - 55, stamina, PLAYER_STAMINA_MAX, Boolean(player.isSprinting));
+    // 2. Brass Steam Pressure Gauge (Dynamic Manometer placed directly beside Health Vial)
+    this.renderSteamGauge(ctx, 122, height - 208, stamina, PLAYER_STAMINA_MAX, Boolean(player.isSprinting), 34);
+
+    // 2.2 Bottom-Left: Steampunk Tactical Radar Mini-map (below the Health & Steam gauges)
+    this.renderMiniMap(ctx, 24, height - 148, 130, player, matchContext);
 
     // Detect if touch controls are actively being used (skip canvas dial & cylinder to prevent overlap with DOM buttons)
     const isTouchActive = typeof document !== 'undefined' &&
@@ -344,8 +347,8 @@ export class HUD {
   renderHealthVial(ctx, x, y, hp, maxHp) {
     ctx.save();
 
-    const vialWidth = 28;
-    const vialHeight = 90;
+    const vialWidth = 26;
+    const vialHeight = 85;
     const fillRatio = maxHp > 0 ? Math.min(1.0, Math.max(0.0, hp / maxHp)) : 0;
     const isCritical = fillRatio <= 0.25;
 
@@ -354,17 +357,17 @@ export class HUD {
     ctx.strokeStyle = '#c59b27';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(x - 4, y - 6, vialWidth + 8, vialHeight + 12, 6);
+    ctx.roundRect(x - 3, y - 4, vialWidth + 6, vialHeight + 8, 5);
     ctx.fill();
     ctx.stroke();
 
     // Rivets on mounting plate
     ctx.fillStyle = '#ffcf48';
     ctx.beginPath();
-    ctx.arc(x - 1, y - 2, 2, 0, Math.PI * 2);
-    ctx.arc(x + vialWidth + 1, y - 2, 2, 0, Math.PI * 2);
-    ctx.arc(x - 1, y + vialHeight + 2, 2, 0, Math.PI * 2);
-    ctx.arc(x + vialWidth + 1, y + vialHeight + 2, 2, 0, Math.PI * 2);
+    ctx.arc(x, y - 1, 1.8, 0, Math.PI * 2);
+    ctx.arc(x + vialWidth, y - 1, 1.8, 0, Math.PI * 2);
+    ctx.arc(x, y + vialHeight + 1, 1.8, 0, Math.PI * 2);
+    ctx.arc(x + vialWidth, y + vialHeight + 1, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Glass tube inner background (dark alchemical chamber)
@@ -401,8 +404,8 @@ export class HUD {
       const b1Y = liquidY + (liquidHeight * 0.4 + Math.sin(this.pulseTimer * 3) * 6) % liquidHeight;
       const b2Y = liquidY + (liquidHeight * 0.7 + Math.cos(this.pulseTimer * 2) * 8) % liquidHeight;
       ctx.beginPath();
-      ctx.arc(x + 8, b1Y, 1.5, 0, Math.PI * 2);
-      ctx.arc(x + 18, b2Y, 2, 0, Math.PI * 2);
+      ctx.arc(x + 7, b1Y, 1.3, 0, Math.PI * 2);
+      ctx.arc(x + 16, b2Y, 1.8, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -413,7 +416,7 @@ export class HUD {
       const tickY = y + (vialHeight / 4) * i;
       ctx.beginPath();
       ctx.moveTo(x + 2, tickY);
-      ctx.lineTo(x + 7, tickY);
+      ctx.lineTo(x + 6, tickY);
       ctx.stroke();
     }
 
@@ -427,9 +430,9 @@ export class HUD {
 
     // HP Text Readout
     ctx.fillStyle = isCritical ? '#ff5a5f' : '#ffcf48';
-    ctx.font = 'bold 12px monospace';
+    ctx.font = 'bold 11px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`${Math.round(hp)} HP`, x + vialWidth + 8, y + vialHeight / 2 + 4);
+    ctx.fillText(`${Math.round(hp)} HP`, x + vialWidth + 7, y + vialHeight / 2 + 4);
 
     ctx.restore();
   }
@@ -439,10 +442,9 @@ export class HUD {
    * Semi-circular dial with brass bezel, graduated markings, dynamic pointer needle,
    * live PSI readout, needle vibration during sprint, and low pressure alarm.
    */
-  renderSteamGauge(ctx, cx, cy, stamina, maxStamina, isSprinting = false) {
+  renderSteamGauge(ctx, cx, cy, stamina, maxStamina, isSprinting = false, radius = 34) {
     ctx.save();
 
-    const radius = 42;
     const startAngle = Math.PI * 0.8;
     const endAngle = Math.PI * 2.2;
     const totalArc = endAngle - startAngle;
@@ -459,9 +461,9 @@ export class HUD {
     // 1. Heavy dark iron mounting plate
     ctx.fillStyle = '#1c2026';
     ctx.strokeStyle = '#22262d';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius + 8, 0, Math.PI * 2);
+    ctx.arc(cx, cy, radius + 6, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
@@ -471,7 +473,7 @@ export class HUD {
     brassGrad.addColorStop(0.5, '#c59b27');
     brassGrad.addColorStop(1, '#703816');
     ctx.strokeStyle = brassGrad;
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.stroke();
@@ -493,9 +495,9 @@ export class HUD {
 
     // 4. Steam pressure background arc (dim track)
     ctx.strokeStyle = 'rgba(255, 207, 72, 0.15)';
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius - 8, startAngle, endAngle);
+    ctx.arc(cx, cy, radius - 7, startAngle, endAngle);
     ctx.stroke();
 
     // 5. Active pressure steam arc (Cyan / Amber glow)
@@ -504,21 +506,21 @@ export class HUD {
     arcGrad.addColorStop(0.4, '#ffcf48');
     arcGrad.addColorStop(1, '#2ec4b6');
     ctx.strokeStyle = arcGrad;
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.beginPath();
-    ctx.arc(cx, cy, radius - 8, startAngle, needleAngle);
+    ctx.arc(cx, cy, radius - 7, startAngle, needleAngle);
     ctx.stroke();
 
     // 6. Gauge graduation ticks
     const numTicks = 8;
     ctx.strokeStyle = '#9d9685';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     for (let i = 0; i <= numTicks; i++) {
       const a = startAngle + (totalArc / numTicks) * i;
-      const x1 = cx + Math.cos(a) * (radius - 13);
-      const y1 = cy + Math.sin(a) * (radius - 13);
-      const x2 = cx + Math.cos(a) * (radius - 5);
-      const y2 = cy + Math.sin(a) * (radius - 5);
+      const x1 = cx + Math.cos(a) * (radius - 11);
+      const y1 = cy + Math.sin(a) * (radius - 11);
+      const x2 = cx + Math.cos(a) * (radius - 4);
+      const y2 = cy + Math.sin(a) * (radius - 4);
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(x2, y2);
@@ -526,11 +528,11 @@ export class HUD {
     }
 
     // 7. Central brass hub & Needle
-    const nx = cx + Math.cos(needleAngle) * (radius - 10);
-    const ny = cy + Math.sin(needleAngle) * (radius - 10);
+    const nx = cx + Math.cos(needleAngle) * (radius - 8);
+    const ny = cy + Math.sin(needleAngle) * (radius - 8);
 
     ctx.strokeStyle = isLow ? '#ff5a5f' : '#ffcf48';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
     ctx.moveTo(cx, cy);
     ctx.lineTo(nx, ny);
@@ -539,22 +541,276 @@ export class HUD {
     // Hub center nut
     ctx.fillStyle = '#c59b27';
     ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#1c2026';
     ctx.beginPath();
-    ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Dial label & live numerical PSI readout
     ctx.fillStyle = isLow ? '#ff5a5f' : '#c59b27';
-    ctx.font = 'bold 9px monospace';
+    ctx.font = 'bold 8px monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(`${Math.round(stamina)} PSI`, cx, cy + 14);
+    ctx.fillText(`${Math.round(stamina)} PSI`, cx, cy + 11);
 
     ctx.fillStyle = '#8e9aa8';
-    ctx.font = '7px monospace';
-    ctx.fillText(isLow ? 'LOW PRESSURE' : 'STEAM BOILER', cx, cy + 24);
+    ctx.font = '6px monospace';
+    ctx.fillText(isLow ? 'LOW PSI' : 'STEAM', cx, cy + 19);
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders the Steampunk Tactical Radar Mini-map.
+   * Displays arena layout, obstacles, allies, Steam Core, and briefly reveals enemies on weapon gunfire.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x - Top-left X coordinate
+   * @param {number} y - Top-left Y coordinate
+   * @param {number} size - Map dimension in pixels (e.g. 130)
+   * @param {Object} player - Local player entity state
+   * @param {Object} [matchContext] - Live match snapshot context
+   */
+  renderMiniMap(ctx, x, y, size = 130, player = {}, matchContext = {}) {
+    if (!ctx) return;
+    ctx.save();
+
+    const map = matchContext.map;
+    const gridW = (map && map.width) || 25;
+    const gridH = (map && map.height) || 25;
+    const tileSize = (map && map.tileSize) || 64;
+    const worldW = gridW * tileSize;
+    const worldH = gridH * tileSize;
+
+    const pad = 6;
+    const innerX = x + pad;
+    const innerY = y + pad;
+    const innerSize = size - pad * 2;
+
+    // 1. Heavy dark iron mounting bracket
+    ctx.fillStyle = '#181b22';
+    ctx.strokeStyle = '#282e38';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.roundRect(x - 3, y - 3, size + 6, size + 6, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // 2. Brass bezel border
+    const brassGrad = ctx.createLinearGradient(x, y, x + size, y + size);
+    brassGrad.addColorStop(0, '#ffcf48');
+    brassGrad.addColorStop(0.5, '#c59b27');
+    brassGrad.addColorStop(1, '#703816');
+    ctx.strokeStyle = brassGrad;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.roundRect(x, y, size, size, 6);
+    ctx.stroke();
+
+    // 3. Brass corner rivets
+    ctx.fillStyle = '#ffcf48';
+    const rivetOffset = 4;
+    ctx.beginPath();
+    ctx.arc(x + rivetOffset, y + rivetOffset, 1.8, 0, Math.PI * 2);
+    ctx.arc(x + size - rivetOffset, y + rivetOffset, 1.8, 0, Math.PI * 2);
+    ctx.arc(x + rivetOffset, y + size - rivetOffset, 1.8, 0, Math.PI * 2);
+    ctx.arc(x + size - rivetOffset, y + size - rivetOffset, 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Clip inner viewport for map rendering
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(innerX, innerY, innerSize, innerSize);
+    ctx.clip();
+
+    // 4. Dark Radar Background Screen
+    ctx.fillStyle = '#0a0d13';
+    ctx.fillRect(innerX, innerY, innerSize, innerSize);
+
+    // Coordinate conversion scale
+    const scaleX = innerSize / worldW;
+    const scaleY = innerSize / worldH;
+    const toMapX = (wx) => innerX + wx * scaleX;
+    const toMapY = (wy) => innerY + wy * scaleY;
+
+    // 5. Tactical Grid Overlay (subtle phosphor lines)
+    ctx.strokeStyle = 'rgba(255, 207, 72, 0.08)';
+    ctx.lineWidth = 0.8;
+    for (let g = 1; g < 4; g++) {
+      const gx = innerX + (innerSize / 4) * g;
+      const gy = innerY + (innerSize / 4) * g;
+      ctx.beginPath();
+      ctx.moveTo(gx, innerY);
+      ctx.lineTo(gx, innerY + innerSize);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(innerX, gy);
+      ctx.lineTo(innerX + innerSize, gy);
+      ctx.stroke();
+    }
+
+    // 6. Arena Geometry: Walls & Obstacles
+    if (map && Array.isArray(map.tiles)) {
+      ctx.fillStyle = '#252c38';
+      ctx.strokeStyle = '#3d4758';
+      ctx.lineWidth = 0.5;
+
+      const tileW = innerSize / gridW;
+      const tileH = innerSize / gridH;
+
+      for (let r = 0; r < gridH; r++) {
+        for (let c = 0; c < gridW; c++) {
+          let tileVal = 0;
+          if (Array.isArray(map.tiles[r])) {
+            tileVal = map.tiles[r][c];
+          } else {
+            tileVal = map.tiles[r * gridW + c];
+          }
+
+          if (tileVal === 1 || tileVal === 2) {
+            const tx = innerX + c * tileW;
+            const ty = innerY + r * tileH;
+            ctx.fillRect(tx, ty, Math.max(1, tileW), Math.max(1, tileH));
+            ctx.strokeRect(tx, ty, Math.max(1, tileW), Math.max(1, tileH));
+          }
+        }
+      }
+    }
+
+    // 7. PvE Mode: Steam Core / Reactor
+    if (matchContext.core && matchContext.core.hp > 0) {
+      const cx = toMapX(matchContext.core.x);
+      const cy = toMapY(matchContext.core.y);
+      const pulse = 0.5 + 0.5 * Math.sin(this.pulseTimer * 6);
+
+      ctx.fillStyle = `rgba(46, 196, 182, ${0.4 + pulse * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4 + pulse * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#2ec4b6';
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // 8. Rotating Radar Sweep Line
+    const sweepAngle = (this.pulseTimer * 1.8) % (Math.PI * 2);
+    const px = toMapX(player.renderX ?? player.x ?? worldW / 2);
+    const py = toMapY(player.renderY ?? player.y ?? worldH / 2);
+
+    ctx.save();
+    ctx.translate(px, py);
+    const sweepLen = innerSize * 0.8;
+    const sweepGrad = ctx.createLinearGradient(0, 0, Math.cos(sweepAngle) * sweepLen, Math.sin(sweepAngle) * sweepLen);
+    sweepGrad.addColorStop(0, 'rgba(46, 196, 182, 0.4)');
+    sweepGrad.addColorStop(1, 'rgba(46, 196, 182, 0.0)');
+    ctx.strokeStyle = sweepGrad;
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(sweepAngle) * sweepLen, Math.sin(sweepAngle) * sweepLen);
+    ctx.stroke();
+    ctx.restore();
+
+    // 9. Enemy Gunfire Acoustic Pings (Briefly revealed when firing weapon)
+    if (Array.isArray(matchContext.gunfirePings)) {
+      for (const ping of matchContext.gunfirePings) {
+        if (!ping || ping.life <= 0) continue;
+        const norm = ping.life / (ping.maxLife || 2.0);
+        const pingX = toMapX(ping.x);
+        const pingY = toMapY(ping.y);
+
+        // Expanding red acoustic shockwave ring
+        const pingR = (1 - norm) * 14 + 3;
+        ctx.strokeStyle = `rgba(255, 56, 56, ${norm * 0.85})`;
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(pingX, pingY, pingR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Incandescent red target dot
+        ctx.fillStyle = `rgba(255, 56, 56, ${norm})`;
+        ctx.beginPath();
+        ctx.arc(pingX, pingY, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // 10. Dynamic Combatants (Allies always visible, Enemies only if illuminated/sonar)
+    const players = matchContext.players || [];
+    for (const pl of players) {
+      if (!pl || !pl.isAlive || (pl.hp !== undefined && pl.hp <= 0)) continue;
+      const isLocal = pl.id === player.id;
+      const isAlly = player.team && pl.team && player.team === pl.team;
+      const isIlluminated = Boolean(pl.illuminated || pl.sonarActive);
+
+      if (!isLocal && !isAlly && !isIlluminated) {
+        continue; // Hidden in fog of war unless firing (handled by gunfire pings above)
+      }
+
+      const entityX = toMapX(pl.renderX ?? pl.x);
+      const entityY = toMapY(pl.renderY ?? pl.y);
+      const angle = pl.aimAngle ?? pl.angle ?? 0;
+
+      if (isLocal) {
+        // Local Player: Golden direction chevron + central dot + pulse ring
+        const pulse = 0.5 + 0.5 * Math.sin(this.pulseTimer * 4);
+        ctx.strokeStyle = `rgba(255, 207, 72, ${0.4 + pulse * 0.4})`;
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.arc(entityX, entityY, 4.5 + pulse * 1.5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Directional arrow / chevron
+        ctx.save();
+        ctx.translate(entityX, entityY);
+        ctx.rotate(angle);
+        ctx.fillStyle = '#ffcf48';
+        ctx.beginPath();
+        ctx.moveTo(5.5, 0);
+        ctx.lineTo(-3.5, -3.5);
+        ctx.lineTo(-1.5, 0);
+        ctx.lineTo(-3.5, 3.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      } else if (isAlly) {
+        // Ally: Teal/Cyan dot with small heading pointer
+        ctx.fillStyle = '#2ec4b6';
+        ctx.beginPath();
+        ctx.arc(entityX, entityY, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#2ec4b6';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(entityX, entityY);
+        ctx.lineTo(entityX + Math.cos(angle) * 5, entityY + Math.sin(angle) * 5);
+        ctx.stroke();
+      } else {
+        // Illuminated Enemy: Crimson dot
+        ctx.fillStyle = '#ff3838';
+        ctx.beginPath();
+        ctx.arc(entityX, entityY, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ff3838';
+        ctx.lineWidth = 1.0;
+        ctx.beginPath();
+        ctx.moveTo(entityX, entityY);
+        ctx.lineTo(entityX + Math.cos(angle) * 4.5, entityY + Math.sin(angle) * 4.5);
+        ctx.stroke();
+      }
+    }
+
+    ctx.restore(); // Restore clip
+
+    // 11. Mini-map Header Label
+    ctx.fillStyle = '#c59b27';
+    ctx.font = 'bold 8px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('РАДАР', x + size - 8, y + 13);
 
     ctx.restore();
   }
