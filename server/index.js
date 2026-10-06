@@ -58,6 +58,44 @@ function parseJsonBody(req) {
   });
 }
 
+// In-memory rate limiter for administrative auth
+const adminFailedAttempts = new Map();
+
+function checkAdminRateLimit(ip) {
+  const now = Date.now();
+  const entry = adminFailedAttempts.get(ip);
+  if (entry && entry.blockedUntil && entry.blockedUntil > now) {
+    const remainingSec = Math.ceil((entry.blockedUntil - now) / 1000);
+    return { blocked: true, message: `Забагато невдалих спроб авторизації. Спробуйте через ${remainingSec} сек.` };
+  }
+  return { blocked: false };
+}
+
+function recordAdminFailure(ip) {
+  const now = Date.now();
+  const entry = adminFailedAttempts.get(ip) || { count: 0, blockedUntil: 0 };
+  entry.count++;
+  if (entry.count >= 5) {
+    entry.blockedUntil = now + (15 * 60 * 1000);
+  } else if (entry.count >= 3) {
+    entry.blockedUntil = now + (30 * 1000);
+  }
+  adminFailedAttempts.set(ip, entry);
+}
+
+function clearAdminFailure(ip) {
+  adminFailedAttempts.delete(ip);
+}
+
+function sanitizeText(str, maxLen = 64) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/[<>'"&]/g, '')
+    .replace(/[\x00-\x1F\x7F]/g, '')
+    .trim()
+    .slice(0, maxLen);
+}
+
 /**
  * Creates and starts the HTTP & WebSocket server.
  * @param {number} [port=3000]
@@ -67,10 +105,14 @@ export function startServer(port = process.env.PORT || 3000) {
   const gameServer = new GameServer();
 
   const server = http.createServer(async (req, res) => {
-    // Basic CORS & caching headers
+    // Security & CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-admin-key');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
 
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
@@ -242,8 +284,8 @@ export function startServer(port = process.env.PORT || 3000) {
           const accountId = userPayload?.accountId || body.guestId || body.profileId;
           if (!accountId) return sendJson(400, { success: false, error: 'Missing profile ID' });
 
-          const username = body.username ? String(body.username).trim().slice(0, 32) : undefined;
-          const emblem = body.emblem ? String(body.emblem).trim() : undefined;
+          const username = body.username ? sanitizeText(body.username, 32) : undefined;
+          const emblem = body.emblem ? sanitizeText(body.emblem, 32) : undefined;
 
           const result = await profileStore.updateIdentity(accountId, { username, emblem });
 
@@ -283,7 +325,8 @@ export function startServer(port = process.env.PORT || 3000) {
         // POST /api/feedback/bug
         if (pathname === '/api/feedback/bug' && req.method === 'POST') {
           const body = await parseJsonBody(req);
-          if (!body.description || !String(body.description).trim()) {
+          const cleanDesc = sanitizeText(body.description, 4000);
+          if (!cleanDesc) {
             return sendJson(400, { success: false, error: 'Будь ласка, введіть опис проблеми' });
           }
           const clientInfo = {
@@ -293,9 +336,9 @@ export function startServer(port = process.env.PORT || 3000) {
             userId: userPayload?.accountId || null
           };
           const report = await bugReportStore.addReport({
-            category: body.category,
-            description: body.description,
-            contact: body.contact,
+            category: sanitizeText(body.category, 50) || 'general',
+            description: cleanDesc,
+            contact: sanitizeText(body.contact, 100),
             clientInfo
           });
           return sendJson(200, {
@@ -338,11 +381,20 @@ export function startServer(port = process.env.PORT || 3000) {
 
         // POST /api/admin/auth
         if (pathname === '/api/admin/auth' && req.method === 'POST') {
+          const clientIp = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
+          const rateCheck = checkAdminRateLimit(clientIp);
+          if (rateCheck.blocked) {
+            return sendJson(429, { success: false, error: rateCheck.message });
+          }
+
           const body = await parseJsonBody(req);
           const password = body.password || body.adminKey || body.adminPassword;
           if (!gameConfigStore.verifyAdminPassword(password)) {
+            recordAdminFailure(clientIp);
             return sendJson(401, { success: false, error: 'Невірний ключ або пароль адміністратора' });
           }
+
+          clearAdminFailure(clientIp);
           return sendJson(200, {
             success: true,
             adminToken: 'admin_authorized_token',

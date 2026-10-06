@@ -168,7 +168,7 @@ export const tests = [
     fn: async () => {
       const store = new GameConfigStore();
       assert.strictEqual(store.verifyAdminPassword('steamstrike2026'), true);
-      assert.strictEqual(store.verifyAdminPassword('admin'), true);
+      assert.strictEqual(store.verifyAdminPassword('admin'), false, 'Trivial guess admin must be rejected');
       assert.strictEqual(store.verifyAdminPassword('wrong_password'), false);
       assert.strictEqual(store.verifyAdminPassword(''), false);
       assert.strictEqual(store.verifyAdminPassword(null), false);

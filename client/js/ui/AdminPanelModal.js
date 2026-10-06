@@ -120,7 +120,7 @@ export class AdminPanelModal {
               type="password" 
               id="adminKeyInput" 
               class="steampunk-input" 
-              placeholder="Введіть майстер-пароль (за замовчуванням: steamstrike2026 або admin)" 
+              placeholder="Введіть майстер-пароль адміністратора..." 
               required 
               style="width: 100%; box-sizing: border-box;"
               autocomplete="current-password"

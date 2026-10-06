@@ -310,8 +310,24 @@ export class App {
   }
 
   attachEventListeners() {
+    let brandTapCount = 0;
+    let lastBrandTapTime = 0;
     if (this.headerBrand) {
-      this.headerBrand.addEventListener('click', () => this.switchView('home'));
+      this.headerBrand.addEventListener('click', () => {
+        const now = Date.now();
+        if (now - lastBrandTapTime < 500) {
+          brandTapCount++;
+          if (brandTapCount >= 5) {
+            brandTapCount = 0;
+            this.adminPanelModal?.toggle();
+            return;
+          }
+        } else {
+          brandTapCount = 1;
+        }
+        lastBrandTapTime = now;
+        this.switchView('home');
+      });
     }
     if (this.navButtons.home) {
       this.navButtons.home.addEventListener('click', () => this.switchView('home'));

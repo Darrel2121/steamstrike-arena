@@ -25,7 +25,6 @@ export class GameConfigStore {
   constructor() {
     this.currentSettings = getDefaultGameSettings();
     this.adminPassword = process.env.ADMIN_PASSWORD || 'steamstrike2026';
-    this.fallbackAdminPassword = 'admin';
     this.changeListeners = new Set();
     this.isLoaded = false;
     this.loadFromDisk();
@@ -125,7 +124,7 @@ export class GameConfigStore {
   verifyAdminPassword(password) {
     if (!password) return false;
     const clean = String(password).trim();
-    return clean === this.adminPassword || clean === this.fallbackAdminPassword;
+    return clean === this.adminPassword;
   }
 
   /**
