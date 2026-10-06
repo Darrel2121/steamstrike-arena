@@ -48,8 +48,7 @@ export class App {
       window.addEventListener('touchstart', unlockAudio, { passive: true });
     }
 
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
+    const apiBase = '';
     this.progressionManager = new ProgressionManager({ apiBase });
     this.bindDomElements();
     this.authModal = new AuthModal(this.progressionManager);

@@ -110,14 +110,9 @@ export class NetworkClient {
     if (customUrl) this.url = customUrl;
 
     if (!this.url && typeof window !== 'undefined' && window.location) {
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (!isLocal) {
-        this.url = 'wss://steamstrike-server.onrender.com';
-      } else {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host || 'localhost:3000';
-        this.url = `${protocol}//${host}`;
-      }
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host || 'localhost:3000';
+      this.url = `${protocol}//${host}`;
     }
 
     if (!this.url) {
@@ -670,9 +665,7 @@ export class NetworkClient {
    */
   async fetchRooms() {
     try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const apiHost = isLocal ? '' : 'https://steamstrike-server.onrender.com';
-      const res = await fetch(`${apiHost}/api/rooms`);
+      const res = await fetch('/api/rooms');
       if (res.ok) {
         const data = await res.json();
         if (data && Array.isArray(data.rooms)) {

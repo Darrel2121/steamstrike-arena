@@ -391,9 +391,7 @@ export class LobbyUI {
 
   async fetchCommunityMaps() {
     try {
-      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
-      const res = await fetch(`${apiBase}/api/community-maps/published`);
+      const res = await fetch('/api/community-maps/published');
       if (res.ok) {
         const data = await res.json();
         if (data.maps && Array.isArray(data.maps)) {

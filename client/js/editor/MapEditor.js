@@ -638,8 +638,7 @@ export class MapEditor {
           const author = authorInput?.value?.trim() || 'Анонімний Інженер';
           const description = descInput?.value?.trim() || '';
 
-          const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-          const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
+          const apiBase = '';
 
           const token = localStorage.getItem('clockwork_auth_token_v1');
           const headers = { 'Content-Type': 'application/json' };

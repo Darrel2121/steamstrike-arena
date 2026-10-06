@@ -6,8 +6,7 @@
 class AdminDashboard {
   constructor() {
     this.adminKey = sessionStorage.getItem('steamstrike_admin_key') || '';
-    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    this.apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
+    this.apiBase = '';
     this.currentTab = 'stats';
     this.configPayload = null;
     this.playersData = [];
