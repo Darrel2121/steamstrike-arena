@@ -6,6 +6,8 @@
 class AdminDashboard {
   constructor() {
     this.adminKey = sessionStorage.getItem('steamstrike_admin_key') || '';
+    const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    this.apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
     this.currentTab = 'stats';
     this.configPayload = null;
     this.playersData = [];
@@ -168,7 +170,7 @@ class AdminDashboard {
     if (!key) return;
 
     try {
-      const res = await fetch('/api/admin/auth', {
+      const res = await fetch(`${this.apiBase}/api/admin/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: key })
@@ -250,7 +252,7 @@ class AdminDashboard {
   // =========================================================================
   async loadStats() {
     try {
-      const res = await fetch('/api/admin/stats', { headers: this.getHeaders() });
+      const res = await fetch(`${this.apiBase}/api/admin/stats`, { headers: this.getHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
@@ -310,7 +312,7 @@ class AdminDashboard {
   // =========================================================================
   async loadPlayers() {
     try {
-      const res = await fetch('/api/admin/players', { headers: this.getHeaders() });
+      const res = await fetch(`${this.apiBase}/api/admin/players`, { headers: this.getHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
@@ -426,7 +428,7 @@ class AdminDashboard {
     const expiresAt = duration > 0 ? Date.now() + duration : null;
 
     try {
-      const res = await fetch('/api/admin/players/ban', {
+      const res = await fetch(`${this.apiBase}/api/admin/players/ban`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ targetType, targetValue, reason, expiresAt })
@@ -444,7 +446,7 @@ class AdminDashboard {
 
   async unbanPlayer(target) {
     try {
-      const res = await fetch('/api/admin/players/unban', {
+      const res = await fetch(`${this.apiBase}/api/admin/players/unban`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ id: target })
@@ -461,7 +463,7 @@ class AdminDashboard {
 
   async kickPlayer(playerId) {
     try {
-      const res = await fetch('/api/admin/players/kick', {
+      const res = await fetch(`${this.apiBase}/api/admin/players/kick`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ playerId })
@@ -480,7 +482,7 @@ class AdminDashboard {
   // =========================================================================
   async loadBugs() {
     try {
-      const res = await fetch('/api/admin/bugs', { headers: this.getHeaders() });
+      const res = await fetch(`${this.apiBase}/api/admin/bugs`, { headers: this.getHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
@@ -561,7 +563,7 @@ class AdminDashboard {
 
   async updateBugStatus(id, status) {
     try {
-      const res = await fetch('/api/admin/bugs/status', {
+      const res = await fetch(`${this.apiBase}/api/admin/bugs/status`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ id, status })
@@ -578,7 +580,7 @@ class AdminDashboard {
 
   async deleteBug(id) {
     try {
-      const res = await fetch('/api/admin/bugs/delete', {
+      const res = await fetch(`${this.apiBase}/api/admin/bugs/delete`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ id })
@@ -598,7 +600,7 @@ class AdminDashboard {
   // =========================================================================
   async loadNews() {
     try {
-      const res = await fetch('/api/admin/news', { headers: this.getHeaders() });
+      const res = await fetch(`${this.apiBase}/api/admin/news`, { headers: this.getHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
@@ -690,7 +692,7 @@ class AdminDashboard {
     };
 
     try {
-      const url = id ? '/api/admin/news/update' : '/api/admin/news';
+      const url = id ? `${this.apiBase}/api/admin/news/update` : `${this.apiBase}/api/admin/news`;
       const res = await fetch(url, {
         method: 'POST',
         headers: this.getHeaders(),
@@ -709,7 +711,7 @@ class AdminDashboard {
 
   async deleteNews(id) {
     try {
-      const res = await fetch('/api/admin/news/delete', {
+      const res = await fetch(`${this.apiBase}/api/admin/news/delete`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ id })
@@ -729,7 +731,7 @@ class AdminDashboard {
   // =========================================================================
   async loadBalanceConfig() {
     try {
-      const res = await fetch('/api/admin/config', { headers: this.getHeaders() });
+      const res = await fetch(`${this.apiBase}/api/admin/config`, { headers: this.getHeaders() });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
@@ -809,7 +811,7 @@ class AdminDashboard {
     });
 
     try {
-      const res = await fetch('/api/admin/config', {
+      const res = await fetch(`${this.apiBase}/api/admin/config`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ settings: updatedSettings })
@@ -826,7 +828,7 @@ class AdminDashboard {
 
   async applyPreset(presetId) {
     try {
-      const res = await fetch('/api/admin/config/preset', {
+      const res = await fetch(`${this.apiBase}/api/admin/config/preset`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ presetId })
@@ -846,7 +848,7 @@ class AdminDashboard {
     if (!confirm('Скинути всі налаштування до стандартних заводських значень?')) return;
 
     try {
-      const res = await fetch('/api/admin/config/reset', {
+      const res = await fetch(`${this.apiBase}/api/admin/config/reset`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({})
