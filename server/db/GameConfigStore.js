@@ -24,7 +24,7 @@ const CONFIG_FILE = path.join(DATA_DIR, 'game_settings.json');
 export class GameConfigStore {
   constructor() {
     this.currentSettings = getDefaultGameSettings();
-    this.adminPassword = process.env.ADMIN_PASSWORD || 'steamstrike2026';
+    this.adminPassword = process.env.ADMIN_PASSWORD || 'M7qDhW5Grm';
     this.changeListeners = new Set();
     this.isLoaded = false;
     this.loadFromDisk();

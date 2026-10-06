@@ -167,7 +167,7 @@ export const tests = [
     name: 'Admin Password Authentication Verification',
     fn: async () => {
       const store = new GameConfigStore();
-      assert.strictEqual(store.verifyAdminPassword('steamstrike2026'), true);
+      assert.strictEqual(store.verifyAdminPassword('M7qDhW5Grm'), true);
       assert.strictEqual(store.verifyAdminPassword('admin'), false, 'Trivial guess admin must be rejected');
       assert.strictEqual(store.verifyAdminPassword('wrong_password'), false);
       assert.strictEqual(store.verifyAdminPassword(''), false);
@@ -203,7 +203,7 @@ export const tests = [
       const resGoodLogin = await doRequest(serverPort, {
         path: '/api/admin/auth',
         method: 'POST'
-      }, { password: 'steamstrike2026' });
+      }, { password: 'M7qDhW5Grm' });
       assert.strictEqual(resGoodLogin.status, 200, 'Valid admin password must return 200');
       assert.strictEqual(resGoodLogin.body.success, true);
       assert.ok(resGoodLogin.body.adminToken, 'Must return adminToken');
@@ -213,7 +213,7 @@ export const tests = [
       const resAuthGet = await doRequest(serverPort, {
         path: '/api/admin/config',
         method: 'GET',
-        headers: { 'x-admin-key': 'steamstrike2026' }
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
       });
       assert.strictEqual(resAuthGet.status, 200);
       assert.strictEqual(resAuthGet.body.success, true);
@@ -223,7 +223,7 @@ export const tests = [
       const resUpdate = await doRequest(serverPort, {
         path: '/api/admin/config',
         method: 'POST',
-        headers: { 'x-admin-key': 'steamstrike2026' }
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
       }, {
         settings: {
           playerWalkSpeed: 175,
@@ -245,7 +245,7 @@ export const tests = [
       const resPreset = await doRequest(serverPort, {
         path: '/api/admin/config/preset',
         method: 'POST',
-        headers: { 'x-admin-key': 'steamstrike2026' }
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
       }, { presetId: 'high_dynamism' });
       assert.strictEqual(resPreset.status, 200);
       assert.strictEqual(resPreset.body.settings.playerRunSpeed, 300);
@@ -254,7 +254,7 @@ export const tests = [
       const resReset = await doRequest(serverPort, {
         path: '/api/admin/config/reset',
         method: 'POST',
-        headers: { 'x-admin-key': 'steamstrike2026' }
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
       }, {});
       assert.strictEqual(resReset.status, 200);
       assert.strictEqual(resReset.body.settings.playerWalkSpeed, 120);
