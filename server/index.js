@@ -12,6 +12,8 @@ import { GameServer } from './GameServer.js';
 import { authService } from './auth/AuthService.js';
 import { profileStore } from './db/ProfileStore.js';
 import { bugReportStore } from './db/BugReportStore.js';
+import { gameConfigStore } from './db/GameConfigStore.js';
+import { GAME_SETTING_CATEGORIES, GAME_SETTINGS_SCHEMA, GAME_SETTING_PRESETS } from '../shared/GameSettings.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -308,6 +310,112 @@ export function startServer(port = process.env.PORT || 3000) {
           return sendJson(200, {
             success: true,
             rooms: gameServer.getActiveRooms()
+          });
+        }
+
+        // ======================================================================
+        // ADMIN PANEL & RUNTIME GAME SETTINGS API
+        // ======================================================================
+
+        const checkAdminAuth = (body = null) => {
+          const adminKeyHeader = req.headers['x-admin-key'];
+          if (adminKeyHeader && gameConfigStore.verifyAdminPassword(adminKeyHeader)) return true;
+          
+          const authHeader = req.headers['authorization'];
+          if (authHeader?.startsWith('Bearer ')) {
+            const token = authHeader.slice(7);
+            if (token === 'admin_authorized_token' || gameConfigStore.verifyAdminPassword(token)) return true;
+            const payload = authService.verifyToken(token);
+            if (payload?.isAdmin) return true;
+          }
+
+          if (body?.adminPassword && gameConfigStore.verifyAdminPassword(body.adminPassword)) return true;
+          if (body?.adminKey && gameConfigStore.verifyAdminPassword(body.adminKey)) return true;
+          if (body?.password && gameConfigStore.verifyAdminPassword(body.password)) return true;
+
+          return false;
+        };
+
+        // POST /api/admin/auth
+        if (pathname === '/api/admin/auth' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          const password = body.password || body.adminKey || body.adminPassword;
+          if (!gameConfigStore.verifyAdminPassword(password)) {
+            return sendJson(401, { success: false, error: 'Невірний ключ або пароль адміністратора' });
+          }
+          return sendJson(200, {
+            success: true,
+            adminToken: 'admin_authorized_token',
+            message: 'Успішна авторизація адміністратора Steamstrike',
+            ...gameConfigStore.getFullAdminPayload()
+          });
+        }
+
+        // GET /api/admin/config
+        if (pathname === '/api/admin/config' && req.method === 'GET') {
+          if (!checkAdminAuth()) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          return sendJson(200, {
+            success: true,
+            ...gameConfigStore.getFullAdminPayload()
+          });
+        }
+
+        // POST /api/admin/config
+        if (pathname === '/api/admin/config' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const payloadSettings = body.settings || body;
+          const updated = gameConfigStore.updateSettings(payloadSettings);
+          return sendJson(200, {
+            success: true,
+            message: 'Параметри гри успішно збережено та застосовано!',
+            settings: updated
+          });
+        }
+
+        // POST /api/admin/config/preset
+        if (pathname === '/api/admin/config/preset' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          if (!body.presetId) {
+            return sendJson(400, { success: false, error: 'Не вказано ідентифікатор пресету (presetId)' });
+          }
+          const updated = gameConfigStore.applyPreset(body.presetId);
+          return sendJson(200, {
+            success: true,
+            message: `Пресет '${body.presetId}' успішно застосовано!`,
+            settings: updated
+          });
+        }
+
+        // POST /api/admin/config/reset
+        if (pathname === '/api/admin/config/reset' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const defaults = gameConfigStore.resetToDefaults();
+          return sendJson(200, {
+            success: true,
+            message: 'Параметри скинуто до заводських стандартних значень',
+            settings: defaults
+          });
+        }
+
+        // GET /api/config/public
+        if (pathname === '/api/config/public' && req.method === 'GET') {
+          return sendJson(200, {
+            success: true,
+            settings: gameConfigStore.getSettings(),
+            categories: GAME_SETTING_CATEGORIES,
+            schema: GAME_SETTINGS_SCHEMA,
+            presets: GAME_SETTING_PRESETS
           });
         }
 

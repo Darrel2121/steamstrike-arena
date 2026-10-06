@@ -15,6 +15,7 @@ import { getEmblemDefinition } from '../../shared/ProgressionSchema.js';
 import { WorkshopUI } from './ui/WorkshopUI.js';
 import { AuthModal } from './ui/AuthModal.js';
 import { BugReportModal } from './ui/BugReportModal.js';
+import { AdminPanelModal } from './ui/AdminPanelModal.js';
 import { soundFX } from './audio/SoundFX.js';
 
 export class App {
@@ -52,6 +53,7 @@ export class App {
     this.bindDomElements();
     this.authModal = new AuthModal(this.progressionManager);
     this.bugReportModal = new BugReportModal({ app: this });
+    this.adminPanelModal = new AdminPanelModal({ app: this, apiBase });
     this.workshopUI = new WorkshopUI(this.progressionManager, {
       authModal: this.authModal
     });
@@ -126,6 +128,9 @@ export class App {
     this.btnEditorFullscreen = document.getElementById('btnEditorFullscreen');
     this.btnSoundToggle = document.getElementById('btnSoundToggle');
     this.mBtnSoundToggle = document.getElementById('mBtnSoundToggle');
+    this.btnOpenAdminPanel = document.getElementById('btnOpenAdminPanel');
+    this.mBtnOpenAdminPanel = document.getElementById('mBtnOpenAdminPanel');
+    this.btnFooterAdmin = document.getElementById('btnFooterAdmin');
 
     this.gameMapNameDisplay = document.getElementById('gameMapNameDisplay');
     this.editorCanvas = document.getElementById('editorCanvas');
@@ -326,6 +331,15 @@ export class App {
     if (this.navButtons.auth) {
       this.navButtons.auth.addEventListener('click', () => this.authModal.open());
     }
+    if (this.btnOpenAdminPanel) {
+      this.btnOpenAdminPanel.addEventListener('click', () => this.adminPanelModal.toggle());
+    }
+    if (this.btnFooterAdmin) {
+      this.btnFooterAdmin.addEventListener('click', (e) => {
+        e.preventDefault();
+        this.adminPanelModal.toggle();
+      });
+    }
 
     const updateSoundButtons = () => {
       const isMuted = soundFX.isMuted;
@@ -425,6 +439,13 @@ export class App {
       });
       addTap(this.mNavButtons.fullscreen, () => {
         this.toggleFullscreen();
+        closeMobileDrawer();
+      });
+    }
+
+    if (this.mBtnOpenAdminPanel) {
+      addTap(this.mBtnOpenAdminPanel, () => {
+        this.adminPanelModal.toggle();
         closeMobileDrawer();
       });
     }
