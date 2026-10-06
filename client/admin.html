@@ -69,6 +69,9 @@
       <button class="admin-tab-btn" data-tab="news">
         <span>📰</span> Новини та патчі
       </button>
+      <button class="admin-tab-btn" data-tab="maps">
+        <span>🗺️</span> Модерація карт <span id="badgePendingMapsCount" class="tab-pill" style="display: none;">0</span>
+      </button>
       <button class="admin-tab-btn" data-tab="balance">
         <span>⚙️</span> Баланс та конфіг
       </button>
@@ -110,6 +113,13 @@
           <div class="metric-info">
             <span class="metric-label">Активних блокувань</span>
             <span id="statTotalBans" class="metric-val">0</span>
+          </div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-icon">🗺️</div>
+          <div class="metric-info">
+            <span class="metric-label">Карт спільноти</span>
+            <span id="statCommunityMaps" class="metric-val">0</span>
           </div>
         </div>
         <div class="metric-card">
@@ -317,7 +327,32 @@
       </div>
     </section>
 
-    <!-- TAB 5: Live Gameplay Config & Presets -->
+    <!-- TAB 5: Community Maps Moderation -->
+    <section id="tab-maps" class="admin-tab-content">
+      <div class="steampunk-panel admin-card-panel">
+        <div class="card-panel-header" style="flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3><span>🗺️</span> Модерація карт користувачів</h3>
+            <span id="headerPendingMapsPill" class="tab-pill" style="display: none; background: #e67e22;">0 на розгляді</span>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <div class="bug-filter-bar" id="mapFilterBar">
+              <button class="btn-steampunk btn-filter-map active" data-filter="all">Всі</button>
+              <button class="btn-steampunk btn-filter-map" data-filter="pending">⏳ На розгляді</button>
+              <button class="btn-steampunk btn-filter-map" data-filter="approved">✅ Схвалені</button>
+              <button class="btn-steampunk btn-filter-map" data-filter="rejected">❌ Відхилені</button>
+            </div>
+            <button id="btnRefreshAdminMaps" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 10px;">🔄 Оновити</button>
+          </div>
+        </div>
+
+        <div id="adminMapsListContainer" class="admin-news-list" style="margin-top: 12px;">
+          <div style="text-align: center; color: #8e9aa8; padding: 20px;">Завантаження карт спільноти...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: Live Gameplay Config & Presets -->
     <section id="tab-balance" class="admin-tab-content">
       <div class="steampunk-panel admin-card-panel">
         <div class="card-panel-header" style="flex-wrap: wrap; gap: 10px;">

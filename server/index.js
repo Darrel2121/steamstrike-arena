@@ -15,6 +15,7 @@ import { bugReportStore } from './db/BugReportStore.js';
 import { gameConfigStore } from './db/GameConfigStore.js';
 import { banStore } from './db/BanStore.js';
 import { newsStore } from './db/NewsStore.js';
+import { communityMapStore } from './db/CommunityMapStore.js';
 import { GAME_SETTING_CATEGORIES, GAME_SETTINGS_SCHEMA, GAME_SETTING_PRESETS } from '../shared/GameSettings.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -393,6 +394,42 @@ export function startServer(port = process.env.PORT || 3000) {
           });
         }
 
+        // POST /api/community-maps/submit
+        if (pathname === '/api/community-maps/submit' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          try {
+            const author = sanitizeText(body.author || (userPayload?.preferredName || 'Анонімний Інженер'), 40);
+            const name = sanitizeText(body.name || body.map?.name || 'Власна Арена', 50);
+            const description = sanitizeText(body.description || '', 1000);
+            const authorId = userPayload?.accountId || body.authorId || null;
+
+            const record = await communityMapStore.submitMap({
+              name,
+              author,
+              authorId,
+              description,
+              map: body.map
+            });
+
+            return sendJson(200, {
+              success: true,
+              mapId: record.id,
+              record,
+              message: 'Карту успішно надіслано на модерацію! Після схвалення адміністратором вона з\'явиться у відкритому доступі.'
+            });
+          } catch (err) {
+            return sendJson(400, { success: false, error: err.message });
+          }
+        }
+
+        // GET /api/community-maps/published
+        if (pathname === '/api/community-maps/published' && req.method === 'GET') {
+          return sendJson(200, {
+            success: true,
+            maps: communityMapStore.getPublishedMaps()
+          });
+        }
+
         // GET /api/rooms
         if (pathname === '/api/rooms' && req.method === 'GET') {
           return sendJson(200, {
@@ -579,6 +616,14 @@ export function startServer(port = process.env.PORT || 3000) {
             resolved: allBugs.filter(b => b.status === 'resolved').length
           };
 
+          const allCommunityMaps = communityMapStore.getAllMaps();
+          const mapStats = {
+            total: allCommunityMaps.length,
+            pending: allCommunityMaps.filter(m => m.status === 'pending').length,
+            approved: allCommunityMaps.filter(m => m.status === 'approved').length,
+            rejected: allCommunityMaps.filter(m => m.status === 'rejected').length
+          };
+
           return sendJson(200, {
             success: true,
             stats: {
@@ -592,7 +637,8 @@ export function startServer(port = process.env.PORT || 3000) {
               nodeVersion: process.version,
               rooms: roomsSummary,
               leaderboard,
-              bugs: bugStats
+              bugs: bugStats,
+              communityMaps: mapStats
             }
           });
         }
@@ -843,6 +889,57 @@ export function startServer(port = process.env.PORT || 3000) {
             success: true,
             removed,
             message: removed ? 'Новину успішно видалено' : 'Новину не знайдено'
+          });
+        }
+
+        // ======================================================================
+        // COMMUNITY MAPS MODERATION API
+        // ======================================================================
+
+        // GET /api/admin/community-maps
+        if (pathname === '/api/admin/community-maps' && req.method === 'GET') {
+          if (!checkAdminAuth()) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          const status = parsedUrl.searchParams.get('status') || null;
+          return sendJson(200, {
+            success: true,
+            maps: communityMapStore.getAllMaps(status)
+          });
+        }
+
+        // POST /api/admin/community-maps/status
+        if (pathname === '/api/admin/community-maps/status' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          if (!body.id || !body.status) {
+            return sendJson(400, { success: false, error: 'Не вказано ID карти або новий статус' });
+          }
+          const updated = await communityMapStore.updateMapStatus(body.id, body.status, body.reviewNote || '');
+          if (!updated) return sendJson(404, { success: false, error: 'Карту не знайдено' });
+          return sendJson(200, {
+            success: true,
+            map: updated,
+            message: `Статус карти успішно оновлено на '${body.status}'`
+          });
+        }
+
+        // POST /api/admin/community-maps/delete
+        if (pathname === '/api/admin/community-maps/delete' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!checkAdminAuth(body)) {
+            return sendJson(401, { success: false, error: 'Потрібна авторизація адміністратора' });
+          }
+          if (!body.id) {
+            return sendJson(400, { success: false, error: 'Не вказано ID карти' });
+          }
+          const removed = await communityMapStore.deleteMap(body.id);
+          return sendJson(200, {
+            success: true,
+            removed,
+            message: removed ? 'Карту успішно видалено' : 'Карту не знайдено'
           });
         }
 

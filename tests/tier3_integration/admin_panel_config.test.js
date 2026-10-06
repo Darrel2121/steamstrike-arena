@@ -20,6 +20,8 @@ import { GameConfigStore } from '../../server/db/GameConfigStore.js';
 import { banStore } from '../../server/db/BanStore.js';
 import { newsStore } from '../../server/db/NewsStore.js';
 import { bugReportStore } from '../../server/db/BugReportStore.js';
+import { communityMapStore } from '../../server/db/CommunityMapStore.js';
+import { createDefaultMap } from '../../shared/MapSchema.js';
 import { startServer } from '../../server/index.js';
 
 export const suiteName = 'Tier 3: Admin Panel & Runtime Game Settings Configuration';
@@ -263,11 +265,6 @@ export const tests = [
       }, {});
       assert.strictEqual(resReset.status, 200);
       assert.strictEqual(resReset.body.settings.playerWalkSpeed, 120);
-
-      // Clean teardown of server
-      if (runningServer) {
-        await new Promise((res) => runningServer.close(res));
-      }
     }
   },
 
@@ -393,6 +390,158 @@ export const tests = [
       // Delete report
       const deleted = await bugReportStore.deleteReport(report.id);
       assert.strictEqual(deleted, true);
+    }
+  },
+
+  {
+    id: 'ADM.11',
+    name: 'CommunityMapStore Submission, Validation, and Moderation Lifecycle',
+    fn: async () => {
+      const validMap = createDefaultMap();
+      validMap.name = 'Test Foundry Arena';
+
+      // Submit map
+      const submission = await communityMapStore.submitMap({
+        name: 'Test Foundry Arena',
+        author: 'Mechanic_Dan',
+        description: 'Arena with tight steam pipe corridors',
+        map: validMap
+      });
+
+      assert.ok(submission.id);
+      assert.strictEqual(submission.status, 'pending');
+      assert.strictEqual(submission.name, 'Test Foundry Arena');
+      assert.strictEqual(submission.author, 'Mechanic_Dan');
+
+      // Check not yet published
+      let published = communityMapStore.getPublishedMaps();
+      assert.strictEqual(published.some(m => m.id === submission.id), false);
+
+      // Approve map
+      const approved = await communityMapStore.updateMapStatus(submission.id, 'approved', 'Схвалено');
+      assert.strictEqual(approved.status, 'approved');
+
+      // Now present in published list
+      published = communityMapStore.getPublishedMaps();
+      assert.strictEqual(published.some(m => m.id === submission.id), true);
+
+      // Reject map
+      const rejected = await communityMapStore.updateMapStatus(submission.id, 'rejected', 'Забагато укриттів');
+      assert.strictEqual(rejected.status, 'rejected');
+
+      // No longer in published list
+      published = communityMapStore.getPublishedMaps();
+      assert.strictEqual(published.some(m => m.id === submission.id), false);
+
+      // Delete map
+      const deleted = await communityMapStore.deleteMap(submission.id);
+      assert.strictEqual(deleted, true);
+      assert.strictEqual(communityMapStore.getMapById(submission.id), null);
+    }
+  },
+
+  {
+    id: 'ADM.12',
+    name: 'REST API: /api/community-maps/submit & /api/community-maps/published',
+    fn: async () => {
+      const validMap = createDefaultMap();
+      validMap.name = 'Public Test Map';
+
+      // Submit map via public API
+      const resSubmit = await doRequest(serverPort, {
+        path: '/api/community-maps/submit',
+        method: 'POST'
+      }, {
+        name: 'Public Test Map',
+        author: 'SteamScout',
+        description: 'Tactical sniper arena',
+        map: validMap
+      });
+
+      assert.strictEqual(resSubmit.status, 200);
+      assert.strictEqual(resSubmit.body.success, true);
+      const mapId = resSubmit.body.mapId;
+      assert.ok(mapId);
+
+      // Get published maps (should not include pending)
+      const resPub1 = await doRequest(serverPort, {
+        path: '/api/community-maps/published',
+        method: 'GET'
+      });
+      assert.strictEqual(resPub1.status, 200);
+      assert.strictEqual(resPub1.body.success, true);
+      assert.strictEqual(resPub1.body.maps.some(m => m.id === mapId), false);
+
+      // Cleanup
+      await communityMapStore.deleteMap(mapId);
+    }
+  },
+
+  {
+    id: 'ADM.13',
+    name: 'REST API: Admin Moderation of Community Maps',
+    fn: async () => {
+      const validMap = createDefaultMap();
+      const submission = await communityMapStore.submitMap({
+        name: 'Admin Moderation Target',
+        author: 'GuildMaster',
+        description: 'Heavy assault labyrinth',
+        map: validMap
+      });
+
+      // Admin GET /api/admin/community-maps without auth -> 401
+      const resNoAuth = await doRequest(serverPort, {
+        path: '/api/admin/community-maps',
+        method: 'GET'
+      });
+      assert.strictEqual(resNoAuth.status, 401);
+
+      // Admin GET with valid auth header
+      const resAuth = await doRequest(serverPort, {
+        path: '/api/admin/community-maps',
+        method: 'GET',
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
+      });
+      assert.strictEqual(resAuth.status, 200);
+      assert.strictEqual(resAuth.body.success, true);
+      assert.ok(Array.isArray(resAuth.body.maps));
+      assert.ok(resAuth.body.maps.some(m => m.id === submission.id));
+
+      // Admin Approve POST /api/admin/community-maps/status
+      const resApprove = await doRequest(serverPort, {
+        path: '/api/admin/community-maps/status',
+        method: 'POST',
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
+      }, {
+        id: submission.id,
+        status: 'approved',
+        reviewNote: 'Ready for deployment'
+      });
+      assert.strictEqual(resApprove.status, 200);
+      assert.strictEqual(resApprove.body.map.status, 'approved');
+
+      // Verify now published in public API
+      const resPub = await doRequest(serverPort, {
+        path: '/api/community-maps/published',
+        method: 'GET'
+      });
+      assert.ok(resPub.body.maps.some(m => m.id === submission.id));
+
+      // Admin Delete POST /api/admin/community-maps/delete
+      const resDel = await doRequest(serverPort, {
+        path: '/api/admin/community-maps/delete',
+        method: 'POST',
+        headers: { 'x-admin-key': 'M7qDhW5Grm' }
+      }, {
+        id: submission.id
+      });
+      assert.strictEqual(resDel.status, 200);
+      assert.strictEqual(resDel.body.removed, true);
+
+      // Clean teardown of server
+      if (runningServer) {
+        await new Promise((res) => runningServer.close(res));
+      }
     }
   }
 ];

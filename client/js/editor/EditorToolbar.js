@@ -29,6 +29,7 @@ export class EditorToolbar {
     this.btnLoadLocal = document.getElementById('btnLoadLocal');
     this.btnExportJson = document.getElementById('btnExportJson');
     this.btnImportJson = document.getElementById('btnImportJson');
+    this.btnProposeMapOnline = document.getElementById('btnProposeMapOnline');
     this.fileInputMap = document.getElementById('fileInputMap');
     this.btnLaunchCustomMatch = document.getElementById('btnLaunchCustomMatch');
     this.btnEditorReturnHome = document.getElementById('btnEditorReturnHome');
@@ -127,6 +128,11 @@ export class EditorToolbar {
     // Export JSON File Download
     if (this.btnExportJson) {
       this.btnExportJson.addEventListener('click', () => this.editor.exportJsonFile());
+    }
+
+    // Propose Map for Official Game Publication
+    if (this.btnProposeMapOnline) {
+      this.btnProposeMapOnline.addEventListener('click', () => this.editor.openSubmitMapModal());
     }
 
     // Import JSON File Trigger

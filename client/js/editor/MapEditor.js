@@ -567,6 +567,125 @@ export class MapEditor {
     }
   }
 
+  openSubmitMapModal() {
+    this.autoFixSpawns();
+    const val = validateMap(this.map);
+    if (!val.valid) {
+      this.showToast(`Карта не готова: ${val.errors[0]}`, true);
+      return;
+    }
+
+    const modal = document.getElementById('modalSubmitCommunityMap');
+    if (!modal) return;
+
+    const nameInput = document.getElementById('submitMapNameInput');
+    const authorInput = document.getElementById('submitMapAuthorInput');
+    const descInput = document.getElementById('submitMapDescInput');
+    const diagSummary = document.getElementById('submitMapDiagSummary');
+    const notice = document.getElementById('submitMapStatusNotice');
+    const form = document.getElementById('formSubmitCommunityMap');
+    const btnClose = document.getElementById('btnCloseSubmitMapModal');
+    const btnCancel = document.getElementById('btnCancelSubmitMap');
+
+    if (nameInput) nameInput.value = this.map.name || 'Clockwork Arena';
+
+    let authorName = 'FoundryEngineer';
+    try {
+      const stored = localStorage.getItem('steamstrike_profile_v1');
+      if (stored) {
+        const p = JSON.parse(stored);
+        if (p.username) authorName = p.username;
+      }
+    } catch (_) {}
+    if (authorInput) authorInput.value = authorName;
+
+    if (descInput) descInput.value = '';
+    if (notice) {
+      notice.style.display = 'none';
+      notice.textContent = '';
+    }
+
+    if (diagSummary) {
+      const walls = this.map.tiles.filter(t => t === TILE_TYPES.WALL).length;
+      const obstacles = this.map.tiles.filter(t => t === TILE_TYPES.OBSTACLE).length;
+      const playerSpawns = this.map.spawns.filter(s => s.type === SPAWN_TYPES.PLAYER).length;
+      const botSpawns = this.map.spawns.filter(s => s.type === SPAWN_TYPES.BOT).length;
+      diagSummary.textContent = `🗺️ Розмір: ${this.map.width}x${this.map.height} (${this.map.tileSize}px) | Стіни: ${walls} | Укриття: ${obstacles} | Спавни: ${playerSpawns} гравців, ${botSpawns} ботів`;
+    }
+
+    modal.style.display = 'flex';
+
+    const closeModal = () => {
+      modal.style.display = 'none';
+    };
+
+    if (btnClose) btnClose.onclick = closeModal;
+    if (btnCancel) btnCancel.onclick = closeModal;
+
+    if (form && !form._boundSubmit) {
+      form._boundSubmit = true;
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const submitBtn = document.getElementById('btnConfirmSubmitMap');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = '⏳ Відправка на сервер...';
+        }
+
+        try {
+          const mapPayload = JSON.parse(JSON.stringify(this.map));
+          mapPayload.name = nameInput?.value?.trim() || mapPayload.name;
+          const author = authorInput?.value?.trim() || 'Анонімний Інженер';
+          const description = descInput?.value?.trim() || '';
+
+          const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+          const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
+
+          const token = localStorage.getItem('clockwork_auth_token_v1');
+          const headers = { 'Content-Type': 'application/json' };
+          if (token) headers['Authorization'] = `Bearer ${token}`;
+
+          const res = await fetch(`${apiBase}/api/community-maps/submit`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              name: mapPayload.name,
+              author,
+              description,
+              map: mapPayload
+            })
+          });
+
+          const data = await res.json();
+          if (res.ok && data.success) {
+            if (notice) {
+              notice.className = 'auth-notice notice-success';
+              notice.style.display = 'block';
+              notice.textContent = '🎉 ' + (data.message || 'Карту успішно надіслано на модерацію!');
+            }
+            this.showToast('Карту надіслано на розгляд адміністратора!', false);
+            setTimeout(() => {
+              closeModal();
+            }, 1800);
+          } else {
+            throw new Error(data.error || 'Не вдалося надіслати карту на сервер');
+          }
+        } catch (err) {
+          if (notice) {
+            notice.className = 'auth-notice notice-error';
+            notice.style.display = 'block';
+            notice.textContent = '❌ ' + err.message;
+          }
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = '🚀 Надіслати на модерацію';
+          }
+        }
+      };
+    }
+  }
+
   returnHome() {
     if (typeof this.options?.onReturnHome === 'function') {
       this.options.onReturnHome();

@@ -24,12 +24,14 @@ export class LobbyUI {
     this.isReady = false;
     this.roomsPollInterval = null;
     this._copyToastTimer = null;
+    this.publishedCommunityMaps = new Map();
 
     this.bindDom();
     this.initProfileSync();
     this.attachEvents();
     this.bindNetworkEvents();
     this.populateMapList();
+    this.fetchCommunityMaps();
     this.fetchAndRenderRooms();
     this.startRoomsPoll();
   }
@@ -67,6 +69,7 @@ export class LobbyUI {
       lobbyErrorMsg: document.getElementById('lobbyErrorMsg'),
       lobbyPingBadge: document.getElementById('lobbyPingBadge'),
       lobbyMapSelect: document.getElementById('lobbyMapSelect'),
+      homeMapSelect: document.getElementById('homeMapSelect'),
       lobbyGameModeSelect: document.getElementById('lobbyGameModeSelect'),
       lobbyTargetKillsGroup: document.getElementById('lobbyTargetKillsGroup'),
       lobbyTargetKillsInput: document.getElementById('lobbyTargetKillsInput'),
@@ -164,6 +167,20 @@ export class LobbyUI {
       this.dom.lobbyBotDifficultySelect.addEventListener('change', () => {
         const val = this.dom.lobbyBotDifficultySelect.value;
         if (this.dom.homeBotDifficultySelect) this.dom.homeBotDifficultySelect.value = val;
+      });
+    }
+
+    // Sync Home & Lobby Map Selects
+    if (this.dom.homeMapSelect) {
+      this.dom.homeMapSelect.addEventListener('change', () => {
+        const val = this.dom.homeMapSelect.value;
+        if (this.dom.lobbyMapSelect) this.dom.lobbyMapSelect.value = val;
+      });
+    }
+    if (this.dom.lobbyMapSelect) {
+      this.dom.lobbyMapSelect.addEventListener('change', () => {
+        const val = this.dom.lobbyMapSelect.value;
+        if (this.dom.homeMapSelect) this.dom.homeMapSelect.value = val;
       });
     }
 
@@ -372,45 +389,77 @@ export class LobbyUI {
     this.resetButtonBusy(this.dom.btnHomeJoinRoom, '⚡ Приєднатися');
   }
 
-  populateMapList() {
-    if (!this.dom.lobbyMapSelect) return;
-
-    const currentVal = this.dom.lobbyMapSelect.value;
-    this.dom.lobbyMapSelect.innerHTML = '';
-
-    for (const preset of PRESET_MAPS) {
-      const opt = document.createElement('option');
-      opt.value = preset.id;
-      opt.textContent = `${preset.name}`;
-      this.dom.lobbyMapSelect.appendChild(opt);
-    }
-
-    // Look for maps saved in localStorage
+  async fetchCommunityMaps() {
     try {
-      const savedMapRaw = localStorage.getItem(STORAGE_KEY_CUSTOM_MAP) || localStorage.getItem('steampunk_tactical_custom_map_v1') || localStorage.getItem('steampunk_tactical_custom_map');
-      if (savedMapRaw) {
-        const savedMap = JSON.parse(savedMapRaw);
-        const opt = document.createElement('option');
-        opt.value = '__saved__';
-        opt.textContent = `🛠 Власна: ${savedMap.name || 'Saved Arena'} (${savedMap.width}x${savedMap.height})`;
-        this.dom.lobbyMapSelect.appendChild(opt);
+      const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const apiBase = isLocal ? '' : 'https://steamstrike-server.onrender.com';
+      const res = await fetch(`${apiBase}/api/community-maps/published`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.maps && Array.isArray(data.maps)) {
+          for (const m of data.maps) {
+            this.publishedCommunityMaps.set(m.id, m.map);
+          }
+          this.populateMapList();
+        }
       }
-    } catch (_) {
-      // Ignore localStorage errors
-    }
+    } catch (_) {}
+  }
 
-    if (currentVal && Array.from(this.dom.lobbyMapSelect.options).some(o => o.value === currentVal)) {
-      this.dom.lobbyMapSelect.value = currentVal;
+  populateMapList() {
+    const selects = [this.dom.lobbyMapSelect, this.dom.homeMapSelect].filter(Boolean);
+    if (selects.length === 0) return;
+
+    for (const select of selects) {
+      const currentVal = select.value;
+      select.innerHTML = '';
+
+      for (const preset of PRESET_MAPS) {
+        const opt = document.createElement('option');
+        opt.value = preset.id;
+        opt.textContent = `${preset.name}`;
+        select.appendChild(opt);
+      }
+
+      // Look for maps saved in localStorage
+      try {
+        const savedMapRaw = localStorage.getItem(STORAGE_KEY_CUSTOM_MAP) || localStorage.getItem('steampunk_tactical_custom_map_v1') || localStorage.getItem('steampunk_tactical_custom_map');
+        if (savedMapRaw) {
+          const savedMap = JSON.parse(savedMapRaw);
+          const opt = document.createElement('option');
+          opt.value = '__saved__';
+          opt.textContent = `🛠 Власна: ${savedMap.name || 'Saved Arena'} (${savedMap.width}x${savedMap.height})`;
+          select.appendChild(opt);
+        }
+      } catch (_) {}
+
+      // Approved community maps
+      if (this.publishedCommunityMaps && this.publishedCommunityMaps.size > 0) {
+        for (const [id, mapData] of this.publishedCommunityMaps.entries()) {
+          const opt = document.createElement('option');
+          opt.value = id;
+          opt.textContent = `🌟 Спільнота: ${mapData.name || 'Community Arena'} (${mapData.width || 20}x${mapData.height || 20})`;
+          select.appendChild(opt);
+        }
+      }
+
+      if (currentVal && Array.from(select.options).some(o => o.value === currentVal)) {
+        select.value = currentVal;
+      }
     }
   }
 
   getSelectedMap() {
-    const val = this.dom.lobbyMapSelect ? this.dom.lobbyMapSelect.value : 'foundry';
+    const val = this.dom.lobbyMapSelect ? this.dom.lobbyMapSelect.value : (this.dom.homeMapSelect ? this.dom.homeMapSelect.value : 'foundry');
     if (val === '__saved__') {
       try {
         const savedRaw = localStorage.getItem(STORAGE_KEY_CUSTOM_MAP) || localStorage.getItem('steampunk_tactical_custom_map_v1') || localStorage.getItem('steampunk_tactical_custom_map');
         if (savedRaw) return JSON.parse(savedRaw);
       } catch (_) {}
+    }
+
+    if (this.publishedCommunityMaps && this.publishedCommunityMaps.has(val)) {
+      return this.publishedCommunityMaps.get(val);
     }
 
     const preset = getPresetMap(val);

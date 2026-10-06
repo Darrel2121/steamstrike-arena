@@ -13,7 +13,9 @@ class AdminDashboard {
     this.playersData = [];
     this.bugsData = [];
     this.newsData = [];
+    this.communityMapsData = [];
     this.activeBugFilter = 'all';
+    this.activeMapFilter = 'all';
 
     this.bindDom();
     this.attachEvents();
@@ -38,6 +40,7 @@ class AdminDashboard {
       statActiveBots: document.getElementById('statActiveBots'),
       statTotalProfiles: document.getElementById('statTotalProfiles'),
       statTotalBans: document.getElementById('statTotalBans'),
+      statCommunityMaps: document.getElementById('statCommunityMaps'),
       statUptime: document.getElementById('statUptime'),
       roomsTableBody: document.getElementById('adminRoomsTableBody'),
       leaderboardTableBody: document.getElementById('adminLeaderboardTableBody'),
@@ -61,6 +64,13 @@ class AdminDashboard {
       btnRefreshBugs: document.getElementById('btnRefreshBugs'),
       bugFilterBtns: document.querySelectorAll('.btn-filter-bug'),
       badgeNewBugsCount: document.getElementById('badgeNewBugsCount'),
+
+      // Maps Tab
+      badgePendingMapsCount: document.getElementById('badgePendingMapsCount'),
+      headerPendingMapsPill: document.getElementById('headerPendingMapsPill'),
+      mapFilterBtns: document.querySelectorAll('.btn-filter-map'),
+      btnRefreshAdminMaps: document.getElementById('btnRefreshAdminMaps'),
+      adminMapsListContainer: document.getElementById('adminMapsListContainer'),
 
       // News Tab
       newsFormHeader: document.getElementById('newsFormHeader'),
@@ -136,6 +146,18 @@ class AdminDashboard {
         this.renderBugsList();
       });
     });
+
+    // Map filters
+    this.dom.mapFilterBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.dom.mapFilterBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        this.activeMapFilter = btn.dataset.filter;
+        this.renderMapsList();
+      });
+    });
+
+    this.dom.btnRefreshAdminMaps?.addEventListener('click', () => this.loadMaps());
 
     // News Form Submit
     this.dom.adminNewsForm?.addEventListener('submit', (e) => {
@@ -226,6 +248,7 @@ class AdminDashboard {
     else if (tabName === 'players') this.loadPlayers();
     else if (tabName === 'bugs') this.loadBugs();
     else if (tabName === 'news') this.loadNews();
+    else if (tabName === 'maps') this.loadMaps();
     else if (tabName === 'balance') this.loadBalanceConfig();
   }
 
@@ -262,6 +285,28 @@ class AdminDashboard {
       if (this.dom.statActiveBots) this.dom.statActiveBots.textContent = s.activeBots;
       if (this.dom.statTotalProfiles) this.dom.statTotalProfiles.textContent = s.totalRegisteredProfiles;
       if (this.dom.statTotalBans) this.dom.statTotalBans.textContent = s.totalBans;
+      if (s.communityMaps && this.dom.statCommunityMaps) {
+        this.dom.statCommunityMaps.textContent = s.communityMaps.total;
+      }
+
+      if (s.communityMaps) {
+        if (this.dom.badgePendingMapsCount) {
+          if (s.communityMaps.pending > 0) {
+            this.dom.badgePendingMapsCount.textContent = s.communityMaps.pending;
+            this.dom.badgePendingMapsCount.style.display = 'inline-block';
+          } else {
+            this.dom.badgePendingMapsCount.style.display = 'none';
+          }
+        }
+        if (this.dom.headerPendingMapsPill) {
+          if (s.communityMaps.pending > 0) {
+            this.dom.headerPendingMapsPill.textContent = `${s.communityMaps.pending} на розгляді`;
+            this.dom.headerPendingMapsPill.style.display = 'inline-block';
+          } else {
+            this.dom.headerPendingMapsPill.style.display = 'none';
+          }
+        }
+      }
 
       const hrs = Math.floor(s.uptimeSeconds / 3600);
       const mins = Math.floor((s.uptimeSeconds % 3600) / 60);
@@ -729,7 +774,193 @@ class AdminDashboard {
   }
 
   // =========================================================================
-  // 5. BALANCE & CONFIG TAB
+  // 5. COMMUNITY MAPS TAB
+  // =========================================================================
+  async loadMaps() {
+    try {
+      const res = await fetch(`${this.apiBase}/api/admin/community-maps`, { headers: this.getHeaders() });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      this.communityMapsData = data.maps || [];
+      this.renderMapsList();
+
+      // Also update badges
+      const pendingCount = this.communityMapsData.filter(m => m.status === 'pending').length;
+      if (this.dom.badgePendingMapsCount) {
+        if (pendingCount > 0) {
+          this.dom.badgePendingMapsCount.textContent = pendingCount;
+          this.dom.badgePendingMapsCount.style.display = 'inline-block';
+        } else {
+          this.dom.badgePendingMapsCount.style.display = 'none';
+        }
+      }
+      if (this.dom.headerPendingMapsPill) {
+        if (pendingCount > 0) {
+          this.dom.headerPendingMapsPill.textContent = `${pendingCount} на розгляді`;
+          this.dom.headerPendingMapsPill.style.display = 'inline-block';
+        } else {
+          this.dom.headerPendingMapsPill.style.display = 'none';
+        }
+      }
+    } catch (err) {
+      console.error('[AdminDashboard] Failed to load community maps:', err);
+      this.showToast('Помилка завантаження карт: ' + err.message, 'error');
+    }
+  }
+
+  renderMapsList() {
+    if (!this.dom.adminMapsListContainer) return;
+
+    const filtered = this.communityMapsData.filter(m => {
+      if (this.activeMapFilter === 'all') return true;
+      return m.status === this.activeMapFilter;
+    });
+
+    if (filtered.length === 0) {
+      this.dom.adminMapsListContainer.innerHTML = `<div style="text-align: center; color: #8e9aa8; padding: 40px;">Карт у цій категорії немає</div>`;
+      return;
+    }
+
+    this.dom.adminMapsListContainer.innerHTML = filtered.map(m => {
+      const dateStr = m.submittedAt ? new Date(m.submittedAt).toLocaleString() : 'Невідома дата';
+      const mapGeo = m.map || {};
+      const width = mapGeo.width || 20;
+      const height = mapGeo.height || 20;
+      const tiles = Array.isArray(mapGeo.tiles) ? mapGeo.tiles : [];
+      const spawns = Array.isArray(mapGeo.spawns) ? mapGeo.spawns : [];
+      const decorations = Array.isArray(mapGeo.decorations) ? mapGeo.decorations : [];
+
+      let walls = 0;
+      let obstacles = 0;
+      for (let i = 0; i < tiles.length; i++) {
+        if (tiles[i] === 1) walls++;
+        else if (tiles[i] === 2) obstacles++;
+      }
+      const playerSpawns = spawns.filter(s => s.type === 'player' || s.type === 0).length;
+      const botSpawns = spawns.filter(s => s.type === 'bot' || s.type === 1).length;
+
+      let statusBadge = `<span class="tab-pill" style="background: #e67e22; color: #fff;">⏳ На розгляді</span>`;
+      if (m.status === 'approved') {
+        statusBadge = `<span class="tab-pill" style="background: #27ae60; color: #fff;">✅ Схвалено для гри</span>`;
+      } else if (m.status === 'rejected') {
+        statusBadge = `<span class="tab-pill" style="background: #c0392b; color: #fff;">❌ Відхилено</span>`;
+      }
+
+      return `
+        <div class="bug-card status-${m.status || 'pending'}" style="margin-bottom: 14px;">
+          <div class="bug-header" style="flex-wrap: wrap; gap: 8px;">
+            <div>
+              ${statusBadge}
+              <strong style="color: #ffcf48; font-size: 15px; margin-left: 6px;">${m.name}</strong>
+              <span class="bug-meta" style="margin-left: 8px;">Автор: <strong>${m.author}</strong> &bull; (${dateStr})</span>
+            </div>
+
+            <div style="display: flex; gap: 6px; align-items: center; margin-left: auto;">
+              ${m.status !== 'approved' ? `
+                <button class="btn-steampunk btn-launch btn-approve-map" data-id="${m.id}" title="Схвалити карту для публічного вибору в лобі" style="font-size: 11px; padding: 4px 10px; font-weight: bold;">
+                  ✅ Схвалити
+                </button>
+              ` : ''}
+
+              ${m.status !== 'rejected' ? `
+                <button class="btn-steampunk btn-copper btn-reject-map" data-id="${m.id}" title="Відхилити карту" style="font-size: 11px; padding: 4px 10px; background: #c0392b;">
+                  ❌ Відхилити
+                </button>
+              ` : ''}
+
+              ${m.status !== 'pending' ? `
+                <button class="btn-steampunk btn-iron btn-pending-map" data-id="${m.id}" title="Повернути на розгляд" style="font-size: 11px; padding: 4px 8px;">
+                  ⏳ На розгляд
+                </button>
+              ` : ''}
+
+              <button class="btn-steampunk btn-iron btn-delete-map" data-id="${m.id}" title="Видалити карту назавжди" style="padding: 4px 8px; color: #ff6b6b;">🗑</button>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 12px; margin-top: 8px; font-size: 12px; color: #ffcf48; background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 4px; border: 1px solid rgba(197,155,39,0.2); flex-wrap: wrap;">
+            <span>📐 Розмір: <strong>${width}x${height}</strong></span>
+            <span>🧱 Стіни: <strong>${walls}</strong></span>
+            <span>🛡️ Укриття: <strong>${obstacles}</strong></span>
+            <span>👤 Спавни гравців: <strong>${playerSpawns}</strong></span>
+            <span>🤖 Спавни ботів: <strong>${botSpawns}</strong></span>
+            <span>⚙️ Декор: <strong>${decorations.length}</strong></span>
+          </div>
+
+          ${m.description ? `<div class="bug-desc" style="margin-top: 8px; font-style: italic;">"${m.description}"</div>` : ''}
+          ${m.reviewNote ? `<div style="margin-top: 6px; font-size: 12px; color: #ff9f43;">📝 Примітка модератора: ${m.reviewNote}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+
+    // Attach map action listeners
+    this.dom.adminMapsListContainer.querySelectorAll('.btn-approve-map').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.updateMapStatus(btn.dataset.id, 'approved', 'Схвалено адміністратором');
+      });
+    });
+
+    this.dom.adminMapsListContainer.querySelectorAll('.btn-reject-map').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const note = prompt('Вкажіть причину відхилення (опціонально):', 'Порушення структури або дисбаланс спавнів');
+        if (note !== null) {
+          this.updateMapStatus(btn.dataset.id, 'rejected', note);
+        }
+      });
+    });
+
+    this.dom.adminMapsListContainer.querySelectorAll('.btn-pending-map').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this.updateMapStatus(btn.dataset.id, 'pending', '');
+      });
+    });
+
+    this.dom.adminMapsListContainer.querySelectorAll('.btn-delete-map').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (confirm('Видалити цю запропоновану карту назавжди?')) {
+          this.deleteCommunityMap(btn.dataset.id);
+        }
+      });
+    });
+  }
+
+  async updateMapStatus(id, status, reviewNote = '') {
+    try {
+      const res = await fetch(`${this.apiBase}/api/admin/community-maps/status`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id, status, reviewNote })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      this.showToast(`✓ Статус карти оновлено на '${status}'`, 'success');
+      this.loadMaps();
+    } catch (err) {
+      this.showToast('Помилка оновлення статусу карти: ' + err.message, 'error');
+    }
+  }
+
+  async deleteCommunityMap(id) {
+    try {
+      const res = await fetch(`${this.apiBase}/api/admin/community-maps/delete`, {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify({ id })
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+
+      this.showToast('✓ Карту успішно видалено', 'success');
+      this.loadMaps();
+    } catch (err) {
+      this.showToast('Помилка видалення карти: ' + err.message, 'error');
+    }
+  }
+
+  // =========================================================================
+  // 6. BALANCE & CONFIG TAB
   // =========================================================================
   async loadBalanceConfig() {
     try {
