@@ -1100,9 +1100,9 @@ export class App {
     if (this.soloWarmupTimer) clearTimeout(this.soloWarmupTimer);
     this.soloWarmupTimer = setTimeout(() => {
       if (this.gameLoadingDesc && !this.gameLoopActive) {
-        this.gameLoadingDesc.textContent = 'Сервер прокидається з режиму сну... Зачекайте декілька секунд (холодний старт Render)';
+        this.gameLoadingDesc.textContent = 'Розпалювання парових котлів та розгортання бойових автоматонів...';
       }
-    }, 3500);
+    }, 2500);
 
     if (this.progressionManager) {
       const stats = this.progressionManager.getCalculatedStats();
