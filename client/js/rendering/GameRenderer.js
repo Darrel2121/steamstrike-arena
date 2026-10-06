@@ -36,7 +36,7 @@ export class GameRenderer {
     this.segments = [];
     this.tileSize = TILE_SIZE;
 
-    // Viewport camera with closer tactical zoom (Bullet Echo style)
+    // Viewport camera with closer tactical zoom
     this.options = options;
     const baseZoom = options.zoom || 1.45;
     this.camera = {

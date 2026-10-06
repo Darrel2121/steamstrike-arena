@@ -1,7 +1,7 @@
 /**
  * CharacterClasses.js
  * Definitions and mechanics for Steampunk Hero Classes and Active/Passive Abilities.
- * Inspires tactical class-based synergy and dynamic combat abilities (Bullet Echo archetype).
+ * Provides tactical class-based synergy and dynamic combat abilities.
  */
 
 export const CHARACTER_CLASSES = {

@@ -298,7 +298,7 @@ export class App {
         }
       });
 
-      // Mouse wheel dynamic camera zoom adjustment (Bullet Echo style)
+      // Mouse wheel dynamic camera zoom adjustment
       this.gameCanvas.addEventListener('wheel', (e) => {
         if (this.gameRenderer && this.currentView === 'game') {
           e.preventDefault();
