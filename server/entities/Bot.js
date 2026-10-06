@@ -220,6 +220,8 @@ export class Bot extends Player {
     let shotAngle = this.angle;
     if (this.difficulty === BOT_DIFFICULTIES.EASY) {
       shotAngle += (Math.random() - 0.5) * 0.22;
+    } else if (this.difficulty === BOT_DIFFICULTIES.NORMAL) {
+      shotAngle += (Math.random() - 0.5) * 0.08; // ~4.5 deg human variance
     }
 
     return new Projectile({
@@ -263,9 +265,6 @@ export class Bot extends Player {
       this.aimTime = 0;
     }
     this.currentTargetId = enemy.id;
-    if (typeof enemy.x === 'number' && typeof enemy.y === 'number') {
-      this.angle = Math.atan2(enemy.y - this.y, enemy.x - this.x);
-    }
     this.loseSightTimer = 0;
   }
 
@@ -527,9 +526,17 @@ export class Bot extends Player {
 
       // Blend lateral strafing & evasive maneuvers from neural network
       if (decision && (decision.strafeX !== 0 || decision.strafeY !== 0)) {
-        const strafeWeight = 0.65;
-        dx = dx * 0.70 + decision.strafeX * this.maxSpeed * dt * strafeWeight;
-        dy = dy * 0.70 + decision.strafeY * this.maxSpeed * dt * strafeWeight;
+        const strafeWeight = 0.50;
+        dx = dx * 0.60 + decision.strafeX * this.maxSpeed * dt * strafeWeight;
+        dy = dy * 0.60 + decision.strafeY * this.maxSpeed * dt * strafeWeight;
+      }
+
+      // Strictly clamp movement displacement to bot's max speed (prevent artificial speed stacking)
+      const maxDisp = this.maxSpeed * dt;
+      const actualDisp = Math.hypot(dx, dy);
+      if (actualDisp > maxDisp && actualDisp > 0.0001) {
+        dx = (dx / actualDisp) * maxDisp;
+        dy = (dy / actualDisp) * maxDisp;
       }
 
       if (dx !== 0 || dy !== 0) {

@@ -446,20 +446,32 @@ export class Room {
       }
     }
 
-    if (candidates.length === 0) {
-      return { x: 100 + slotIndex * 50, y: 100, angle: 0 };
-    }
+    // Filter candidates to strictly guarantee physical clearance from all walls and obstacles (radius = 18px)
+    const isSafeClearance = (cand, radius = 18) => {
+      if (!this.geometrySegments || this.geometrySegments.length === 0) return true;
+      const center = { x: cand.x, y: cand.y };
+      for (let i = 0; i < this.geometrySegments.length; i++) {
+        const seg = this.geometrySegments[i];
+        if (circleSegmentIntersect(center, radius, seg.p1, seg.p2)) {
+          return false;
+        }
+      }
+      return true;
+    };
+
+    const validCandidates = candidates.filter(c => isSafeClearance(c, 18));
+    const activeCandidates = validCandidates.length > 0 ? validCandidates : (candidates.length > 0 ? candidates : [{ x: 100 + slotIndex * 50, y: 100, angle: 0 }]);
 
     // If no opponents on map yet, pick by slotIndex
     if (livingOpponents.length === 0) {
-      return candidates[slotIndex % candidates.length];
+      return activeCandidates[slotIndex % activeCandidates.length];
     }
 
     // Select the candidate spawn that MAXIMIZES the minimum distance to any living opponent
-    let bestCandidate = candidates[0];
+    let bestCandidate = activeCandidates[0];
     let maxMinDist = -1;
 
-    for (const cand of candidates) {
+    for (const cand of activeCandidates) {
       let minDistToEnemy = Infinity;
       for (const opp of livingOpponents) {
         const d = Math.hypot(cand.x - opp.x, cand.y - opp.y);
@@ -954,6 +966,8 @@ export class Room {
           team: player.team || null,
           mapWidth,
           mapHeight,
+          map: this.map,
+          mapName: this.map?.name || 'Battle Arena',
           spawn: { x: player.x, y: player.y, angle: player.angle },
           tickRate: this.tickRate,
           maxSpeed: player.maxSpeed,

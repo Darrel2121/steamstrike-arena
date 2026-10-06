@@ -1004,7 +1004,8 @@ export class App {
       this.gameIdleOverlay.style.display = 'none';
     }
     this.localPlayerId = matchData.playerId;
-    const targetMap = this.activeMatchMap || this.editor?.map || createDefaultMap();
+    const targetMap = matchData.map || this.activeMatchMap || (matchData.mapName ? getPresetMap(matchData.mapName) : null) || this.editor?.map || createDefaultMap();
+    this.activeMatchMap = targetMap;
 
     // Reset input poll timer so initial frame does not accumulate lobby latency
     if (this.inputManager && typeof this.inputManager.resetPollTime === 'function') {
@@ -1029,7 +1030,7 @@ export class App {
     }
 
     if (this.gameMapNameDisplay) {
-      this.gameMapNameDisplay.textContent = targetMap.name || 'Foundry Arena';
+      this.gameMapNameDisplay.textContent = targetMap.name || 'Battle Arena';
     }
 
     if (this.gameRenderer) {
