@@ -101,9 +101,12 @@ export class ProgressionManager {
 
     // Try background server synchronization
     if (this.token) {
-      await this.fetchProfile().catch(() => {});
+      const fetched = await this.fetchProfile().catch(() => null);
+      if (!fetched) {
+        await this.syncProfileWithServer().catch(() => {});
+      }
     } else {
-      await this.registerGuestOnServer().catch(() => {});
+      await this.syncProfileWithServer().catch(() => {});
     }
 
     this.emit('profileUpdated', this.profile);
@@ -190,21 +193,26 @@ export class ProgressionManager {
           }
           this.saveLocalProfile();
           this.emit('profileUpdated', this.profile);
+          return this.profile;
         }
       }
     } catch (_) {}
-    return this.profile;
+    return null;
   }
 
   /**
-   * Synchronizes guest with server.
+   * Synchronizes and registers profile with server database.
    */
-  async registerGuestOnServer() {
+  async syncProfileWithServer() {
+    if (!this.profile) return null;
     try {
-      const res = await fetch(`${this.apiBase}/api/auth/guest`, {
+      const res = await fetch(`${this.apiBase}/api/profile/sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guestId: this.profile.id, preferredName: this.profile.username })
+        headers: {
+          'Content-Type': 'application/json',
+          ...(this.token ? { 'Authorization': `Bearer ${this.token}` } : {})
+        },
+        body: JSON.stringify({ profile: this.profile })
       });
       if (res.ok) {
         const data = await res.json();
@@ -216,6 +224,14 @@ export class ProgressionManager {
         }
       }
     } catch (_) {}
+    return this.profile;
+  }
+
+  /**
+   * Synchronizes guest with server.
+   */
+  async registerGuestOnServer() {
+    return this.syncProfileWithServer();
   }
 
   /**

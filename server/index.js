@@ -158,8 +158,51 @@ export function startServer(port = process.env.PORT || 3000) {
           if (!accountId) {
             return sendJson(401, { success: false, error: 'Unauthorized or missing guest account ID' });
           }
-          const result = await authService.linkGuestToGoogle(accountId, body.idToken, body.resolution || body.strategy || 'merge');
+          const result = await authService.linkGuestToGoogle(accountId, body.idToken, body.resolution || body.strategy || 'merge', body.guestProfile);
           return sendJson(200, { success: true, ...result });
+        }
+
+        // POST /api/profile/sync (Sync & upsert client profile with server store)
+        if (pathname === '/api/profile/sync' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          const rawProfile = body.profile;
+          if (!rawProfile || !rawProfile.id) {
+            return sendJson(400, { success: false, error: 'Missing profile payload' });
+          }
+          let existing = await profileStore.getProfile(rawProfile.id);
+          if (existing) {
+            existing.username = rawProfile.username || existing.username;
+            existing.level = Math.max(existing.level || 1, rawProfile.level || 1);
+            existing.xp = Math.max(existing.xp || 0, rawProfile.xp || 0);
+            if (rawProfile.emblem) existing.emblem = rawProfile.emblem;
+            if (rawProfile.equippedClass) existing.equippedClass = rawProfile.equippedClass;
+            if (rawProfile.equippedWeapon) existing.equippedWeapon = rawProfile.equippedWeapon;
+            if (rawProfile.isGuest !== undefined) existing.isGuest = Boolean(rawProfile.isGuest);
+            if (rawProfile.email) existing.email = rawProfile.email;
+            if (rawProfile.googleId) existing.googleId = rawProfile.googleId;
+            if (rawProfile.currency) {
+              existing.currency = {
+                scrap: Math.max(existing.currency?.scrap || 0, rawProfile.currency?.scrap || 0),
+                cores: Math.max(existing.currency?.cores || 0, rawProfile.currency?.cores || 0)
+              };
+            }
+            if (rawProfile.careerStats) {
+              existing.careerStats = {
+                matchesPlayed: Math.max(existing.careerStats?.matchesPlayed || 0, rawProfile.careerStats?.matchesPlayed || 0),
+                wins: Math.max(existing.careerStats?.wins || 0, rawProfile.careerStats?.wins || 0),
+                kills: Math.max(existing.careerStats?.kills || 0, rawProfile.careerStats?.kills || 0),
+                damageDealt: Math.max(existing.careerStats?.damageDealt || 0, rawProfile.careerStats?.damageDealt || 0)
+              };
+            }
+            existing.updatedAt = Date.now();
+            await profileStore.save(existing);
+            const token = authService.generateToken({ accountId: existing.id, isGuest: Boolean(existing.isGuest) });
+            return sendJson(200, { success: true, profile: existing, token });
+          } else {
+            const created = await profileStore.save(rawProfile);
+            const token = authService.generateToken({ accountId: created.id, isGuest: Boolean(created.isGuest) });
+            return sendJson(200, { success: true, profile: created, token });
+          }
         }
 
         // GET /api/auth/me or GET /api/profile
@@ -561,9 +604,36 @@ export function startServer(port = process.env.PORT || 3000) {
           }
 
           const allProfiles = await profileStore.getAllProfiles();
+          const profilesMap = new Map();
+          for (const p of allProfiles) {
+            if (p && p.id) profilesMap.set(p.id, p);
+          }
+
+          // Check live active room players
+          if (gameServer) {
+            for (const [, room] of gameServer.rooms) {
+              for (const [, player] of room.players) {
+                if (player && !player.isBot && player.profile && player.profile.id) {
+                  if (!profilesMap.has(player.profile.id)) {
+                    profilesMap.set(player.profile.id, {
+                      ...player.profile,
+                      isLiveOnline: true,
+                      currentRoom: room.id
+                    });
+                  } else {
+                    const existing = profilesMap.get(player.profile.id);
+                    existing.isLiveOnline = true;
+                    existing.currentRoom = room.id;
+                  }
+                }
+              }
+            }
+          }
+
+          const combinedProfiles = Array.from(profilesMap.values());
           const activeBans = banStore.getBans();
 
-          const playersWithBanInfo = allProfiles.map(p => {
+          const playersWithBanInfo = combinedProfiles.map(p => {
             const isBanned = activeBans.some(b => 
               (b.targetType === 'profileId' && b.targetValue === p.id) ||
               (b.targetType === 'callsign' && p.username && b.targetValue.toLowerCase() === p.username.toLowerCase())
@@ -577,6 +647,8 @@ export function startServer(port = process.env.PORT || 3000) {
               equippedClass: p.equippedClass || 'vanguard',
               equippedWeapon: p.equippedWeapon || 'revolver',
               isGuest: Boolean(p.isGuest),
+              isLiveOnline: Boolean(p.isLiveOnline),
+              currentRoom: p.currentRoom || null,
               createdAt: p.createdAt,
               updatedAt: p.updatedAt,
               career: p.careerStats || {},

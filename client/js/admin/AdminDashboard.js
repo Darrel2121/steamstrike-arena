@@ -351,7 +351,9 @@ class AdminDashboard {
         <td>
           ${p.isBanned 
             ? '<span class="tab-pill" style="background: #c0392b;">⛔ Заблокований</span>' 
-            : '<span class="tab-pill" style="background: #27ae60;">✓ Активний</span>'
+            : p.isLiveOnline
+              ? `<span class="tab-pill" style="background: #2ec4b6;">🟢 В кімнаті ${p.currentRoom || ''}</span>`
+              : '<span class="tab-pill" style="background: #27ae60;">✓ Офлайн / Збережено</span>'
           }
         </td>
         <td>

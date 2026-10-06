@@ -219,12 +219,16 @@ export class AuthService {
    * @param {string} [resolution='merge']
    * @returns {Promise<{ token: string, profile: Object, merged: boolean }>}
    */
-  async linkGuestToGoogle(guestAccountId, idToken, resolution = 'merge') {
+  async linkGuestToGoogle(guestAccountId, idToken, resolution = 'merge', fallbackGuestProfile = null) {
     if (!this.profileStore) throw new Error('ProfileStore not configured');
 
-    const guestProfile = (await this.profileStore.getProfile?.(guestAccountId)) || (await this.profileStore.get?.(guestAccountId));
+    let guestProfile = (await this.profileStore.getProfile?.(guestAccountId)) || (await this.profileStore.get?.(guestAccountId));
+    if (!guestProfile && fallbackGuestProfile) {
+      guestProfile = createDefaultProfile({ ...fallbackGuestProfile, id: guestAccountId, isGuest: true });
+      await this.profileStore.save(guestProfile);
+    }
     if (!guestProfile) throw new Error('Guest profile not found');
-    if (!guestProfile.isGuest) throw new Error('Account is already a registered account');
+    if (!guestProfile.isGuest && !fallbackGuestProfile) throw new Error('Account is already a registered account');
 
     const googleUser = await this.verifyGoogleIdToken(idToken);
     let cloudProfile = await this.profileStore.findByGoogleId(googleUser.googleId);
