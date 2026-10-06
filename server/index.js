@@ -11,6 +11,7 @@ import { WebSocketServer } from 'ws';
 import { GameServer } from './GameServer.js';
 import { authService } from './auth/AuthService.js';
 import { profileStore } from './db/ProfileStore.js';
+import { bugReportStore } from './db/BugReportStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -275,6 +276,31 @@ export function startServer(port = process.env.PORT || 3000) {
           if (!accountId) return sendJson(400, { success: false, error: 'Missing profile ID' });
           const result = await profileStore.recordMatchResult(accountId, body);
           return sendJson(200, { success: true, ...result });
+        }
+
+        // POST /api/feedback/bug
+        if (pathname === '/api/feedback/bug' && req.method === 'POST') {
+          const body = await parseJsonBody(req);
+          if (!body.description || !String(body.description).trim()) {
+            return sendJson(400, { success: false, error: 'Будь ласка, введіть опис проблеми' });
+          }
+          const clientInfo = {
+            ...body.clientInfo,
+            ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
+            userAgent: req.headers['user-agent'] || 'unknown',
+            userId: userPayload?.accountId || null
+          };
+          const report = await bugReportStore.addReport({
+            category: body.category,
+            description: body.description,
+            contact: body.contact,
+            clientInfo
+          });
+          return sendJson(200, {
+            success: true,
+            reportId: report.id,
+            message: 'Дякуємо! Ваш звіт успішно передано команді інженерів Steamstrike.'
+          });
         }
 
         // GET /api/rooms

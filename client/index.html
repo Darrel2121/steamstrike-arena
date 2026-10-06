@@ -172,6 +172,7 @@
       <button id="navBtnWorkshop" class="btn-steampunk btn-iron">🛠 Майстерня</button>
       <button id="btnSoundToggle" class="btn-steampunk btn-iron" title="Звукові ефекти (Увімк/Вимк)">🔊 Звук</button>
       <button id="btnGlobalFullscreen" class="btn-steampunk btn-iron" title="Повний екран (F / F11)">⛶ Повний екран</button>
+      <button id="btnOpenBugReport" class="btn-steampunk btn-iron" title="Повідомити про баг або залишити відгук">🐞 Баг-репорт</button>
       <button id="navBtnAuth" class="btn-steampunk btn-iron"><span id="headerUserBadge">🎖 Профіль / Вхід</span></button>
     </nav>
     <!-- Mobile Hamburger Button ("Бутерброд") -->
@@ -199,6 +200,7 @@
         <button id="mNavBtnLobby" class="mobile-nav-btn">⚔ Мережеве лобі</button>
         <button id="mNavBtnEditor" class="mobile-nav-btn">⚒ Редактор карт</button>
         <button id="mNavBtnWorkshop" class="mobile-nav-btn">🛠 Майстерня та прокачка</button>
+        <button id="mBtnOpenBugReport" class="mobile-nav-btn">🐞 Повідомити про баг</button>
         <button id="mBtnSoundToggle" class="mobile-nav-btn">🔊 Звукові ефекти: Увімк</button>
         <button id="mBtnGlobalFullscreen" class="mobile-nav-btn">⛶ На весь екран</button>
         <button id="mNavBtnAuth" class="mobile-nav-btn auth-pill"><span id="mHeaderUserBadge">🎖 Профіль / Вхід</span></button>
@@ -681,7 +683,7 @@
       <footer class="home-footer">
         <p><strong>Steamstrike: Tactical Arena</strong> &bull; Відкрита бета (Open Beta v1.0) &bull; Steampunk Tactical 2D Shooter &bull; 2026</p>
         <p style="font-size: 12px; color: var(--color-text-dim); margin-top: 4px;">
-          Офіційний сервер: <a href="https://steamstrike.online/" style="color: var(--color-brass-glow); text-decoration: none;">steamstrike.online</a> | Рушій: Canvas 2D + WebSocket 30 Hz
+          Офіційний сервер: <a href="https://steamstrike.online/" style="color: var(--color-brass-glow); text-decoration: none;">steamstrike.online</a> | <a href="#" id="btnFooterBugReport" style="color: var(--color-brass-glow); text-decoration: underline; margin-left: 8px;">🐞 Повідомити про баг</a> | Рушій: Canvas 2D + WebSocket 30 Hz
         </p>
       </footer>
 
@@ -1505,6 +1507,56 @@
       </div>
 
       <button id="btnSignOut" class="btn-signout" style="display: none;">Вийти з акаунта</button>
+    </div>
+  </div>
+
+  <!-- ======================================================================
+       Bug Report & Feedback Modal Overlay
+       ====================================================================== -->
+  <div id="bugModalOverlay" class="auth-modal-overlay" style="display: none;">
+    <div class="auth-modal-panel bug-modal-panel">
+      <div class="auth-modal-header">
+        <div class="auth-modal-title">🛠 Журнал неполадок та відгуків</div>
+        <button id="btnBugClose" class="btn-close-modal" title="Закрити">&times;</button>
+      </div>
+
+      <p class="bug-modal-subtitle">
+        Знайшли помилку, баг або маєте пропозицію щодо покращення Steamstrike? Опишіть її, і наші інженери оперативно візьмуть звіт у роботу!
+      </p>
+
+      <div class="bug-form-group">
+        <label for="bugCategorySelect" class="bug-form-label">Тип повідомлення:</label>
+        <select id="bugCategorySelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+          <option value="gameplay" selected>🐛 Баг геймплею / Фізика / Ліхтар / Керування</option>
+          <option value="visual">🎨 Графіка / Візуальні ефекти / Тіні</option>
+          <option value="audio">🔊 Звукові ефекти / Постріли / Кроки</option>
+          <option value="network">🌐 Мережа / З'єднання / Лаги / Синхронізація</option>
+          <option value="editor">⚒ Редактор карт / Збереження</option>
+          <option value="suggestion">💡 Пропозиція / Нова зброя чи механіка</option>
+          <option value="other">⚙ Інше</option>
+        </select>
+      </div>
+
+      <div class="bug-form-group">
+        <label for="bugDescInput" class="bug-form-label">Опис проблеми або пропозиції: <span style="color: #ff5a5f;">*</span></label>
+        <textarea id="bugDescInput" class="steampunk-input bug-textarea" rows="4" placeholder="Опишіть, що сталося, на якій карті чи пристрої, та як повторити баг..." maxlength="4000"></textarea>
+      </div>
+
+      <div class="bug-form-group">
+        <label for="bugContactInput" class="bug-form-label">Контакт для зв'язку (опціонально):</label>
+        <input type="text" id="bugContactInput" class="steampunk-input" placeholder="Telegram @username, Discord або Email" maxlength="100">
+      </div>
+
+      <div class="bug-diag-chip" id="bugDiagSummary">
+        💻 Екран: 1920x1080 | Автоматична діагностика пристрою
+      </div>
+
+      <div id="bugStatusNotice" class="auth-notice" style="display: none; margin-top: 10px;"></div>
+
+      <div class="bug-modal-actions">
+        <button type="button" id="btnBugCancel" class="btn-steampunk btn-iron" style="flex: 1;">Скасувати</button>
+        <button type="button" id="btnBugSubmit" class="btn-steampunk btn-brass" style="flex: 2;">⚙ Надіслати звіт</button>
+      </div>
     </div>
   </div>
 

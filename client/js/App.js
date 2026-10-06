@@ -14,6 +14,7 @@ import { ProgressionManager, generateSteampunkCallsign } from './ProgressionMana
 import { getEmblemDefinition } from '../../shared/ProgressionSchema.js';
 import { WorkshopUI } from './ui/WorkshopUI.js';
 import { AuthModal } from './ui/AuthModal.js';
+import { BugReportModal } from './ui/BugReportModal.js';
 import { soundFX } from './audio/SoundFX.js';
 
 export class App {
@@ -50,6 +51,7 @@ export class App {
     this.progressionManager = new ProgressionManager({ apiBase });
     this.bindDomElements();
     this.authModal = new AuthModal(this.progressionManager);
+    this.bugReportModal = new BugReportModal({ app: this });
     this.workshopUI = new WorkshopUI(this.progressionManager, {
       authModal: this.authModal
     });
