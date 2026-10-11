@@ -1305,10 +1305,23 @@ export class App {
               }
             }
           }
+          // Throttle continuous network input to ~30Hz (matching server tick rate),
+          // but immediately dispatch discrete action triggers (firing, reload, ability, toggleLantern, respawn)
+          const firingChanged = this.lastInputWasFiring !== Boolean(input.firing);
+          const isImmediateAction = Boolean(
+            input.firing ||
+            input.reload ||
+            input.ability ||
+            input.toggleLantern ||
+            input.respawn ||
+            firingChanged
+          );
           this.lastInputWasFiring = Boolean(input.firing);
 
-          if (this.networkClient.isConnected) {
+          const timeSinceLastInput = now - (this.lastInputSendTime || 0);
+          if (this.networkClient.isConnected && (isImmediateAction || timeSinceLastInput >= 32)) {
             this.networkClient.sendInput(input);
+            this.lastInputSendTime = now;
           }
         }
 

@@ -849,10 +849,23 @@ export class GameRenderer {
     const w = this.map.width;
     const h = this.map.height;
 
+    // Viewport-based tile culling to prevent rendering hundreds of offscreen tiles
+    const zoom = this.camera?.zoom || 1.0;
+    const viewW = (this.camera?.width || 800) / zoom;
+    const viewH = (this.camera?.height || 600) / zoom;
+    const camX = this.camera?.x || 0;
+    const camY = this.camera?.y || 0;
+
+    // Extra margin of 1 tile on all sides for drop shadows and half-visible edge tiles
+    const minCol = Math.max(0, Math.floor((camX - ts) / ts));
+    const maxCol = Math.min(w, Math.ceil((camX + viewW + ts) / ts));
+    const minRow = Math.max(0, Math.floor((camY - ts) / ts));
+    const maxRow = Math.min(h, Math.ceil((camY + viewH + ts) / ts));
+
     // Drop shadows for depth
     ctx.fillStyle = 'rgba(5, 7, 10, 0.65)';
-    for (let r = 0; r < h; r++) {
-      for (let c = 0; c < w; c++) {
+    for (let r = minRow; r < maxRow; r++) {
+      for (let c = minCol; c < maxCol; c++) {
         const tile = this.map.tiles[r * w + c];
         if (tile === TILE_TYPES.WALL || tile === TILE_TYPES.OBSTACLE) {
           ctx.fillRect(c * ts + 4, r * ts + 6, ts, ts);
@@ -864,8 +877,8 @@ export class GameRenderer {
     const obstacleImg = assetManager.obstacleImage;
 
     // Solid blocks
-    for (let r = 0; r < h; r++) {
-      for (let c = 0; c < w; c++) {
+    for (let r = minRow; r < maxRow; r++) {
+      for (let c = minCol; c < maxCol; c++) {
         const tile = this.map.tiles[r * w + c];
         const x = c * ts;
         const y = r * ts;
@@ -934,10 +947,18 @@ export class GameRenderer {
     if (!this.map?.decorations) return;
     const ts = this.tileSize;
     const now = typeof performance !== 'undefined' ? performance.now() : 0;
+    const zoom = this.camera?.zoom || 1.0;
+    const viewW = (this.camera?.width || 800) / zoom;
+    const viewH = (this.camera?.height || 600) / zoom;
+    const minX = (this.camera?.x || 0) - ts * 2;
+    const maxX = (this.camera?.x || 0) + viewW + ts * 2;
+    const minY = (this.camera?.y || 0) - ts * 2;
+    const maxY = (this.camera?.y || 0) + viewH + ts * 2;
 
     for (const decor of this.map.decorations) {
       const x = decor.col * ts + ts / 2;
       const y = decor.row * ts + ts / 2;
+      if (x < minX || x > maxX || y < minY || y > maxY) continue;
 
       if (decor.type === 'gear') {
         ctx.save();
@@ -1058,10 +1079,18 @@ export class GameRenderer {
   renderStandingDecorations(ctx) {
     if (!this.map?.decorations) return;
     const ts = this.tileSize;
+    const zoom = this.camera?.zoom || 1.0;
+    const viewW = (this.camera?.width || 800) / zoom;
+    const viewH = (this.camera?.height || 600) / zoom;
+    const minX = (this.camera?.x || 0) - ts * 2;
+    const maxX = (this.camera?.x || 0) + viewW + ts * 2;
+    const minY = (this.camera?.y || 0) - ts * 2;
+    const maxY = (this.camera?.y || 0) + viewH + ts * 2;
 
     for (const decor of this.map.decorations) {
       const x = decor.col * ts + ts / 2;
       const y = decor.row * ts + ts / 2;
+      if (x < minX || x > maxX || y < minY || y > maxY) continue;
 
       if (decor.type === 'lantern') {
         ctx.save();

@@ -245,20 +245,33 @@ export function computeVisibilityPolygon(origin, segments = [], options, fovArg,
   const eps = 0.0001; // Epsilon for grazing rays
   const uniqueAngles = new Set();
 
-  // Create bounding box segments at maxRange around the observer
+  // Bounding box segments enclosing maxRange
+  const rBound = maxRange * 1.05;
+  const minX = ox - rBound;
+  const maxX = ox + rBound;
+  const minY = oy - rBound;
+  const maxY = oy + rBound;
+
   const boundSegments = [];
 
-  // Convert input segments into normalized { ax, ay, bx, by }
+  // Convert input segments into normalized { ax, ay, bx, by } with AABB distance culling
   for (const seg of segments) {
     const ax = seg.p1 ? seg.p1.x : (seg.a ? seg.a.x : seg[0].x);
     const ay = seg.p1 ? seg.p1.y : (seg.a ? seg.a.y : seg[0].y);
     const bx = seg.p2 ? seg.p2.x : (seg.b ? seg.b.x : seg[1].x);
     const by = seg.p2 ? seg.p2.y : (seg.b ? seg.b.y : seg[1].y);
+
+    const sMinX = ax < bx ? ax : bx;
+    const sMaxX = ax > bx ? ax : bx;
+    const sMinY = ay < by ? ay : by;
+    const sMaxY = ay > by ? ay : by;
+
+    // Fast AABB rejection: if segment cannot possibly intersect observer circle, discard
+    if (sMaxX < minX || sMinX > maxX || sMaxY < minY || sMinY > maxY) {
+      continue;
+    }
     boundSegments.push({ ax, ay, bx, by });
   }
-
-  // Bounding box segments enclosing maxRange
-  const rBound = maxRange * 1.05;
   const bbTL = { x: ox - rBound, y: oy - rBound };
   const bbTR = { x: ox + rBound, y: oy - rBound };
   const bbBR = { x: ox + rBound, y: oy + rBound };

@@ -115,11 +115,25 @@ export class VisibilityRenderer {
     const camX = camera.x || 0;
     const camY = camera.y || 0;
     const myTeam = player.team || null;
+    const viewWorldW = width / zoom;
+    const viewWorldH = height / zoom;
+    const maxLanternReach = this.lanternRange * 1.05;
 
-    // Filter living other combatants with active lanterns
-    const activeOthers = (otherCombatants || []).filter(c =>
-      c && c.id !== player.id && c.isAlive && (c.hp === undefined || c.hp > 0) && c.lanternOn !== false
-    );
+    // Filter living other combatants with active lanterns intersecting the camera viewport
+    const activeOthers = (otherCombatants || []).filter(c => {
+      if (!c || c.id === player.id || !c.isAlive || (c.hp !== undefined && c.hp <= 0) || c.lanternOn === false) {
+        return false;
+      }
+      const cx = c.renderX ?? c.x;
+      const cy = c.renderY ?? c.y;
+      const cRange = c.range ?? c.lanternRange ?? maxLanternReach;
+      return (
+        cx >= camX - cRange &&
+        cx <= camX + viewWorldW + cRange &&
+        cy >= camY - cRange &&
+        cy <= camY + viewWorldH + cRange
+      );
+    });
 
     // 1. Fill offscreen fog canvas with ambient darkness
     fCtx.save();
