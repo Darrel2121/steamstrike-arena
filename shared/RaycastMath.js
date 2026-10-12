@@ -184,24 +184,48 @@ export function isPointVisible(observer, target, segments = [], aimAngle, fov, r
   // 2. Obstacle line-of-sight check
   const dx = target.x - observer.x;
   const dy = target.y - observer.y;
-  const dist = Math.hypot(dx, dy);
+  const distSq = dx * dx + dy * dy;
 
   // If observer and target are at identical position
-  if (dist < 1e-4) return true;
+  if (distSq < 1e-6) return true;
 
+  const dist = Math.sqrt(distSq);
   const dirX = dx / dist;
   const dirY = dy / dist;
 
-  // Intersect ray with all segments
-  for (const seg of segments) {
-    const ax = seg.p1 ? seg.p1.x : (seg.a ? seg.a.x : seg[0].x);
-    const ay = seg.p1 ? seg.p1.y : (seg.a ? seg.a.y : seg[0].y);
-    const bx = seg.p2 ? seg.p2.x : (seg.b ? seg.b.x : seg[1].x);
-    const by = seg.p2 ? seg.p2.y : (seg.b ? seg.b.y : seg[1].y);
+  const rMinX = observer.x < target.x ? observer.x : target.x;
+  const rMaxX = observer.x > target.x ? observer.x : target.x;
+  const rMinY = observer.y < target.y ? observer.y : target.y;
+  const rMaxY = observer.y > target.y ? observer.y : target.y;
 
-    const hit = lineIntersection(observer.x, observer.y, dirX, dirY, ax, ay, bx, by);
-    // If an intersection occurs strictly between observer and target
-    if (hit && hit.t > 1e-4 && hit.t < dist - 1e-4) {
+  // Intersect ray with all segments using zero-allocation AABB and determinant
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const ax = seg.p1 ? seg.p1.x : (seg.a ? seg.a.x : (seg.ax ?? seg[0].x));
+    const ay = seg.p1 ? seg.p1.y : (seg.a ? seg.a.y : (seg.ay ?? seg[0].y));
+    const bx = seg.p2 ? seg.p2.x : (seg.b ? seg.b.x : (seg.bx ?? seg[1].x));
+    const by = seg.p2 ? seg.p2.y : (seg.b ? seg.b.y : (seg.by ?? seg[1].y));
+
+    const sMinX = ax < bx ? ax : bx;
+    const sMaxX = ax > bx ? ax : bx;
+    const sMinY = ay < by ? ay : by;
+    const sMaxY = ay > by ? ay : by;
+
+    // Fast AABB rejection: if segment bounding box does not overlap ray bounding box, skip
+    if (sMaxX < rMinX || sMinX > rMaxX || sMaxY < rMinY || sMinY > rMaxY) continue;
+
+    const segDx = bx - ax;
+    const segDy = by - ay;
+    const det = dirX * segDy - dirY * segDx;
+    if (det > -1e-9 && det < 1e-9) continue;
+
+    const oxDiff = ax - observer.x;
+    const oyDiff = ay - observer.y;
+    const t = (oxDiff * segDy - oyDiff * segDx) / det;
+    if (t <= 1e-4 || t >= dist - 1e-4) continue;
+
+    const u = (oxDiff * dirY - oyDiff * dirX) / det;
+    if (u >= -1e-6 && u <= 1.000001) {
       return false; // Occluded
     }
   }
@@ -211,9 +235,7 @@ export function isPointVisible(observer, target, segments = [], aimAngle, fov, r
 
 /**
  * Computes a closed 2D visibility polygon representing the unoccluded vision area.
- * Casts rays to segment endpoints +/- epsilon (0.0001 rad), adds boundary rays,
- * finds nearest obstacle intersections, sorts vertices radially in [-PI, PI],
- * and returns the ordered polygon vertices.
+ * High-performance zero-allocation raycasting engine with AABB culling and directional angular pruning.
  *
  * @param {{x: number, y: number, angle?: number, fov?: number, range?: number}} origin
  * @param {Array<Object>} segments
@@ -242,10 +264,7 @@ export function computeVisibilityPolygon(origin, segments = [], options, fovArg,
     maxRange = origin.range ?? LANTERN_RANGE;
   }
 
-  const eps = 0.0001; // Epsilon for grazing rays
-  const uniqueAngles = new Set();
-
-  // Bounding box segments enclosing maxRange
+  const eps = 0.0002; // Epsilon for grazing rays
   const rBound = maxRange * 1.05;
   const minX = ox - rBound;
   const maxX = ox + rBound;
@@ -254,12 +273,13 @@ export function computeVisibilityPolygon(origin, segments = [], options, fovArg,
 
   const boundSegments = [];
 
-  // Convert input segments into normalized { ax, ay, bx, by } with AABB distance culling
-  for (const seg of segments) {
-    const ax = seg.p1 ? seg.p1.x : (seg.a ? seg.a.x : seg[0].x);
-    const ay = seg.p1 ? seg.p1.y : (seg.a ? seg.a.y : seg[0].y);
-    const bx = seg.p2 ? seg.p2.x : (seg.b ? seg.b.x : seg[1].x);
-    const by = seg.p2 ? seg.p2.y : (seg.b ? seg.b.y : seg[1].y);
+  // Convert input segments into normalized bounds with fast distance culling
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    const ax = seg.p1 ? seg.p1.x : (seg.a ? seg.a.x : (seg.ax ?? seg[0].x));
+    const ay = seg.p1 ? seg.p1.y : (seg.a ? seg.a.y : (seg.ay ?? seg[0].y));
+    const bx = seg.p2 ? seg.p2.x : (seg.b ? seg.b.x : (seg.bx ?? seg[1].x));
+    const by = seg.p2 ? seg.p2.y : (seg.b ? seg.b.y : (seg.by ?? seg[1].y));
 
     const sMinX = ax < bx ? ax : bx;
     const sMaxX = ax > bx ? ax : bx;
@@ -270,71 +290,134 @@ export function computeVisibilityPolygon(origin, segments = [], options, fovArg,
     if (sMaxX < minX || sMinX > maxX || sMaxY < minY || sMinY > maxY) {
       continue;
     }
-    boundSegments.push({ ax, ay, bx, by });
+    boundSegments.push({
+      ax, ay, bx, by,
+      dx: bx - ax,
+      dy: by - ay,
+      minX: sMinX,
+      maxX: sMaxX,
+      minY: sMinY,
+      maxY: sMaxY
+    });
   }
+
+  // Enclosing bounding box segments
   const bbTL = { x: ox - rBound, y: oy - rBound };
   const bbTR = { x: ox + rBound, y: oy - rBound };
   const bbBR = { x: ox + rBound, y: oy + rBound };
   const bbBL = { x: ox - rBound, y: oy + rBound };
 
-  boundSegments.push(
-    { ax: bbTL.x, ay: bbTL.y, bx: bbTR.x, by: bbTR.y },
-    { ax: bbTR.x, ay: bbTR.y, bx: bbBR.x, by: bbBR.y },
-    { ax: bbBR.x, ay: bbBR.y, bx: bbBL.x, by: bbBL.y },
-    { ax: bbBL.x, ay: bbBL.y, bx: bbTL.x, by: bbTL.y }
-  );
+  const addBoxSeg = (p1, p2) => {
+    boundSegments.push({
+      ax: p1.x, ay: p1.y, bx: p2.x, by: p2.y,
+      dx: p2.x - p1.x, dy: p2.y - p1.y,
+      minX: Math.min(p1.x, p2.x), maxX: Math.max(p1.x, p2.x),
+      minY: Math.min(p1.y, p2.y), maxY: Math.max(p1.y, p2.y)
+    });
+  };
+  addBoxSeg(bbTL, bbTR);
+  addBoxSeg(bbTR, bbBR);
+  addBoxSeg(bbBR, bbBL);
+  addBoxSeg(bbBL, bbTL);
 
-  // 1. Regular 360-degree circle rays to ensure smooth circular perimeter
+  // 1. Regular 360-degree circle rays for smooth boundary perimeter
+  const angles = [];
   const numCircleRays = 36;
   for (let i = 0; i < numCircleRays; i++) {
-    const a = -Math.PI + (i / numCircleRays) * (2 * Math.PI);
-    uniqueAngles.add(normalizeAngle(a));
+    angles.push(normalizeAngle(-Math.PI + (i / numCircleRays) * (2 * Math.PI)));
   }
 
   // 2. Add boundary cone rays
   const fovHalf = fov / 2;
-  uniqueAngles.add(normalizeAngle(aimAngle - fovHalf - eps));
-  uniqueAngles.add(normalizeAngle(aimAngle - fovHalf));
-  uniqueAngles.add(normalizeAngle(aimAngle - fovHalf + eps));
-  uniqueAngles.add(normalizeAngle(aimAngle));
-  uniqueAngles.add(normalizeAngle(aimAngle + fovHalf - eps));
-  uniqueAngles.add(normalizeAngle(aimAngle + fovHalf));
-  uniqueAngles.add(normalizeAngle(aimAngle + fovHalf + eps));
+  angles.push(normalizeAngle(aimAngle - fovHalf - eps));
+  angles.push(normalizeAngle(aimAngle - fovHalf));
+  angles.push(normalizeAngle(aimAngle - fovHalf + eps));
+  angles.push(normalizeAngle(aimAngle));
+  angles.push(normalizeAngle(aimAngle + fovHalf - eps));
+  angles.push(normalizeAngle(aimAngle + fovHalf));
+  angles.push(normalizeAngle(aimAngle + fovHalf + eps));
 
   // 3. Rays towards segment endpoints within range (+/- epsilon)
-  for (const seg of boundSegments) {
-    for (const pt of [{ x: seg.ax, y: seg.ay }, { x: seg.bx, y: seg.by }]) {
-      const d = Math.hypot(pt.x - ox, pt.y - oy);
-      if (d <= maxRange * 1.5) {
-        const angle = Math.atan2(pt.y - oy, pt.x - ox);
-        uniqueAngles.add(normalizeAngle(angle - eps));
-        uniqueAngles.add(normalizeAngle(angle));
-        uniqueAngles.add(normalizeAngle(angle + eps));
+  // Prune angles outside directional FOV cone + margin unless within close proximity radius
+  const maxConeDiff = fovHalf + 0.35;
+  const proxDistSq = (PROXIMITY_RADIUS || 45) * 1.5 * (PROXIMITY_RADIUS || 45) * 1.5;
+  const maxRangeSq = maxRange * maxRange * 1.25;
+
+  for (let i = 0; i < boundSegments.length - 4; i++) {
+    const seg = boundSegments[i];
+
+    // ax, ay
+    let dSq = (seg.ax - ox) ** 2 + (seg.ay - oy) ** 2;
+    if (dSq <= maxRangeSq) {
+      const a = Math.atan2(seg.ay - oy, seg.ax - ox);
+      const diff = angleDifference(a, aimAngle);
+      if (diff <= maxConeDiff || dSq <= proxDistSq) {
+        angles.push(normalizeAngle(a - eps));
+        angles.push(normalizeAngle(a));
+        angles.push(normalizeAngle(a + eps));
+      }
+    }
+
+    // bx, by
+    dSq = (seg.bx - ox) ** 2 + (seg.by - oy) ** 2;
+    if (dSq <= maxRangeSq) {
+      const a = Math.atan2(seg.by - oy, seg.bx - ox);
+      const diff = angleDifference(a, aimAngle);
+      if (diff <= maxConeDiff || dSq <= proxDistSq) {
+        angles.push(normalizeAngle(a - eps));
+        angles.push(normalizeAngle(a));
+        angles.push(normalizeAngle(a + eps));
       }
     }
   }
 
-  // Sort angles radially in ascending order [-PI, PI]
-  const sortedAngles = Array.from(uniqueAngles).sort((a, b) => a - b);
-  const polygonPoints = [];
+  // Sort angles and deduplicate near-identical angles
+  angles.sort((a, b) => a - b);
+  const uniqueAngles = [];
+  for (let i = 0; i < angles.length; i++) {
+    const a = angles[i];
+    const prev = uniqueAngles[uniqueAngles.length - 1];
+    if (prev === undefined || Math.abs(a - prev) > 0.0001) {
+      uniqueAngles.push(a);
+    }
+  }
 
-  for (const angle of sortedAngles) {
+  const polygonPoints = [];
+  const segCount = boundSegments.length;
+
+  for (let i = 0; i < uniqueAngles.length; i++) {
+    const angle = uniqueAngles[i];
     const rdx = Math.cos(angle);
     const rdy = Math.sin(angle);
     let minT = maxRange;
-    let hitPoint = { x: ox + maxRange * rdx, y: oy + maxRange * rdy };
 
-    for (const seg of boundSegments) {
-      const hit = lineIntersection(ox, oy, rdx, rdy, seg.ax, seg.ay, seg.bx, seg.by);
-      if (hit && hit.t > 1e-4 && hit.t < minT) {
-        minT = hit.t;
-        hitPoint = { x: hit.x, y: hit.y };
+    // Fast zero-allocation raycast inner loop
+    for (let s = 0; s < segCount; s++) {
+      const seg = boundSegments[s];
+
+      // AABB ray direction rejection
+      if (rdx > 0 && seg.maxX < ox) continue;
+      if (rdx < 0 && seg.minX > ox) continue;
+      if (rdy > 0 && seg.maxY < oy) continue;
+      if (rdy < 0 && seg.minY > oy) continue;
+
+      const det = rdx * seg.dy - rdy * seg.dx;
+      if (det > -1e-9 && det < 1e-9) continue;
+
+      const oxDiff = seg.ax - ox;
+      const oyDiff = seg.ay - oy;
+      const t = (oxDiff * seg.dy - oyDiff * seg.dx) / det;
+      if (t <= 1e-4 || t >= minT) continue;
+
+      const u = (oxDiff * rdy - oyDiff * rdx) / det;
+      if (u >= -1e-6 && u <= 1.000001) {
+        minT = t;
       }
     }
 
     polygonPoints.push({
-      x: hitPoint.x,
-      y: hitPoint.y,
+      x: ox + minT * rdx,
+      y: oy + minT * rdy,
       angle
     });
   }

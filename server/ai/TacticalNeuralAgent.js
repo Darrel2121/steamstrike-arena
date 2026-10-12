@@ -167,7 +167,7 @@ export class TacticalNeuralAgent {
         actionDistribution: this.actionDistribution,
         savedAt: Date.now()
       };
-      fs.writeFileSync(this.weightsFile, JSON.stringify(data, null, 2), 'utf8');
+      fs.writeFile(this.weightsFile, JSON.stringify(data, null, 2), 'utf8', () => {});
     } catch (_) {}
   }
 

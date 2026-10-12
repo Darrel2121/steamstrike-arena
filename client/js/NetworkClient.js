@@ -930,7 +930,8 @@ export class NetworkClient {
     const t = timeDelta > 0 ? Math.max(0, Math.min(1, (renderTime - older.receivedAt) / timeDelta)) : 1;
 
     // Interpolate player positions
-    const olderPlayers = new Map((older.data.players || []).map(p => [p.id, p]));
+    const olderList = older.data.players || [];
+    const olderCount = olderList.length;
     const interpolatedPlayers = [];
 
     for (const newP of (newer.data.players || [])) {
@@ -940,7 +941,14 @@ export class NetworkClient {
         continue;
       }
 
-      const oldP = olderPlayers.get(newP.id);
+      let oldP = null;
+      for (let o = 0; o < olderCount; o++) {
+        if (olderList[o].id === newP.id) {
+          oldP = olderList[o];
+          break;
+        }
+      }
+
       if (oldP) {
         interpolatedPlayers.push({
           ...newP,

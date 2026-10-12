@@ -84,39 +84,44 @@ export function findPath(map, startTile, goalTile) {
     if (!foundWalkable) return [];
   }
 
-  // Orthogonal BFS queue
-  const queue = [{ col: sc, row: sr }];
-  const cameFrom = new Map();
-  const visited = new Uint8Array(width * height);
-  visited[sr * width + sc] = 1;
+  // Fast typed-array orthogonal BFS
+  const totalTiles = width * height;
+  const startIdx = sr * width + sc;
+  const targetIdx = targetRow * width + targetCol;
 
-  const dirs = [
-    { dc: 0, dr: -1 }, // North
-    { dc: 1, dr: 0 },  // East
-    { dc: 0, dr: 1 },  // South
-    { dc: -1, dr: 0 }  // West
-  ];
+  const queue = new Int32Array(totalTiles);
+  const cameFrom = new Int32Array(totalTiles).fill(-1);
+  const visited = new Uint8Array(totalTiles);
 
-  let found = false;
+  queue[0] = startIdx;
+  visited[startIdx] = 1;
   let head = 0;
+  let tail = 1;
+  let found = false;
 
-  while (head < queue.length) {
-    const curr = queue[head++];
-    if (curr.col === targetCol && curr.row === targetRow) {
+  const dc = [0, 1, 0, -1];
+  const dr = [-1, 0, 1, 0];
+
+  while (head < tail) {
+    const currIdx = queue[head++];
+    if (currIdx === targetIdx) {
       found = true;
       break;
     }
 
+    const c = currIdx % width;
+    const r = (currIdx / width) | 0;
+
     for (let i = 0; i < 4; i++) {
-      const nc = curr.col + dirs[i].dc;
-      const nr = curr.row + dirs[i].dr;
+      const nc = c + dc[i];
+      const nr = r + dr[i];
 
       if (nc >= 0 && nc < width && nr >= 0 && nr < height) {
-        const idx = nr * width + nc;
-        if (!visited[idx] && (map.tiles[idx] === TILE_TYPES.FLOOR || map.tiles[idx] === 0)) {
-          visited[idx] = 1;
-          cameFrom.set(`${nc},${nr}`, curr);
-          queue.push({ col: nc, row: nr });
+        const nIdx = nr * width + nc;
+        if (!visited[nIdx] && (map.tiles[nIdx] === TILE_TYPES.FLOOR || map.tiles[nIdx] === 0)) {
+          visited[nIdx] = 1;
+          cameFrom[nIdx] = currIdx;
+          queue[tail++] = nIdx;
         }
       }
     }
@@ -126,11 +131,11 @@ export function findPath(map, startTile, goalTile) {
 
   // Reconstruct path backward from target to start
   const path = [];
-  let step = { col: targetCol, row: targetRow };
-  while (step) {
-    path.push(step);
-    if (step.col === sc && step.row === sr) break;
-    step = cameFrom.get(`${step.col},${step.row}`);
+  let curr = targetIdx;
+  while (curr !== -1) {
+    path.push({ col: curr % width, row: (curr / width) | 0 });
+    if (curr === startIdx) break;
+    curr = cameFrom[curr];
   }
 
   path.reverse();

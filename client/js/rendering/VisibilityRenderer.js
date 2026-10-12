@@ -72,18 +72,40 @@ export class VisibilityRenderer {
   computePolygon(observer, segments) {
     const obsX = observer.renderX ?? observer.x;
     const obsY = observer.renderY ?? observer.y;
+    const obsAngle = observer.angle ?? 0;
+
+    // Temporal polygon caching: if observer position and angle have not perceptibly changed, reuse cached polygon!
+    if (
+      observer._cachedPoly &&
+      observer._cachedPolySegments === segments &&
+      Math.abs((observer._cachedPolyX ?? 0) - obsX) < 0.5 &&
+      Math.abs((observer._cachedPolyY ?? 0) - obsY) < 0.5 &&
+      Math.abs((observer._cachedPolyAngle ?? 0) - obsAngle) < 0.015
+    ) {
+      this.lastPolygon = observer._cachedPoly;
+      return observer._cachedPoly;
+    }
+
     const obs = (obsX !== observer.x || obsY !== observer.y)
       ? { ...observer, x: obsX, y: obsY }
       : observer;
 
-    this.lastPolygon = computeVisibilityPolygon(
+    const poly = computeVisibilityPolygon(
       obs,
       segments,
-      observer.angle ?? 0,
+      obsAngle,
       observer.fov ?? this.lanternFov,
       observer.range ?? this.lanternRange
     );
-    return this.lastPolygon;
+
+    observer._cachedPoly = poly;
+    observer._cachedPolySegments = segments;
+    observer._cachedPolyX = obsX;
+    observer._cachedPolyY = obsY;
+    observer._cachedPolyAngle = obsAngle;
+
+    this.lastPolygon = poly;
+    return poly;
   }
 
   /**

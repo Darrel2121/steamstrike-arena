@@ -122,6 +122,21 @@ export function raySegmentIntersection(p1, p2, segP1, segP2) {
 
   if (!rayA || !rayB || !wallA || !wallB) return { hit: false };
 
+  const rMinX = rayA.x < rayB.x ? rayA.x : rayB.x;
+  const rMaxX = rayA.x > rayB.x ? rayA.x : rayB.x;
+  const rMinY = rayA.y < rayB.y ? rayA.y : rayB.y;
+  const rMaxY = rayA.y > rayB.y ? rayA.y : rayB.y;
+
+  const wMinX = wallA.x < wallB.x ? wallA.x : wallB.x;
+  const wMaxX = wallA.x > wallB.x ? wallA.x : wallB.x;
+  const wMinY = wallA.y < wallB.y ? wallA.y : wallB.y;
+  const wMaxY = wallA.y > wallB.y ? wallA.y : wallB.y;
+
+  // Fast AABB early exit: if ray and wall bounding boxes don't overlap, skip immediately
+  if (rMaxX < wMinX || rMinX > wMaxX || rMaxY < wMinY || rMinY > wMaxY) {
+    return { hit: false };
+  }
+
   const dx1 = rayB.x - rayA.x;
   const dy1 = rayB.y - rayA.y;
   const dx2 = wallB.x - wallA.x;
@@ -185,7 +200,7 @@ export function solveProjectileHit(bulletRay, walls = [], players = [], options 
   let closestWall = null;
   let minWallDist = Infinity;
 
-  const wallIterable = walls.values ? Array.from(walls.values()) : Array.from(walls);
+  const wallIterable = Array.isArray(walls) ? walls : Array.from(walls.values ? walls.values() : walls);
   for (const wall of wallIterable) {
     const w1 = wall.p1 || wall.a || (Array.isArray(wall) ? wall[0] : null);
     const w2 = wall.p2 || wall.b || (Array.isArray(wall) ? wall[1] : null);
@@ -208,7 +223,7 @@ export function solveProjectileHit(bulletRay, walls = [], players = [], options 
   let closestPlayer = null;
   let minPlayerDist = Infinity;
 
-  const playerIterable = players.values ? Array.from(players.values()) : Array.from(players);
+  const playerIterable = Array.isArray(players) ? players : Array.from(players.values ? players.values() : players);
   for (const player of playerIterable) {
     if (shooterId && player.id === shooterId) continue;
     if (player.isAlive === false || (typeof player.hp === 'number' && player.hp <= 0)) continue;
