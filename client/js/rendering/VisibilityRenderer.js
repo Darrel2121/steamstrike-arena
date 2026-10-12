@@ -116,16 +116,55 @@ export class VisibilityRenderer {
   }
 
   /**
+   * Computes or retrieves cached 360-degree visibility polygon for stationary map lantern.
+   * @param {Object} lantern
+   * @param {number} lx
+   * @param {number} ly
+   * @param {number} radius
+   * @param {Array<Object>} segments
+   * @returns {Array<{x: number, y: number}>}
+   */
+  computeMapLanternPolygon(lantern, lx, ly, radius, segments) {
+    if (
+      lantern._cachedPoly &&
+      lantern._cachedSegments === segments &&
+      lantern._cachedX === lx &&
+      lantern._cachedY === ly &&
+      lantern._cachedRadius === radius
+    ) {
+      return lantern._cachedPoly;
+    }
+
+    const poly = computeVisibilityPolygon(
+      { x: lx, y: ly },
+      segments,
+      0,
+      Math.PI * 2,
+      radius
+    );
+
+    lantern._cachedPoly = poly;
+    lantern._cachedSegments = segments;
+    lantern._cachedX = lx;
+    lantern._cachedY = ly;
+    lantern._cachedRadius = radius;
+
+    return poly;
+  }
+
+  /**
    * Renders Layer 4: The Darkness Fog of War and Directional Lantern Mask.
-   * Punches out the lantern beam and proximity circle through the darkness mask,
+   * Punches out the lantern beam, proximity circle, and stationary map lanterns through darkness,
    * clipped strictly to the raycast visibility polygon so solid walls cast realistic shadows.
    *
    * @param {CanvasRenderingContext2D} mainCtx - Main destination Canvas 2D context
    * @param {{x: number, y: number, renderX?: number, renderY?: number, angle?: number, fov?: number, range?: number}} player - Observer entity
    * @param {Array<Object>} segments - Map line segments for occlusion
    * @param {{x: number, y: number, width?: number, height?: number}} [camera] - Viewport camera
+   * @param {Array<Object>} [otherCombatants] - Other player entities
+   * @param {Array<Object>} [mapLanterns] - Stationary map lanterns / decorations
    */
-  renderDarknessMask(mainCtx, player, segments = [], camera = { x: 0, y: 0 }, otherCombatants = []) {
+  renderDarknessMask(mainCtx, player, segments = [], camera = { x: 0, y: 0 }, otherCombatants = [], mapLanterns = []) {
     if (!mainCtx || !player) return;
 
     const width = camera.width || mainCtx.canvas?.width || 800;
@@ -161,6 +200,25 @@ export class VisibilityRenderer {
         cx <= camX + viewWorldW + cRange &&
         cy >= camY - cRange &&
         cy <= camY + viewWorldH + cRange
+      );
+    });
+
+    // Filter stationary map lanterns (Victorian street lamps / wall fixtures) intersecting viewport
+    const ts = 40;
+    const defaultMapLanternRadius = 115;
+    const activeMapLanterns = (mapLanterns || []).filter(l => {
+      if (!l) return false;
+      if (l.type && l.type !== 'lantern' && l.type !== 'lamp' && l.type !== 'street_lamp') {
+        return false;
+      }
+      const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
+      const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
+      const lr = l.radius || defaultMapLanternRadius;
+      return (
+        lx >= camX - lr &&
+        lx <= camX + viewWorldW + lr &&
+        ly >= camY - lr &&
+        ly <= camY + viewWorldH + lr
       );
     });
 
@@ -303,6 +361,38 @@ export class VisibilityRenderer {
         fCtx.arc(cx, cy, 45, 0, Math.PI * 2);
         fCtx.fill();
       }
+      fCtx.restore();
+    }
+
+    // 3c. Punch out stationary Map Lanterns (Victorian street lamps / wall fixtures)
+    for (const l of activeMapLanterns) {
+      const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
+      const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
+      const lr = l.radius || defaultMapLanternRadius;
+
+      const lPoly = this.computeMapLanternPolygon(l, lx, ly, lr, segments);
+      if (!lPoly || lPoly.length < 3) continue;
+
+      fCtx.save();
+      fCtx.beginPath();
+      fCtx.moveTo(lPoly[0].x, lPoly[0].y);
+      for (let i = 1; i < lPoly.length; i++) {
+        fCtx.lineTo(lPoly[i].x, lPoly[i].y);
+      }
+      fCtx.closePath();
+      fCtx.clip();
+
+      const punchGrad = fCtx.createRadialGradient(lx, ly, 0, lx, ly, lr);
+      punchGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      punchGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.95)');
+      punchGrad.addColorStop(0.80, 'rgba(255, 255, 255, 0.60)');
+      punchGrad.addColorStop(0.95, 'rgba(255, 255, 255, 0.15)');
+      punchGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+
+      fCtx.fillStyle = punchGrad;
+      fCtx.beginPath();
+      fCtx.arc(lx, ly, lr, 0, Math.PI * 2);
+      fCtx.fill();
       fCtx.restore();
     }
 
@@ -469,6 +559,59 @@ export class VisibilityRenderer {
         mainCtx.fill();
       }
       mainCtx.restore();
+    }
+
+    // 5c. Map Lanterns Atmospheric Volumetric Glow Pass ('lighter')
+    for (const l of activeMapLanterns) {
+      const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
+      const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
+      const lr = l.radius || defaultMapLanternRadius;
+      const lPoly = l._cachedPoly;
+
+      if (lPoly && lPoly.length >= 3) {
+        mainCtx.save();
+        mainCtx.beginPath();
+        mainCtx.moveTo(lPoly[0].x, lPoly[0].y);
+        for (let i = 1; i < lPoly.length; i++) {
+          mainCtx.lineTo(lPoly[i].x, lPoly[i].y);
+        }
+        mainCtx.closePath();
+        mainCtx.clip();
+
+        // 1. Broad soft amber/gold ambient pool
+        const ambientGrad = mainCtx.createRadialGradient(lx, ly, 0, lx, ly, lr);
+        ambientGrad.addColorStop(0, 'rgba(255, 195, 75, 0.22)');
+        ambientGrad.addColorStop(0.40, 'rgba(235, 145, 40, 0.10)');
+        ambientGrad.addColorStop(0.75, 'rgba(180, 80, 15, 0.03)');
+        ambientGrad.addColorStop(1.0, 'rgba(120, 40, 5, 0.0)');
+        mainCtx.fillStyle = ambientGrad;
+        mainCtx.beginPath();
+        mainCtx.arc(lx, ly, lr, 0, Math.PI * 2);
+        mainCtx.fill();
+
+        // 2. Focused warm lantern light pool
+        const poolGrad = mainCtx.createRadialGradient(lx, ly, 0, lx, ly, lr * 0.52);
+        poolGrad.addColorStop(0, 'rgba(255, 230, 130, 0.35)');
+        poolGrad.addColorStop(0.50, 'rgba(255, 175, 50, 0.15)');
+        poolGrad.addColorStop(1.0, 'rgba(210, 110, 20, 0.0)');
+        mainCtx.fillStyle = poolGrad;
+        mainCtx.beginPath();
+        mainCtx.arc(lx, ly, lr * 0.52, 0, Math.PI * 2);
+        mainCtx.fill();
+
+        // 3. Bright incandescent lamp filament core bloom (warm Victorian glow)
+        const coreBloom = mainCtx.createRadialGradient(lx, ly, 0, lx, ly, 22);
+        coreBloom.addColorStop(0, 'rgba(255, 255, 220, 0.95)');
+        coreBloom.addColorStop(0.40, 'rgba(255, 210, 85, 0.60)');
+        coreBloom.addColorStop(0.75, 'rgba(255, 150, 30, 0.18)');
+        coreBloom.addColorStop(1.0, 'rgba(255, 100, 15, 0.0)');
+        mainCtx.fillStyle = coreBloom;
+        mainCtx.beginPath();
+        mainCtx.arc(lx, ly, 22, 0, Math.PI * 2);
+        mainCtx.fill();
+
+        mainCtx.restore();
+      }
     }
 
     mainCtx.restore(); // Restore world transform on mainCtx

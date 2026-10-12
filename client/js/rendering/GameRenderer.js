@@ -773,7 +773,7 @@ export class GameRenderer {
     // LAYER 4: Darkness & Lantern Fog Mask (Punched out in Screen Space)
     // ========================================================================
     const livingOthers = (state.players || []).filter(p => p.id !== localPlayer.id && p.isAlive && (p.hp === undefined || p.hp > 0));
-    this.visibilityRenderer.renderDarknessMask(ctx, localPlayer, this.segments, this.camera, livingOthers);
+    this.visibilityRenderer.renderDarknessMask(ctx, localPlayer, this.segments, this.camera, livingOthers, this.map?.decorations);
 
     // ========================================================================
     // LAYER 4.5: Luminous Projectile Tracers (Shine through Darkness & Fog)
