@@ -166,15 +166,19 @@
     </div>
     <!-- Desktop Navigation Bar -->
     <nav class="header-nav" id="desktopNav">
-      <button id="navBtnHome" class="btn-steampunk active">⚙ Головна</button>
-      <button id="navBtnNews" class="btn-steampunk btn-iron" title="Останні новини та патчі">📰 Новини</button>
-      <button id="navBtnLobby" class="btn-steampunk btn-iron">⚔ Лобі</button>
-      <button id="navBtnEditor" class="btn-steampunk btn-iron">⚒ Редактор карт</button>
-      <button id="navBtnWorkshop" class="btn-steampunk btn-iron">🛠 Майстерня</button>
-      <button id="btnSoundToggle" class="btn-steampunk btn-iron" title="Звукові ефекти (Увімк/Вимк)">🔊 Звук</button>
-      <button id="btnGlobalFullscreen" class="btn-steampunk btn-iron" title="Повний екран (F / F11)">⛶ Повний екран</button>
-      <button id="btnOpenBugReport" class="btn-steampunk btn-iron" title="Повідомити про баг або залишити відгук">🐞 Баг-репорт</button>
-      <button id="navBtnAuth" class="btn-steampunk btn-iron"><span id="headerUserBadge">🎖 Профіль / Вхід</span></button>
+      <div class="header-nav-main">
+        <button id="navBtnHome" class="btn-steampunk active">⚙ Головна</button>
+        <button id="navBtnLobby" class="btn-steampunk btn-iron">⚔ Лобі</button>
+        <button id="navBtnWorkshop" class="btn-steampunk btn-iron">🛠 Майстерня</button>
+        <button id="navBtnEditor" class="btn-steampunk btn-iron">⚒ Редактор карт</button>
+      </div>
+      <div class="header-nav-utils">
+        <button id="btnSoundToggle" class="btn-steampunk btn-iron btn-icon-only" title="Звукові ефекти (Увімк/Вимк)">🔊</button>
+        <button id="btnGlobalFullscreen" class="btn-steampunk btn-iron btn-icon-only" title="Повний екран (F / F11)">⛶</button>
+        <button id="navBtnNews" class="btn-steampunk btn-iron btn-icon-only" title="Останні новини та патчі">📰</button>
+        <button id="btnOpenBugReport" class="btn-steampunk btn-iron btn-icon-only" title="Повідомити про баг або залишити відгук">🐞</button>
+        <button id="navBtnAuth" class="btn-steampunk btn-iron profile-pill-btn"><span id="headerUserBadge">🎖 Профіль</span></button>
+      </div>
     </nav>
     <!-- Mobile Hamburger Button ("Бутерброд") -->
     <button type="button" id="btnHamburgerToggle" class="btn-hamburger" aria-label="Меню сайту" title="Меню сайту">
@@ -298,18 +302,16 @@
 
             <!-- Target Kills / Match Length -->
             <div class="console-field" id="homeTargetKillsGroup">
-              <label for="homeTargetKillsInput">Ціль вбивств для перемоги:</label>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="number" id="homeTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 80px;" title="Кількість кілів для перемоги">
-                <select id="homeTargetKillsSelect" class="steampunk-input" style="cursor: pointer; flex: 1;">
-                  <option value="10">10 ліквідацій (Бліц-бій ~1-2 хв)</option>
-                  <option value="15">15 ліквідацій (Швидка сутичка ~2-3 хв)</option>
-                  <option value="30" selected>30 ліквідацій (Стандартний бій ~5-7 хв)</option>
-                  <option value="50">50 ліквідацій (Затяжна битва ~10-12 хв)</option>
-                  <option value="100">100 ліквідацій (Марафон ~20 хв)</option>
-                  <option value="999">999 ліквідацій (Нескінченна практика)</option>
-                </select>
-              </div>
+              <label for="homeTargetKillsSelect">Тривалість бою (Ціль ліквідацій):</label>
+              <input type="number" id="homeTargetKillsInput" style="display: none;" value="30">
+              <select id="homeTargetKillsSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                <option value="10">10 ліквідацій (Бліц-бій ~1-2 хв)</option>
+                <option value="15">15 ліквідацій (Швидка сутичка ~2-3 хв)</option>
+                <option value="30" selected>30 ліквідацій (Стандартний бій ~5-7 хв)</option>
+                <option value="50">50 ліквідацій (Затяжна битва ~10-12 хв)</option>
+                <option value="100">100 ліквідацій (Марафон ~20 хв)</option>
+                <option value="999">999 ліквідацій (Нескінченна практика)</option>
+              </select>
             </div>
 
             <!-- Bot Population Toggle & AI Difficulty & Max Players -->
@@ -345,11 +347,9 @@
             <div class="console-field" id="homeRoomField" style="display: none; flex-direction: column; gap: 8px;">
               <label for="homeRoomInput">Код або назва кімнати (Chamber ID):</label>
               <div class="room-input-action-wrap">
-                <input type="text" id="homeRoomInput" class="steampunk-input" value="Sector_Omega" maxlength="24" style="flex: 1; min-width: 140px;">
-                <div class="room-action-btns-wrap">
-                  <button type="button" id="btnHomeJoinRoom" class="btn-steampunk btn-brass" style="white-space: nowrap; flex: 1;">⚡ Приєднатися</button>
-                  <button type="button" id="btnHomeCreateRoom" class="btn-steampunk btn-copper" style="white-space: nowrap; flex: 1;">⚙ Створити</button>
-                </div>
+                <input type="text" id="homeRoomInput" class="steampunk-input" value="Sector_Omega" maxlength="24" style="flex: 1; min-width: 140px;" placeholder="Введіть код кімнати...">
+                <button type="button" id="btnHomeJoinRoom" style="display: none;">Приєднатися</button>
+                <button type="button" id="btnHomeCreateRoom" style="display: none;">Створити</button>
               </div>
 
               <!-- Password Protection Field -->
@@ -360,9 +360,9 @@
 
               <!-- Quick Helper Instruction -->
               <div class="lobby-guide-banner" style="margin-top: 4px;">
-                <div class="guide-title">💡 Як грати разом з другом:</div>
+                <div class="guide-title">💡 Гра з друзями:</div>
                 <div style="color: var(--color-text-dim); font-size: 12px; line-height: 1.4;">
-                  Введіть однаковий код кімнати або натисніть «Приєднатися» біля кімнати у списку нижче. В лобі ви також зможете скопіювати пряме посилання для друга!
+                  Введіть однаковий код кімнати або оберіть відкриту кімнату зі списку нижче. В лобі ви зможете скопіювати пряме посилання для друзів.
                 </div>
               </div>
 
@@ -391,27 +391,24 @@
         <h2 class="section-heading"><span>⚙</span> РОЗДІЛИ ТА МОЖЛИВОСТІ <span>⚙</span></h2>
         <div class="portals-grid">
           <!-- Portal 1: Map Editor -->
-          <div class="portal-card steampunk-panel">
+          <div class="portal-card steampunk-panel portal-clickable-card" id="btnPortalEditor" role="button" tabindex="0" title="Перейти до Редактора карт">
             <div class="portal-icon">⚒️</div>
-            <h3>Вбудований редактор карт</h3>
+            <h3>Вбудований редактор карт <span class="portal-arrow">➔</span></h3>
             <p>Малюйте власні поля бою на сітці, розставляйте укриття, точки спавну та ящики з боєприпасами. Грайте на них з друзями!</p>
-            <button id="btnPortalEditor" class="btn-steampunk btn-copper">Відкрити редактор ➔</button>
           </div>
 
           <!-- Portal 2: Workshop & Progression -->
-          <div class="portal-card steampunk-panel">
+          <div class="portal-card steampunk-panel portal-clickable-card" id="btnPortalWorkshop" role="button" tabindex="0" title="Перейти до Майстерні">
             <div class="portal-icon">🛠️</div>
-            <h3>Майстерня та прокачка</h3>
+            <h3>Майстерня та прокачка <span class="portal-arrow">➔</span></h3>
             <p>Заробляйте XP та шестерні в боях! Покращуйте характеристики персонажа (здоров'я, швидкість, ліхтар) та модернізуйте весь арсенал з 8 видів зброї.</p>
-            <button id="btnPortalWorkshop" class="btn-steampunk btn-brass">Увійти до майстерні ➔</button>
           </div>
 
           <!-- Portal 3: Multiplayer Rooms -->
-          <div class="portal-card steampunk-panel">
+          <div class="portal-card steampunk-panel portal-clickable-card" id="btnPortalLobby" role="button" tabindex="0" title="Перейти до Мережевого лобі">
             <div class="portal-icon">⚔️</div>
-            <h3>Мережеве лобі</h3>
+            <h3>Мережеве лобі <span class="portal-arrow">➔</span></h3>
             <p>Створюйте кімнати, діліться кодом з друзями та проводьте спільні тактичні битви у реальному часі на сервері 30 Hz.</p>
-            <button id="btnPortalLobby" class="btn-steampunk btn-iron">Відкрити лобі ➔</button>
           </div>
         </div>
       </section>
@@ -665,10 +662,8 @@
           <!-- Dynamically populated by NewsModal -->
         </div>
 
-        <div style="text-align: center; margin-top: 18px;">
-          <button id="btnOpenAllNews" class="btn-steampunk btn-brass" style="padding: 10px 24px; font-size: 13px; font-weight: bold;">
-            📰 Переглянути всі новини та патчі
-          </button>
+        <div style="text-align: center; margin-top: 10px;">
+          <button id="btnOpenAllNews" style="display: none;"></button>
         </div>
       </section>
 
@@ -712,7 +707,8 @@
       <footer class="home-footer">
         <p><strong>Steamstrike: Tactical Arena</strong> &bull; Відкрита бета (Open Beta v1.0) &bull; Steampunk Tactical 2D Shooter &bull; 2026</p>
         <p style="font-size: 12px; color: var(--color-text-dim); margin-top: 4px;">
-          Офіційний сервер: <a href="https://steamstrike.online/" style="color: var(--color-brass-glow); text-decoration: none;">steamstrike.online</a> | <a href="#" id="btnFooterBugReport" style="color: var(--color-brass-glow); text-decoration: underline; margin-left: 8px;">🐞 Повідомити про баг</a> | Рушій: Canvas 2D + WebSocket 30 Hz
+          Офіційний сервер: <a href="https://steamstrike.online/" style="color: var(--color-brass-glow); text-decoration: none;">steamstrike.online</a> | Рушій: Canvas 2D + WebSocket 30 Hz
+          <span id="btnFooterBugReport" style="display: none;"></span>
         </p>
       </footer>
 
@@ -778,18 +774,16 @@
             </div>
 
             <div id="lobbyTargetKillsGroup" class="lobby-input-group" style="display: block;">
-              <label for="lobbyTargetKillsInput">Ціль вбивств для перемоги:</label>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <input type="number" id="lobbyTargetKillsInput" class="steampunk-input" min="3" max="999" value="30" style="width: 80px;">
-                <select id="lobbyTargetKillsSelect" class="steampunk-input" style="cursor: pointer; flex: 1;">
-                  <option value="10">10 ліквідацій</option>
-                  <option value="15">15 ліквідацій</option>
-                  <option value="30" selected>30 ліквідацій</option>
-                  <option value="50">50 ліквідацій</option>
-                  <option value="100">100 ліквідацій</option>
-                  <option value="999">999 (Нескінченно)</option>
-                </select>
-              </div>
+              <label for="lobbyTargetKillsSelect">Тривалість бою (Ціль ліквідацій):</label>
+              <input type="number" id="lobbyTargetKillsInput" style="display: none;" value="30">
+              <select id="lobbyTargetKillsSelect" class="steampunk-input" style="cursor: pointer; width: 100%;">
+                <option value="10">10 ліквідацій</option>
+                <option value="15">15 ліквідацій</option>
+                <option value="30" selected>30 ліквідацій</option>
+                <option value="50">50 ліквідацій</option>
+                <option value="100">100 ліквідацій</option>
+                <option value="999">999 (Нескінченно)</option>
+              </select>
             </div>
 
             <div class="lobby-input-group" id="lobbyBotsGroup" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -891,13 +885,11 @@
               </div>
             </div>
 
-            <!-- Share buttons for friend invitation -->
+            <!-- Share button for friend invitation -->
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-              <button type="button" id="btnCopyRoomCode" class="btn-steampunk btn-iron" style="flex: 1; font-size: 11px; padding: 6px 8px;">
-                📋 Скопіювати код
-              </button>
-              <button type="button" id="btnCopyRoomLink" class="btn-steampunk btn-brass" style="flex: 1; font-size: 11px; padding: 6px 8px;">
-                🔗 Посилання для друга
+              <button type="button" id="btnCopyRoomCode" style="display: none;"></button>
+              <button type="button" id="btnCopyRoomLink" class="btn-steampunk btn-brass" style="flex: 1; font-size: 12px; padding: 7px 10px;">
+                🔗 Скопіювати запрошення для друзів
               </button>
             </div>
             <div id="lobbyCopyToast" style="display: none; font-size: 12px; color: var(--color-status-success); text-align: center; margin-bottom: 8px; font-weight: bold;">
@@ -951,7 +943,7 @@
     <!-- Top Action Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">
-        <button id="btnEditorReturnHome" class="btn-steampunk btn-iron" title="Повернутися на головну">⚙ На головну</button>
+        <button id="btnEditorReturnHome" style="display: none;"></button>
         <input type="text" id="mapNameInput" class="map-name-input" value="The Clockwork Foundry" title="Map Name">
         <select id="editorTemplateSelect" class="editor-size-select" title="Завантажити готовий шаблон арени" style="background: rgba(44, 28, 14, 0.9); border-color: var(--color-brass-primary); color: var(--color-brass-light);">
           <option value="" disabled selected>📋 Шаблони арен...</option>
@@ -970,30 +962,28 @@
           <option value="40">40 x 40 Гранд цитадель (1600 x 1600 px)</option>
           <option value="50">50 x 50 Мегаполіс (2000 x 2000 px)</option>
         </select>
-        <button id="btnBorderWall" class="btn-steampunk btn-iron" title="Surround border with solid perimeter walls">Perimeter</button>
-        <button id="btnClearGrid" class="btn-steampunk btn-iron" title="Clear all interior tiles to floor">Clear</button>
-        <button id="btnDefaultMap" class="btn-steampunk btn-iron" title="Reset to canonical Clockwork Foundry arena">Default</button>
+        <button id="btnBorderWall" class="btn-steampunk btn-iron" title="Обнести межі арени стінами">Периметр</button>
+        <button id="btnClearGrid" class="btn-steampunk btn-iron" title="Очистити поле арени">Очистити</button>
+        <button id="btnDefaultMap" class="btn-steampunk btn-iron" title="Скинути до стандартної арени Clockwork Foundry">Скинути</button>
       </div>
 
       <div class="editor-topbar-center">
-        <button id="btnSaveLocal" class="btn-steampunk btn-copper" title="Зберегти карту в пам'ять браузера">Save Local</button>
-        <button id="btnLoadLocal" class="btn-steampunk btn-copper" title="Завантажити карту з пам'яті браузера">Load Local</button>
-        <button id="btnExportJson" class="btn-steampunk btn-iron" title="Завантажити файл JSON">Export JSON</button>
-        <button id="btnImportJson" class="btn-steampunk btn-iron" title="Завантажити свій файл JSON">Import JSON</button>
+        <button id="btnSaveLocal" class="btn-steampunk btn-copper" title="Зберегти карту в пам'ять браузера">💾 Зберегти</button>
+        <button id="btnLoadLocal" style="display: none;"></button>
+        <button id="btnExportJson" class="btn-steampunk btn-iron" title="Завантажити файл карти JSON">📥 Експорт</button>
+        <button id="btnImportJson" class="btn-steampunk btn-iron" title="Відкрити файл карти JSON">📂 Імпорт</button>
         <button id="btnProposeMapOnline" class="btn-steampunk btn-brass" title="Запропонувати цю карту для офіційної публікації у грі">🌟 Запропонувати для гри</button>
         <input type="file" id="fileInputMap" accept=".json" style="display: none;">
       </div>
 
       <div class="editor-topbar-right">
-        <button id="btnEditorPlaySolo" class="btn-steampunk btn-launch" title="Миттєво запустити бій з ботами на цій карті">
-          ⚔ Грати з ботами
+        <button id="btnEditorPlaySolo" class="btn-steampunk btn-launch" title="Миттєво протестувати карту з ботами">
+          ⚔ Тест з ботами
         </button>
         <button id="btnEditorPlayOnline" class="btn-steampunk btn-copper" title="Створити онлайн-кімнату з цією картою для гри з друзями">
           🌐 Онлайн-матч
         </button>
-        <button id="btnLaunchCustomMatch" class="btn-steampunk btn-launch" style="display: none;">
-          ⚔ Launch Match on Custom Map
-        </button>
+        <button id="btnLaunchCustomMatch" style="display: none;"></button>
       </div>
     </div>
 
@@ -1095,7 +1085,7 @@
           <button id="btnZoomIn" class="ctrl-btn" title="Zoom In">+</button>
           <button id="btnZoomOut" class="ctrl-btn" title="Zoom Out">&minus;</button>
           <button id="btnZoomReset" class="ctrl-btn" title="Reset View">&#8635;</button>
-          <button id="btnEditorFullscreen" class="ctrl-btn" title="Повний екран (F)">⛶</button>
+          <button id="btnEditorFullscreen" style="display: none;"></button>
         </div>
       </main>
 
@@ -1170,14 +1160,10 @@
         ⚔ <span id="gameStatusTitle">Бойова арена</span> &bull; <span id="gameMapNameDisplay">The Clockwork Foundry</span>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button id="btnGameFullscreen" class="btn-steampunk btn-launch" style="font-size: 12px; padding: 4px 12px;" title="Повний екран (F / F11)">
-          ⛶ Повний екран (F)
-        </button>
-        <button id="btnReturnToEditor" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 4px 10px;">
-          🗺 Редактор
-        </button>
-        <button id="btnReturnToLobby" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 4px 10px;">
-          ⚔ До лобі
+        <button id="btnGameFullscreen" style="display: none;"></button>
+        <button id="btnReturnToEditor" style="display: none;"></button>
+        <button id="btnReturnToLobby" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 4px 14px;" title="Завершити матч та вийти до меню">
+          🚪 Вийти з бою
         </button>
       </div>
     </div>

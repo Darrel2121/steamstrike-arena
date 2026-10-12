@@ -272,7 +272,42 @@ body {
 
 .header-nav {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1;
+  margin-left: 24px;
+}
+
+.header-nav-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.header-nav-utils {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-icon-only {
+  width: 36px;
+  height: 36px;
+  padding: 0 !important;
+  font-size: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.profile-pill-btn {
+  padding: 6px 14px !important;
+  font-size: 13px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(180deg, #2b323f 0%, #171b22 100%) !important;
+  border: 1px solid var(--color-brass-primary) !important;
+  color: var(--color-brass-bright) !important;
 }
 
 /* Badge Indicator */
@@ -895,6 +930,21 @@ body.in-game header.steampunk-header {
   color: var(--color-text-dim);
   line-height: 1.5;
   flex: 1;
+}
+
+.portal-clickable-card {
+  cursor: pointer;
+  user-select: none;
+}
+.portal-clickable-card .portal-arrow {
+  color: var(--color-brass-primary);
+  transition: transform 0.2s ease, color 0.2s ease;
+  display: inline-block;
+  margin-left: 4px;
+}
+.portal-clickable-card:hover .portal-arrow {
+  transform: translateX(5px);
+  color: var(--color-brass-glow);
 }
 
 /* Features Grid */

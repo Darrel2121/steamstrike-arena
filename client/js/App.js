@@ -491,6 +491,7 @@ export class App {
         this.btnModeSolo.classList.add('active');
         this.btnModeOnline.classList.remove('active');
         if (this.homeRoomField) this.homeRoomField.style.display = 'none';
+        this.resetHeroPlayButton();
       });
       this.btnModeOnline.addEventListener('click', () => {
         this.heroMode = 'online';
@@ -498,6 +499,7 @@ export class App {
         this.btnModeSolo.classList.remove('active');
         if (this.homeRoomField) this.homeRoomField.style.display = 'flex';
         this.lobbyUI?.fetchAndRenderRooms();
+        this.resetHeroPlayButton();
       });
     }
 
@@ -744,7 +746,7 @@ export class App {
   resetHeroPlayButton() {
     if (this.btnHeroQuickPlay) {
       this.btnHeroQuickPlay.disabled = false;
-      this.btnHeroQuickPlay.innerHTML = '⚔ В БІЙ! (СТАРТ ГРИ)';
+      this.btnHeroQuickPlay.innerHTML = this.heroMode === 'online' ? '🌐 УВІЙТИ В КІМНАТУ' : '⚔ В БІЙ! (СТАРТ ГРИ)';
     }
   }
 
@@ -1059,6 +1061,10 @@ export class App {
       virtualJoystickContainer.style.display = '';
     }
 
+    if (!this.matchOrigin) {
+      this.matchOrigin = (this.currentView === 'editor') ? 'editor' : (this.currentView === 'home' ? 'home' : 'lobby');
+    }
+
     this.switchView('game');
     this.resizeGameCanvas();
     this.startGameLoop();
@@ -1069,6 +1075,9 @@ export class App {
    * @param {Object} map
    */
   launchMatchWithMap(map) {
+    if (this.currentView !== 'game') {
+      this.matchOrigin = (this.currentView === 'editor') ? 'editor' : 'lobby';
+    }
     this.activeMatchMap = map;
     const roomId = (this.lobbyUI?.dom?.roomInput?.value || 'Sector_Custom').trim();
     const prof = this.progressionManager?.getProfile();
@@ -1114,6 +1123,9 @@ export class App {
    * @param {Object} map
    */
   launchSoloTraining(map) {
+    if (this.currentView !== 'game') {
+      this.matchOrigin = (this.currentView === 'editor') ? 'editor' : (this.currentView === 'lobby' ? 'lobby' : 'home');
+    }
     if (this.gameIdleOverlay) {
       this.gameIdleOverlay.style.display = 'none';
     }
@@ -1305,23 +1317,10 @@ export class App {
               }
             }
           }
-          // Throttle continuous network input to ~30Hz (matching server tick rate),
-          // but immediately dispatch discrete action triggers (firing, reload, ability, toggleLantern, respawn)
-          const firingChanged = this.lastInputWasFiring !== Boolean(input.firing);
-          const isImmediateAction = Boolean(
-            input.firing ||
-            input.reload ||
-            input.ability ||
-            input.toggleLantern ||
-            input.respawn ||
-            firingChanged
-          );
           this.lastInputWasFiring = Boolean(input.firing);
 
-          const timeSinceLastInput = now - (this.lastInputSendTime || 0);
-          if (this.networkClient.isConnected && (isImmediateAction || timeSinceLastInput >= 32)) {
+          if (this.networkClient.isConnected) {
             this.networkClient.sendInput(input);
-            this.lastInputSendTime = now;
           }
         }
 
@@ -1508,8 +1507,16 @@ export class App {
       this.gameRenderer.clearMatchOutcome();
       this.gameRenderer.clearWrecks();
     }
+    const origin = this.matchOrigin || 'lobby';
+    this.matchOrigin = null;
     this.stopGameLoop({ keepOverlayHidden: true });
-    this.switchView('lobby');
+    if (origin === 'editor') {
+      this.switchView('editor');
+    } else if (origin === 'home') {
+      this.switchView('home');
+    } else {
+      this.switchView('lobby');
+    }
   }
 
   handleElimination(payload) {
