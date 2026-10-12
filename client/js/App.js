@@ -1606,9 +1606,9 @@ function bootstrapApp() {
   if (typeof window !== 'undefined' && !window.app) {
     try {
       window.app = new App();
-      console.log('[Clockwork Echo] Client initialized successfully.');
+      console.log('[Steamstrike] Client initialized successfully.');
     } catch (err) {
-      console.error('[Clockwork Echo] App initialization failed:', err);
+      console.error('[Steamstrike] App initialization failed:', err);
     }
   }
 }
