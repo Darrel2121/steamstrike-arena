@@ -63,17 +63,21 @@ export class SoundWaveRenderer {
 
   /**
    * Updates all active sound waves by time delta.
+   * Uses fast in-place compaction without per-element array shift allocations.
    * @param {number} dt - Elapsed seconds
    */
   update(dt = 0.016) {
-    for (let i = this.waves.length - 1; i >= 0; i--) {
+    let writeIdx = 0;
+    const len = this.waves.length;
+    for (let i = 0; i < len; i++) {
       const w = this.waves[i];
       w.elapsed += dt;
       w.rotation += dt * 1.5; // Rotate steampunk gear teeth
-      if (w.elapsed >= w.duration) {
-        this.waves.splice(i, 1);
+      if (w.elapsed < w.duration) {
+        this.waves[writeIdx++] = w;
       }
     }
+    this.waves.length = writeIdx;
   }
 
   /**
@@ -130,8 +134,6 @@ export class SoundWaveRenderer {
    * Renders expanding steampunk acoustic pulses on screen with gear teeth dashing.
    */
   renderOnScreenWave(ctx, sx, sy, radius, alpha, wave, progress) {
-    ctx.save();
-
     // Color parsing and tinting
     let strokeRgba, coreFill;
     if (wave.type === 'gunfire') {
@@ -177,7 +179,6 @@ export class SoundWaveRenderer {
 
     // 4. Origin mechanical impact ping
     if (progress < 0.4) {
-      const pingAlpha = (1.0 - progress / 0.4) * alpha;
       ctx.setLineDash([]);
       ctx.fillStyle = coreFill;
       ctx.beginPath();
@@ -189,7 +190,7 @@ export class SoundWaveRenderer {
       ctx.stroke();
     }
 
-    ctx.restore();
+    ctx.setLineDash([]);
   }
 
   /**

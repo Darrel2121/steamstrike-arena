@@ -358,24 +358,6 @@ export class Bot extends Player {
     if (!room) return;
     const segments = room.geometrySegments || [];
 
-    const candidates = [];
-    if (room.players) {
-      for (const p of room.players.values()) {
-        if (p.isAlive && p.hp > 0 && p.id !== this.id) {
-          if (this.team && p.team && this.team === p.team) continue;
-          candidates.push(p);
-        }
-      }
-    }
-    if (room.bots) {
-      for (const b of room.bots.values()) {
-        if (b.isAlive && b.hp > 0 && b.id !== this.id) {
-          if (this.team && b.team && this.team === b.team) continue;
-          candidates.push(b);
-        }
-      }
-    }
-
     // Retain current target if already engaging and target remains visible within range
     if (this.state === 'ENGAGE' && this.currentTargetId) {
       const current = room.players?.get(this.currentTargetId) || room.bots?.get(this.currentTargetId);
@@ -399,10 +381,15 @@ export class Bot extends Player {
     let nearestCandidate = null;
     let nearestDistSq = Infinity;
     const proximityDistSq = 45 * 45; // 45px omnidirectional close-proximity awareness bubble
+    const maxRangeSq = this.range * this.range;
 
-    for (const cand of candidates) {
+    const testCandidate = (cand) => {
+      if (!cand.isAlive || cand.hp <= 0 || cand.id === this.id) return;
+      if (this.team && cand.team && this.team === cand.team) return;
+
       const distSq = (cand.x - this.x) ** 2 + (cand.y - this.y) ** 2;
-      if (distSq <= this.range * this.range) {
+      // Skip raycast if entity is out of range OR farther than an already acquired visible target
+      if (distSq <= maxRangeSq && distSq < nearestDistSq) {
         const inProximity = distSq <= proximityDistSq;
         const visible = inProximity || isPointVisible(
           { x: this.x, y: this.y, angle: this.angle },
@@ -412,11 +399,18 @@ export class Bot extends Player {
           this.fov,
           this.range
         );
-        if (visible && distSq < nearestDistSq) {
+        if (visible) {
           nearestDistSq = distSq;
           nearestCandidate = cand;
         }
       }
+    };
+
+    if (room.players) {
+      for (const p of room.players.values()) testCandidate(p);
+    }
+    if (room.bots) {
+      for (const b of room.bots.values()) testCandidate(b);
     }
 
     if (nearestCandidate) {

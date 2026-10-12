@@ -215,6 +215,16 @@ export function raySegmentIntersection(origin, dir, a, b) {
  * @returns {boolean}
  */
 export function circleSegmentIntersect(center, radius, a, b) {
+  const minX = (a.x < b.x ? a.x : b.x) - radius;
+  const maxX = (a.x > b.x ? a.x : b.x) + radius;
+  const minY = (a.y < b.y ? a.y : b.y) - radius;
+  const maxY = (a.y > b.y ? a.y : b.y) + radius;
+
+  // Fast AABB rejection: if center is outside segment bounds expanded by radius, skip
+  if (center.x < minX || center.x > maxX || center.y < minY || center.y > maxY) {
+    return false;
+  }
+
   const abx = b.x - a.x;
   const aby = b.y - a.y;
   const apx = center.x - a.x;
@@ -222,7 +232,7 @@ export function circleSegmentIntersect(center, radius, a, b) {
 
   const segLengthSq = abx * abx + aby * aby;
   if (segLengthSq === 0) {
-    return Math.hypot(center.x - a.x, center.y - a.y) <= radius;
+    return (apx * apx + apy * apy) <= radius * radius;
   }
 
   // Projection parameter t clamped to [0, 1]

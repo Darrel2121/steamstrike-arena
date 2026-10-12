@@ -1327,21 +1327,12 @@ export class App {
         // 3. Obtain interpolated states (local player at predicted pos, remote players interpolated)
         const state = this.networkClient.getInterpolatedState();
         const localPlayer = state.localPlayer || localPlayerPredicted;
+        state.localPlayer = localPlayer;
 
-        // 4. Update renderer (camera tracking, acoustic wave decay, HUD updates, bullet hit impacts)
+        // 4. Update renderer & render frame with zero per-frame object allocation
         if (this.gameRenderer) {
-          this.gameRenderer.update(dt, {
-            localPlayer,
-            players: state.players,
-            soundEvents: state.soundEvents,
-            hitEvents: state.hitEvents
-          });
-
-          // 5. Render frame using canonical options object
-          this.gameRenderer.render({
-            ...state,
-            localPlayer
-          });
+          this.gameRenderer.update(dt, state);
+          this.gameRenderer.render(state);
         }
       } catch (err) {
         console.error('Frame loop error:', err);

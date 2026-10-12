@@ -197,49 +197,20 @@ export class VisibilityRenderer {
       fCtx.clip();
 
       if (player.lanternOn !== false) {
-        // Pass 1: Broad soft penumbra (feathered outer halo to soften cone edges)
-        const penumbraFovHalf = fovHalf * 1.22;
-        const penumbraGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
-        penumbraGrad.addColorStop(0, 'rgba(255, 235, 180, 0.28)');
-        penumbraGrad.addColorStop(0.30, 'rgba(255, 210, 80, 0.18)');
-        penumbraGrad.addColorStop(0.60, 'rgba(200, 130, 50, 0.08)');
-        penumbraGrad.addColorStop(0.85, 'rgba(140, 70, 20, 0.02)');
-        penumbraGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-        fCtx.fillStyle = penumbraGrad;
-        fCtx.beginPath();
-        fCtx.moveTo(px, py);
-        fCtx.arc(px, py, range * 0.98, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
-        fCtx.closePath();
-        fCtx.fill();
+        // High-efficiency unified feathered lantern beam (replaces 3 duplicate passes)
+        const penumbraFovHalf = fovHalf * 1.18;
+        const lanternGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
+        lanternGrad.addColorStop(0, 'rgba(255, 245, 205, 0.95)');
+        lanternGrad.addColorStop(0.20, 'rgba(255, 225, 120, 0.85)');
+        lanternGrad.addColorStop(0.50, 'rgba(220, 155, 60, 0.40)');
+        lanternGrad.addColorStop(0.75, 'rgba(175, 100, 30, 0.12)');
+        lanternGrad.addColorStop(0.92, 'rgba(130, 60, 15, 0.02)');
+        lanternGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
 
-        // Pass 2: Mid warm diffusion with very smooth natural falloff
-        const midGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
-        midGrad.addColorStop(0, 'rgba(255, 240, 190, 0.52)');
-        midGrad.addColorStop(0.25, 'rgba(255, 215, 90, 0.40)');
-        midGrad.addColorStop(0.50, 'rgba(220, 155, 60, 0.24)');
-        midGrad.addColorStop(0.75, 'rgba(180, 105, 35, 0.10)');
-        midGrad.addColorStop(0.90, 'rgba(140, 70, 20, 0.02)');
-        midGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-        fCtx.fillStyle = midGrad;
+        fCtx.fillStyle = lanternGrad;
         fCtx.beginPath();
         fCtx.moveTo(px, py);
-        fCtx.arc(px, py, range, aimAngle - fovHalf, aimAngle + fovHalf);
-        fCtx.closePath();
-        fCtx.fill();
-
-        // Pass 3: Concentrated core beam (warm alchemical lantern filament)
-        const coreFovHalf = fovHalf * 0.72;
-        const coreGrad = fCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
-        coreGrad.addColorStop(0, 'rgba(255, 250, 220, 0.65)');
-        coreGrad.addColorStop(0.25, 'rgba(255, 225, 120, 0.48)');
-        coreGrad.addColorStop(0.50, 'rgba(230, 170, 70, 0.26)');
-        coreGrad.addColorStop(0.75, 'rgba(190, 115, 40, 0.08)');
-        coreGrad.addColorStop(0.90, 'rgba(140, 65, 20, 0.01)');
-        coreGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-        fCtx.fillStyle = coreGrad;
-        fCtx.beginPath();
-        fCtx.moveTo(px, py);
-        fCtx.arc(px, py, range * 0.94, aimAngle - coreFovHalf, aimAngle + coreFovHalf);
+        fCtx.arc(px, py, range, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
         fCtx.closePath();
         fCtx.fill();
       }
@@ -303,29 +274,18 @@ export class VisibilityRenderer {
       fCtx.clip();
 
       if (isAlly) {
-        // Ally: Soft multi-layered team vision
-        const allyPenumbraHalf = cFovHalf * 1.22;
-        const allyPenumbra = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.98);
-        allyPenumbra.addColorStop(0, 'rgba(255, 255, 255, 0.30)');
-        allyPenumbra.addColorStop(0.50, 'rgba(255, 255, 255, 0.12)');
-        allyPenumbra.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-        fCtx.fillStyle = allyPenumbra;
-        fCtx.beginPath();
-        fCtx.moveTo(cx, cy);
-        fCtx.arc(cx, cy, cRange * 0.98, cAngle - allyPenumbraHalf, cAngle + allyPenumbraHalf);
-        fCtx.closePath();
-        fCtx.fill();
-
+        // Ally: Unified multi-stop feathered team vision (replaces 2 passes)
+        const allyPenumbraHalf = cFovHalf * 1.18;
         const allyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.90)');
-        allyGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.65)');
-        allyGrad.addColorStop(0.70, 'rgba(255, 255, 255, 0.25)');
-        allyGrad.addColorStop(0.90, 'rgba(255, 255, 255, 0.05)');
+        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+        allyGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.70)');
+        allyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.28)');
+        allyGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.06)');
         allyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = allyGrad;
         fCtx.beginPath();
         fCtx.moveTo(cx, cy);
-        fCtx.arc(cx, cy, cRange, cAngle - cFovHalf, cAngle + cFovHalf);
+        fCtx.arc(cx, cy, cRange, cAngle - allyPenumbraHalf, cAngle + allyPenumbraHalf);
         fCtx.closePath();
         fCtx.fill();
 
@@ -339,29 +299,18 @@ export class VisibilityRenderer {
         fCtx.arc(cx, cy, 45, 0, Math.PI * 2);
         fCtx.fill();
       } else {
-        // Opponent / Enemy: Atmospheric illumination with soft feathered cone
-        const enemyPenumbraHalf = cFovHalf * 1.20;
-        const enemyPenumbra = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.96);
-        enemyPenumbra.addColorStop(0, 'rgba(255, 255, 255, 0.20)');
-        enemyPenumbra.addColorStop(0.50, 'rgba(255, 255, 255, 0.08)');
-        enemyPenumbra.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-        fCtx.fillStyle = enemyPenumbra;
-        fCtx.beginPath();
-        fCtx.moveTo(cx, cy);
-        fCtx.arc(cx, cy, cRange * 0.96, cAngle - enemyPenumbraHalf, cAngle + enemyPenumbraHalf);
-        fCtx.closePath();
-        fCtx.fill();
-
+        // Opponent / Enemy: Unified soft feathered cone (replaces 2 passes)
+        const enemyPenumbraHalf = cFovHalf * 1.18;
         const enemyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        enemyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.65)');
-        enemyGrad.addColorStop(0.30, 'rgba(255, 255, 255, 0.45)');
-        enemyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.18)');
-        enemyGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.03)');
+        enemyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.72)');
+        enemyGrad.addColorStop(0.30, 'rgba(255, 255, 255, 0.48)');
+        enemyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.20)');
+        enemyGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.04)');
         enemyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = enemyGrad;
         fCtx.beginPath();
         fCtx.moveTo(cx, cy);
-        fCtx.arc(cx, cy, cRange, cAngle - cFovHalf, cAngle + cFovHalf);
+        fCtx.arc(cx, cy, cRange, cAngle - enemyPenumbraHalf, cAngle + enemyPenumbraHalf);
         fCtx.closePath();
         fCtx.fill();
 

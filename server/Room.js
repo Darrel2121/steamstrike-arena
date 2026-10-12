@@ -1370,9 +1370,10 @@ export class Room {
         if (!bot.isAlive) continue;
         for (const sound of this.soundEvents) {
           if (sound.sourceId === bot.id) continue;
-          const dist = Math.hypot(sound.x - bot.x, sound.y - bot.y);
+          const dx = sound.x - bot.x;
+          const dy = sound.y - bot.y;
           const hearingRadius = sound.maxRadius || sound.radius || 180;
-          if (dist <= hearingRadius) {
+          if ((dx * dx + dy * dy) <= hearingRadius * hearingRadius) {
             bot.hearSound(sound);
           }
         }
@@ -1430,13 +1431,29 @@ export class Room {
       }
     }
 
-    // Advance sound events & remove expired
+    // Advance sound events & remove expired (fast in-place compaction)
     const now = Date.now();
-    this.soundEvents = this.soundEvents.filter(s => (now - (s.createdAt || now)) < 1200);
+    if (this.soundEvents && this.soundEvents.length > 0) {
+      let wIdx = 0;
+      for (let i = 0; i < this.soundEvents.length; i++) {
+        const s = this.soundEvents[i];
+        if ((now - (s.createdAt || now)) < 1200) {
+          this.soundEvents[wIdx++] = s;
+        }
+      }
+      this.soundEvents.length = wIdx;
+    }
 
-    // Advance smoke zones & remove expired
+    // Advance smoke zones & remove expired (fast in-place compaction)
     if (this.smokeZones && this.smokeZones.length > 0) {
-      this.smokeZones = this.smokeZones.filter(z => (now - (z.createdAt || now)) < ((z.duration || 5.0) * 1000));
+      let wIdx = 0;
+      for (let i = 0; i < this.smokeZones.length; i++) {
+        const z = this.smokeZones[i];
+        if ((now - (z.createdAt || now)) < ((z.duration || 5.0) * 1000)) {
+          this.smokeZones[wIdx++] = z;
+        }
+      }
+      this.smokeZones.length = wIdx;
     }
 
     // Advance Wave Defense state machine
@@ -1478,7 +1495,10 @@ export class Room {
   broadcastSnapshot() {
     const snapshotPlayers = [];
 
+    let aliveCount = 0;
+
     for (const p of this.players.values()) {
+      if (p.isAlive && p.hp > 0) aliveCount++;
       if (typeof p.toSnapshot === 'function') {
         snapshotPlayers.push(p.toSnapshot());
       } else {
@@ -1503,6 +1523,7 @@ export class Room {
     }
 
     for (const b of this.bots.values()) {
+      if (b.isAlive && b.hp > 0) aliveCount++;
       if (typeof b.toSnapshot === 'function') {
         snapshotPlayers.push(b.toSnapshot());
       } else {
@@ -1525,19 +1546,37 @@ export class Room {
       }
     }
 
+    const serializedProjectiles = [];
+    if (this.projectiles && this.projectiles.length > 0) {
+      for (let i = 0; i < this.projectiles.length; i++) {
+        const p = this.projectiles[i];
+        serializedProjectiles.push(typeof p.toJSON === 'function' ? p.toJSON() : p);
+      }
+    }
+
+    const serializedPickups = [];
+    if (this.pickups && this.pickups.length > 0) {
+      for (let i = 0; i < this.pickups.length; i++) {
+        const pk = this.pickups[i];
+        if (pk.isActive) {
+          serializedPickups.push(typeof pk.toSnapshot === 'function' ? pk.toSnapshot() : pk);
+        }
+      }
+    }
+
     const payload = {
       tick: this.tickNumber,
       timestamp: Date.now(),
       gameMode: this.gameMode,
       targetKills: this.targetKills,
       teamScores: { ...this.teamScores },
-      aliveCount: this.getAliveCombatants().length,
+      aliveCount: aliveCount,
       players: snapshotPlayers,
-      projectiles: (this.projectiles || []).map(p => (typeof p.toJSON === 'function' ? p.toJSON() : p)),
+      projectiles: serializedProjectiles,
       soundEvents: this.soundEvents || [],
       hitEvents: this.hitEvents || [],
       smokeZones: this.smokeZones || [],
-      pickups: (this.pickups || []).filter(pk => pk.isActive).map(pk => (typeof pk.toSnapshot === 'function' ? pk.toSnapshot() : pk)),
+      pickups: serializedPickups,
       steamCore: this.steamCore ? {
         x: this.steamCore.x,
         y: this.steamCore.y,

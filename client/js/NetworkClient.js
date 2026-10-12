@@ -12,6 +12,15 @@ import { WEAPON_DEFINITIONS } from '../../shared/ProgressionSchema.js';
  * Matches server/physics/Geometry.js circleSegmentIntersect.
  */
 function circleSegmentIntersect(center, radius, a, b) {
+  const minX = (a.x < b.x ? a.x : b.x) - radius;
+  const maxX = (a.x > b.x ? a.x : b.x) + radius;
+  const minY = (a.y < b.y ? a.y : b.y) - radius;
+  const maxY = (a.y > b.y ? a.y : b.y) + radius;
+
+  if (center.x < minX || center.x > maxX || center.y < minY || center.y > maxY) {
+    return false;
+  }
+
   const abx = b.x - a.x;
   const aby = b.y - a.y;
   const apx = center.x - a.x;
@@ -19,7 +28,7 @@ function circleSegmentIntersect(center, radius, a, b) {
 
   const segLengthSq = abx * abx + aby * aby;
   if (segLengthSq === 0) {
-    return Math.hypot(center.x - a.x, center.y - a.y) <= radius;
+    return (apx * apx + apy * apy) <= radius * radius;
   }
 
   const t = Math.max(0, Math.min(1, (apx * abx + apy * aby) / segLengthSq));

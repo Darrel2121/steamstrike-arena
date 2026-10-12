@@ -326,9 +326,11 @@ export class GameRenderer {
     // 3. Update acoustic sound waves simulation
     this.soundWaveRenderer.update(dt);
 
-    // 3.5 Update bullet impact micro-sparks & floating combat text
+    // 3.5 Update bullet impact micro-sparks & floating combat text (fast in-place compaction)
     if (this.impactParticles && this.impactParticles.length > 0) {
-      for (let i = this.impactParticles.length - 1; i >= 0; i--) {
+      let writeIdx = 0;
+      const count = this.impactParticles.length;
+      for (let i = 0; i < count; i++) {
         const p = this.impactParticles[i];
         p.x += (p.vx || 0) * dt;
         p.y += (p.vy || 0) * dt;
@@ -339,15 +341,18 @@ export class GameRenderer {
         }
         p.life -= dt;
         p.alpha = Math.max(0, p.life / p.maxLife);
-        if (p.life <= 0) {
-          this.impactParticles.splice(i, 1);
+        if (p.life > 0) {
+          this.impactParticles[writeIdx++] = p;
         }
       }
+      this.impactParticles.length = writeIdx > 120 ? 120 : writeIdx;
     }
 
-    // 3.6 Update volumetric steam & exhaust particle engine
+    // 3.6 Update volumetric steam & exhaust particle engine (fast in-place compaction)
     if (this.steamParticles && this.steamParticles.length > 0) {
-      for (let i = this.steamParticles.length - 1; i >= 0; i--) {
+      let writeIdx = 0;
+      const count = this.steamParticles.length;
+      for (let i = 0; i < count; i++) {
         const p = this.steamParticles[i];
         p.x += (p.vx || 0) * dt;
         p.y += (p.vy || 0) * dt;
@@ -359,10 +364,11 @@ export class GameRenderer {
         const norm = Math.max(0, p.life / p.maxLife);
         // Smooth swell-in and organic fade-out curve
         p.alpha = Math.sin(norm * Math.PI) * (p.baseAlpha || 0.45);
-        if (p.life <= 0) {
-          this.steamParticles.splice(i, 1);
+        if (p.life > 0) {
+          this.steamParticles[writeIdx++] = p;
         }
       }
+      this.steamParticles.length = writeIdx > 80 ? 80 : writeIdx;
     }
 
     // 3.7 Emit continuous mechanical steam exhaust for bots and combatants
@@ -378,7 +384,7 @@ export class GameRenderer {
       timer -= dt;
 
       const isSprinting = Boolean(pl.isSprinting);
-      const isMoving = isSprinting || (Math.hypot(pl.vx || 0, pl.vy || 0) > 12);
+      const isMoving = isSprinting || (((pl.vx || 0) ** 2 + (pl.vy || 0) ** 2) > 144);
       const interval = isSprinting ? 0.12 : (isMoving ? 0.22 : 0.65);
 
       if (timer <= 0) {
@@ -1859,18 +1865,10 @@ export class GameRenderer {
       const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
       const pulse = Math.sin(now * 0.005);
 
-      // Alchemical glow aura
-      const glowGrad = ctx.createRadialGradient(x, y, 3, x, y, 18 + pulse * 4);
-      if (pickup.type === 'health') {
-        glowGrad.addColorStop(0, 'rgba(46, 196, 182, 0.45)');
-        glowGrad.addColorStop(1, 'rgba(46, 196, 182, 0)');
-      } else {
-        glowGrad.addColorStop(0, 'rgba(255, 207, 72, 0.45)');
-        glowGrad.addColorStop(1, 'rgba(255, 207, 72, 0)');
-      }
-      ctx.fillStyle = glowGrad;
+      // Alchemical glow aura without per-frame gradient allocation
+      ctx.fillStyle = pickup.type === 'health' ? 'rgba(46, 196, 182, 0.28)' : 'rgba(255, 207, 72, 0.28)';
       ctx.beginPath();
-      ctx.arc(x, y, 22, 0, Math.PI * 2);
+      ctx.arc(x, y, 20 + pulse * 2, 0, Math.PI * 2);
       ctx.fill();
 
       // High-definition steampunk pickup chest
@@ -1920,67 +1918,46 @@ export class GameRenderer {
 
   /**
    * Renders a glowing, high-speed bullet tracer cutting through air and fog.
-   */
-  /**
-   * Renders a glowing, high-speed bullet tracer cutting through air and fog.
    * Scaled down ~30% for ultra-crisp, tight, tactical ballistic visuals.
    */
   renderProjectile(ctx, b) {
-    ctx.save();
     const vx = b.vx || 0;
     const vy = b.vy || 0;
-    const speed = Math.hypot(vx, vy) || 1;
+    const speed = Math.sqrt(vx * vx + vy * vy) || 1;
     // Tight aerodynamic tracer trail proportional to high bullet velocity
-    const trailLen = Math.max(18, Math.min(38, speed * 0.018));
+    const trailLen = Math.max(16, Math.min(36, speed * 0.018));
 
     const tailX = b.x - (vx / speed) * trailLen;
     const tailY = b.y - (vy / speed) * trailLen;
 
-    // 1. Soft atmospheric outer heat glow streak (lineWidth 3.8px)
-    const outerGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-    outerGrad.addColorStop(0, 'rgba(255, 120, 20, 0.0)');
-    outerGrad.addColorStop(0.5, 'rgba(255, 160, 40, 0.35)');
-    outerGrad.addColorStop(1.0, 'rgba(255, 210, 80, 0.75)');
-
-    ctx.strokeStyle = outerGrad;
-    ctx.lineWidth = 3.8;
+    // 1. Soft atmospheric outer heat glow streak
+    ctx.strokeStyle = 'rgba(255, 140, 40, 0.40)';
+    ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
 
-    // 2. Bright incandescent core streak (lineWidth 1.5px)
-    const coreGrad = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-    coreGrad.addColorStop(0, 'rgba(255, 207, 72, 0.0)');
-    coreGrad.addColorStop(0.4, 'rgba(255, 235, 160, 0.85)');
-    coreGrad.addColorStop(1.0, 'rgba(255, 255, 240, 1.0)');
-
-    ctx.strokeStyle = coreGrad;
-    ctx.lineWidth = 1.5;
+    // 2. Bright incandescent core streak
+    ctx.strokeStyle = '#fffbf0';
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(tailX, tailY);
     ctx.lineTo(b.x, b.y);
     ctx.stroke();
 
-    // 3. Hot radiant projectile head with spark halo (radius 4.8px)
-    const haloGrad = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, 4.8);
-    haloGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-    haloGrad.addColorStop(0.4, 'rgba(255, 200, 70, 0.60)');
-    haloGrad.addColorStop(1.0, 'rgba(255, 140, 30, 0.0)');
-
-    ctx.fillStyle = haloGrad;
+    // 3. Hot radiant projectile head
+    ctx.fillStyle = '#ffcf48';
     ctx.beginPath();
-    ctx.arc(b.x, b.y, 4.8, 0, Math.PI * 2);
+    ctx.arc(b.x, b.y, 3.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // 4. White-hot center pellet (radius 1.5px)
+    // 4. White-hot center pellet
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
     ctx.arc(b.x, b.y, 1.5, 0, Math.PI * 2);
     ctx.fill();
-
-    ctx.restore();
   }
 
   /**
@@ -2015,14 +1992,11 @@ export class GameRenderer {
     ctx.ellipse(1, 2, 17, 15, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Soft ambient ground glow for team affiliation
+    // Soft ambient ground glow for team affiliation (zero gradient allocation)
     if (pl.team) {
-      const teamGlow = ctx.createRadialGradient(0, 0, 4, 0, 0, 22);
-      teamGlow.addColorStop(0, pl.team === 'team1' ? 'rgba(37, 117, 252, 0.40)' : 'rgba(255, 71, 87, 0.40)');
-      teamGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = teamGlow;
+      ctx.fillStyle = pl.team === 'team1' ? 'rgba(37, 117, 252, 0.28)' : 'rgba(255, 71, 87, 0.28)';
       ctx.beginPath();
-      ctx.arc(0, 0, 22, 0, Math.PI * 2);
+      ctx.arc(0, 0, 20, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -2086,22 +2060,18 @@ export class GameRenderer {
     // Left boot with leather shading & brass toe armor
     ctx.fillStyle = '#14110d';
     ctx.fillRect(leftBootX - bootW / 2, -10.5 - bootH / 2, bootW, bootH);
-    const lToeGrad = ctx.createLinearGradient(leftBootX, -10.5, leftBootX + bootW / 2, -10.5);
-    lToeGrad.addColorStop(0, '#8a6210');
-    lToeGrad.addColorStop(0.5, '#ffd152');
-    lToeGrad.addColorStop(1, '#664508');
-    ctx.fillStyle = lToeGrad;
+    ctx.fillStyle = '#c59b27';
     ctx.fillRect(leftBootX + bootW / 2 - 2.5, -10.5 - bootH / 2, 2.5, bootH);
+    ctx.fillStyle = '#ffd152';
+    ctx.fillRect(leftBootX + bootW / 2 - 2.5, -10.5 - bootH / 2, 1.0, bootH);
 
     // Right boot with leather shading & brass toe armor
     ctx.fillStyle = '#14110d';
     ctx.fillRect(rightBootX - bootW / 2, 10.5 - bootH / 2, bootW, bootH);
-    const rToeGrad = ctx.createLinearGradient(rightBootX, 10.5, rightBootX + bootW / 2, 10.5);
-    rToeGrad.addColorStop(0, '#8a6210');
-    rToeGrad.addColorStop(0.5, '#ffd152');
-    rToeGrad.addColorStop(1, '#664508');
-    ctx.fillStyle = rToeGrad;
+    ctx.fillStyle = '#c59b27';
     ctx.fillRect(rightBootX + bootW / 2 - 2.5, 10.5 - bootH / 2, 2.5, bootH);
+    ctx.fillStyle = '#ffd152';
+    ctx.fillRect(rightBootX + bootW / 2 - 2.5, 10.5 - bootH / 2, 1.0, bootH);
 
     // 2. Arms & Hands gripping weapon with articulated sleeves & leather bracers
     let coatGradBase = '#4a2f18';
@@ -2155,22 +2125,19 @@ export class GameRenderer {
     ctx.fillRect(2.5, 6.5, 2, 1.5);
     ctx.fillRect(3.0, -7.5, 2, 1.5);
 
-    // Gloved hands with dark leather gradient
-    const rHandGrad = ctx.createRadialGradient(8, 3.5, 0.5, 8, 3.5, 2.5);
-    rHandGrad.addColorStop(0, '#3a3026');
-    rHandGrad.addColorStop(1, '#16130f');
-    ctx.fillStyle = rHandGrad;
+    // Gloved hands with dark leather
+    ctx.fillStyle = '#2b2219';
+    ctx.strokeStyle = '#14110d';
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
     ctx.arc(8, 3.5, 2.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
 
-    const lHandGrad = ctx.createRadialGradient(13, -2, 0.5, 13, -2, 2.5);
-    lHandGrad.addColorStop(0, '#3a3026');
-    lHandGrad.addColorStop(1, '#16130f');
-    ctx.fillStyle = lHandGrad;
     ctx.beginPath();
     ctx.arc(13, -2, 2.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
 
     // Brass knuckle rivets on gloves
     ctx.fillStyle = '#ffcf48';
@@ -2182,14 +2149,10 @@ export class GameRenderer {
     // 3. Top-Down Steampunk Weapon
     this.renderTopDownWeapon(ctx, wId, now);
 
-    // 4. Steam Boiler Backpack / Gas Reservoir (X < 0) with Rich Metallic Gradients
+    // 4. Steam Boiler Backpack / Gas Reservoir (X < 0) with Rich Metallic Details
     if (cId === 'juggernaut') {
       // Dual heavy high-pressure iron boilers with glowing heat core
-      const b1Grad = ctx.createRadialGradient(-8.5, -6, 1, -8.5, -6, 5.5);
-      b1Grad.addColorStop(0, '#5a3818');
-      b1Grad.addColorStop(0.7, '#2c1a0c');
-      b1Grad.addColorStop(1, '#150c06');
-      ctx.fillStyle = b1Grad;
+      ctx.fillStyle = '#2c1a0c';
       ctx.beginPath();
       ctx.arc(-8.5, -6, 5.2, 0, Math.PI * 2);
       ctx.arc(-8.5, 6, 5.2, 0, Math.PI * 2);
@@ -2208,11 +2171,7 @@ export class GameRenderer {
       ctx.fillRect(-11.5, 5.5, 1.5, 1.5);
     } else if (cId === 'sharpshooter') {
       // Slim pressurized pneumatic canister with glowing cyan core
-      const aetherGrad = ctx.createLinearGradient(-13, -3.5, -7, 3.5);
-      aetherGrad.addColorStop(0, '#152533');
-      aetherGrad.addColorStop(0.5, '#223c52');
-      aetherGrad.addColorStop(1, '#0e1822');
-      ctx.fillStyle = aetherGrad;
+      ctx.fillStyle = '#152533';
       ctx.fillRect(-12, -3.5, 6.5, 7);
       ctx.strokeStyle = '#5ffbf1';
       ctx.lineWidth = 1.2;
@@ -2237,11 +2196,7 @@ export class GameRenderer {
       ctx.fillRect(-12.5, 3.2, 1.5, 1.5);
     } else {
       // Vanguard: Polished cylindrical brass boiler with copper coils & pressure gauge
-      const boilerGrad = ctx.createRadialGradient(-8, 0, 1, -8, 0, 7);
-      boilerGrad.addColorStop(0, '#ffd866');
-      boilerGrad.addColorStop(0.5, '#b87e1b');
-      boilerGrad.addColorStop(1, '#573708');
-      ctx.fillStyle = boilerGrad;
+      ctx.fillStyle = '#b87e1b';
       ctx.beginPath();
       ctx.arc(-8, 0, 6.8, 0, Math.PI * 2);
       ctx.fill();
@@ -2277,11 +2232,7 @@ export class GameRenderer {
     const torsoRadiusX = cId === 'juggernaut' ? 9.8 : 8.2;
     const torsoRadiusY = cId === 'juggernaut' ? 14.5 : 12.0;
 
-    const torsoGrad = ctx.createRadialGradient(-1, 0, 2, -1, 0, torsoRadiusY);
-    torsoGrad.addColorStop(0, coatGradHighlight);
-    torsoGrad.addColorStop(0.8, coatGradBase);
-    torsoGrad.addColorStop(1, '#0e1014');
-    ctx.fillStyle = torsoGrad;
+    ctx.fillStyle = coatGradBase;
     ctx.beginPath();
     ctx.ellipse(-1, 0, torsoRadiusX, torsoRadiusY, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -2310,11 +2261,7 @@ export class GameRenderer {
     const pauldronRad = cId === 'juggernaut' ? 5.4 : 4.4;
 
     const renderPauldron = (py) => {
-      const pGrad = ctx.createRadialGradient(-1, py, 1, -1, py, pauldronRad);
-      pGrad.addColorStop(0, '#ffea85');
-      pGrad.addColorStop(0.5, '#c59b27');
-      pGrad.addColorStop(1, '#543b09');
-      ctx.fillStyle = pGrad;
+      ctx.fillStyle = '#c59b27';
       ctx.beginPath();
       ctx.arc(-1, py, pauldronRad, 0, Math.PI * 2);
       ctx.fill();
@@ -2335,23 +2282,16 @@ export class GameRenderer {
     // 6. Head & Headgear (Center top-down with seam shading)
     const headRad = 6.4;
     let capGradBase = '#3a2416';
-    let capGradTop = '#5c3922';
 
     if (cId === 'juggernaut') {
       capGradBase = '#1f242d';
-      capGradTop = '#3a4354';
     } else if (cId === 'sharpshooter') {
       capGradBase = '#182430';
-      capGradTop = '#2a3e52';
     } else if (cId === 'infiltrator') {
       capGradBase = '#101216';
-      capGradTop = '#1e222a';
     }
 
-    const headGrad = ctx.createRadialGradient(1, 0, 1, 1, 0, headRad);
-    headGrad.addColorStop(0, capGradTop);
-    headGrad.addColorStop(1, capGradBase);
-    ctx.fillStyle = headGrad;
+    ctx.fillStyle = capGradBase;
     ctx.beginPath();
     ctx.arc(1, 0, headRad, 0, Math.PI * 2);
     ctx.fill();
@@ -2381,12 +2321,8 @@ export class GameRenderer {
     }
 
     const renderGoggle = (gy) => {
-      // Brass outer housing with beveled metallic gradient
-      const rimGrad = ctx.createRadialGradient(5.5, gy, 1, 5.5, gy, 2.7);
-      rimGrad.addColorStop(0, '#ffea85');
-      rimGrad.addColorStop(0.6, '#c59b27');
-      rimGrad.addColorStop(1, '#543b09');
-      ctx.fillStyle = rimGrad;
+      // Brass outer housing with beveled metallic rim
+      ctx.fillStyle = '#c59b27';
       ctx.beginPath();
       ctx.arc(5.5, gy, 2.7, 0, Math.PI * 2);
       ctx.fill();
@@ -2478,11 +2414,7 @@ export class GameRenderer {
 
     // 4. Rear Brass Steam Exhaust Chimneys with Glowing Heat Interior (X < 0)
     const renderChimney = (cy) => {
-      const cGrad = ctx.createRadialGradient(-8, cy, 1, -8, cy, 3.8);
-      cGrad.addColorStop(0, '#ffd866');
-      cGrad.addColorStop(0.6, '#b87e1b');
-      cGrad.addColorStop(1, '#472d06');
-      ctx.fillStyle = cGrad;
+      ctx.fillStyle = '#b87e1b';
       ctx.beginPath();
       ctx.arc(-8, cy, 3.6, 0, Math.PI * 2);
       ctx.fill();
@@ -2507,12 +2439,8 @@ export class GameRenderer {
     // 5. Main Heavy Automaton Shell (Strict top-down forged iron & brass rim)
     const hullRad = 13.5;
 
-    // Outer cast iron hull with bevel
-    const hullGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, hullRad);
-    hullGrad.addColorStop(0, '#384252');
-    hullGrad.addColorStop(0.7, '#202630');
-    hullGrad.addColorStop(1, '#0e1117');
-    ctx.fillStyle = hullGrad;
+    // Outer cast iron hull
+    ctx.fillStyle = '#222834';
     ctx.beginPath();
     ctx.arc(0, 0, hullRad, 0, Math.PI * 2);
     ctx.fill();
@@ -2563,13 +2491,13 @@ export class GameRenderer {
 
     // Central Pulsing Aether Energy Crystal Core
     const opticColor = isElite ? '#ff2a2a' : '#ff9f1c';
-    const coreGrad = ctx.createRadialGradient(0, 0, 0.5, 0, 0, 3.2);
-    coreGrad.addColorStop(0, '#ffffff');
-    coreGrad.addColorStop(0.5, opticColor);
-    coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = coreGrad;
+    ctx.fillStyle = opticColor;
     ctx.beginPath();
     ctx.arc(0, 0, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(0, 0, 1.4, 0, Math.PI * 2);
     ctx.fill();
 
     // 6. Sweeping Robotic Optical Visor Scanner (Facing +X)
@@ -2604,11 +2532,7 @@ export class GameRenderer {
       ctx.fillRect(3, -1.8, 6, 3.6);
 
       // Flared conical brass bell-mouth
-      const bellGrad = ctx.createLinearGradient(8, 0, 22, 0);
-      bellGrad.addColorStop(0, '#9e7315');
-      bellGrad.addColorStop(0.5, '#ffd866');
-      bellGrad.addColorStop(1, '#694a08');
-      ctx.fillStyle = bellGrad;
+      ctx.fillStyle = '#c59b27';
       ctx.strokeStyle = '#ffe48a';
       ctx.beginPath();
       ctx.moveTo(8, -2);
@@ -2638,11 +2562,7 @@ export class GameRenderer {
       ctx.fillRect(5, -1.8, 6, 3.6);
 
       // Long needle rail barrel
-      const railGrad = ctx.createLinearGradient(9, 0, 30, 0);
-      railGrad.addColorStop(0, '#2d3745');
-      railGrad.addColorStop(0.7, '#435368');
-      railGrad.addColorStop(1, '#1b222b');
-      ctx.fillStyle = railGrad;
+      ctx.fillStyle = '#2d3745';
       ctx.strokeStyle = '#5ffbf1';
       ctx.fillRect(9, -1.2, 21, 2.4);
       ctx.strokeRect(9, -1.2, 21, 2.4);
@@ -2768,14 +2688,13 @@ export class GameRenderer {
       ctx.strokeRect(7, -1.8, 11, 3.6);
 
       // 6-chamber cylinder with brass chambers
-      const cylGrad = ctx.createRadialGradient(9.5, 0, 0.5, 9.5, 0, 3.2);
-      cylGrad.addColorStop(0, '#ffd866');
-      cylGrad.addColorStop(0.7, '#a87a19');
-      cylGrad.addColorStop(1, '#543b08');
-      ctx.fillStyle = cylGrad;
+      ctx.fillStyle = '#a87a19';
+      ctx.strokeStyle = '#ffd866';
+      ctx.lineWidth = 1.0;
       ctx.beginPath();
       ctx.arc(9.5, 0, 3.2, 0, Math.PI * 2);
       ctx.fill();
+      ctx.stroke();
 
       ctx.fillStyle = '#12151b';
       ctx.beginPath();
