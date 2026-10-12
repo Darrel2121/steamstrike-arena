@@ -505,13 +505,7 @@ export class LobbyUI {
   ensureConnected() {
     if (!this.networkClient.isSocketReady) {
       const token = this.options.progressionManager?.getToken ? this.options.progressionManager.getToken() : (this.options.progressionManager?.token || (typeof localStorage !== 'undefined' ? localStorage.getItem('clockwork_auth_token_v1') : null));
-      if (token && typeof window !== 'undefined' && window.location) {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host || 'localhost:3000';
-        this.networkClient.connect(`${protocol}//${host}/?token=${encodeURIComponent(token)}`);
-      } else {
-        this.networkClient.connect();
-      }
+      this.networkClient.connect(null, token);
     }
   }
 

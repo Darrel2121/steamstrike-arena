@@ -74,13 +74,18 @@ export class VisibilityRenderer {
     const obsY = observer.renderY ?? observer.y;
     const obsAngle = observer.angle ?? 0;
 
-    // Temporal polygon caching: if observer position and angle have not perceptibly changed, reuse cached polygon!
+    const obsFov = observer.fov ?? this.lanternFov;
+    const obsRange = observer.range ?? this.lanternRange;
+
+    // Temporal polygon caching: if observer position, angle, fov and range are unchanged, reuse cached polygon!
     if (
       observer._cachedPoly &&
       observer._cachedPolySegments === segments &&
-      Math.abs((observer._cachedPolyX ?? 0) - obsX) < 0.5 &&
-      Math.abs((observer._cachedPolyY ?? 0) - obsY) < 0.5 &&
-      Math.abs((observer._cachedPolyAngle ?? 0) - obsAngle) < 0.015
+      observer._cachedPolyX === obsX &&
+      observer._cachedPolyY === obsY &&
+      observer._cachedPolyAngle === obsAngle &&
+      observer._cachedPolyFov === obsFov &&
+      observer._cachedPolyRange === obsRange
     ) {
       this.lastPolygon = observer._cachedPoly;
       return observer._cachedPoly;
@@ -94,8 +99,8 @@ export class VisibilityRenderer {
       obs,
       segments,
       obsAngle,
-      observer.fov ?? this.lanternFov,
-      observer.range ?? this.lanternRange
+      obsFov,
+      obsRange
     );
 
     observer._cachedPoly = poly;
@@ -103,6 +108,8 @@ export class VisibilityRenderer {
     observer._cachedPolyX = obsX;
     observer._cachedPolyY = obsY;
     observer._cachedPolyAngle = obsAngle;
+    observer._cachedPolyFov = obsFov;
+    observer._cachedPolyRange = obsRange;
 
     this.lastPolygon = poly;
     return poly;
@@ -197,15 +204,14 @@ export class VisibilityRenderer {
       fCtx.clip();
 
       if (player.lanternOn !== false) {
-        // High-efficiency unified feathered lantern beam (replaces 3 duplicate passes)
+        // High-efficiency unified feathered lantern beam (destination-out requires solid alpha 1.0 to clear darkness)
         const penumbraFovHalf = fovHalf * 1.18;
         const lanternGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
-        lanternGrad.addColorStop(0, 'rgba(255, 245, 205, 0.95)');
-        lanternGrad.addColorStop(0.20, 'rgba(255, 225, 120, 0.85)');
-        lanternGrad.addColorStop(0.50, 'rgba(220, 155, 60, 0.40)');
-        lanternGrad.addColorStop(0.75, 'rgba(175, 100, 30, 0.12)');
-        lanternGrad.addColorStop(0.92, 'rgba(130, 60, 15, 0.02)');
-        lanternGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+        lanternGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        lanternGrad.addColorStop(0.65, 'rgba(255, 255, 255, 1.0)');
+        lanternGrad.addColorStop(0.85, 'rgba(255, 255, 255, 0.65)');
+        lanternGrad.addColorStop(0.95, 'rgba(255, 255, 255, 0.20)');
+        lanternGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
 
         fCtx.fillStyle = lanternGrad;
         fCtx.beginPath();
@@ -219,11 +225,9 @@ export class VisibilityRenderer {
       const proxRadius = (player.lanternOn !== false) ? (this.proximityRadius * 1.15) : (this.proximityRadius * 0.70);
       const proxGrad = fCtx.createRadialGradient(px, py, 0, px, py, proxRadius);
       proxGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      proxGrad.addColorStop(0.25, 'rgba(255, 248, 220, 0.88)');
-      proxGrad.addColorStop(0.50, 'rgba(255, 235, 180, 0.52)');
-      proxGrad.addColorStop(0.75, 'rgba(220, 180, 100, 0.18)');
-      proxGrad.addColorStop(0.90, 'rgba(180, 130, 60, 0.04)');
-      proxGrad.addColorStop(1.0, 'rgba(120, 80, 30, 0.0)');
+      proxGrad.addColorStop(0.70, 'rgba(255, 255, 255, 1.0)');
+      proxGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.50)');
+      proxGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
 
       fCtx.fillStyle = proxGrad;
       fCtx.beginPath();
@@ -249,7 +253,7 @@ export class VisibilityRenderer {
     // Cache polygon and transform data for secondary lighter glow pass
     const othersPassData = [];
 
-    // 3b. Punch out lantern beams for Allies and Enemies with soft feathered gradients
+    // 3b. Punch out lantern beams for Allies (Enemies only punch lamp glow, beams drawn on mainCtx over darkness)
     for (const c of activeOthers) {
       const cPoly = this.computePolygon(c, segments);
       if (!cPoly || cPoly.length < 3) continue;
@@ -274,13 +278,13 @@ export class VisibilityRenderer {
       fCtx.clip();
 
       if (isAlly) {
-        // Ally: Unified multi-stop feathered team vision (replaces 2 passes)
+        // Ally: Unified multi-stop feathered team vision (shared visibility)
         const allyPenumbraHalf = cFovHalf * 1.18;
         const allyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        allyGrad.addColorStop(0.35, 'rgba(255, 255, 255, 0.70)');
-        allyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.28)');
-        allyGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.06)');
+        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        allyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 1.0)');
+        allyGrad.addColorStop(0.85, 'rgba(255, 255, 255, 0.65)');
+        allyGrad.addColorStop(0.95, 'rgba(255, 255, 255, 0.20)');
         allyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = allyGrad;
         fCtx.beginPath();
@@ -291,37 +295,12 @@ export class VisibilityRenderer {
 
         // Ally proximity circle
         const allyProx = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 45);
-        allyProx.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-        allyProx.addColorStop(0.50, 'rgba(255, 255, 255, 0.45)');
+        allyProx.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+        allyProx.addColorStop(0.70, 'rgba(255, 255, 255, 1.0)');
         allyProx.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
         fCtx.fillStyle = allyProx;
         fCtx.beginPath();
         fCtx.arc(cx, cy, 45, 0, Math.PI * 2);
-        fCtx.fill();
-      } else {
-        // Opponent / Enemy: Unified soft feathered cone (replaces 2 passes)
-        const enemyPenumbraHalf = cFovHalf * 1.18;
-        const enemyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        enemyGrad.addColorStop(0, 'rgba(255, 255, 255, 0.72)');
-        enemyGrad.addColorStop(0.30, 'rgba(255, 255, 255, 0.48)');
-        enemyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 0.20)');
-        enemyGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.04)');
-        enemyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-        fCtx.fillStyle = enemyGrad;
-        fCtx.beginPath();
-        fCtx.moveTo(cx, cy);
-        fCtx.arc(cx, cy, cRange, cAngle - enemyPenumbraHalf, cAngle + enemyPenumbraHalf);
-        fCtx.closePath();
-        fCtx.fill();
-
-        // Glowing hostile lamp housing punched softly through fog
-        const lampPunch = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 28);
-        lampPunch.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
-        lampPunch.addColorStop(0.50, 'rgba(255, 255, 255, 0.35)');
-        lampPunch.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-        fCtx.fillStyle = lampPunch;
-        fCtx.beginPath();
-        fCtx.arc(cx, cy, 28, 0, Math.PI * 2);
         fCtx.fill();
       }
       fCtx.restore();

@@ -135,6 +135,10 @@ export class NetworkClient {
       this.url = 'ws://localhost:3000';
     }
 
+    if (this.url && (this.url.includes('steamstrike.online') || this.url.includes('www.steamstrike.online'))) {
+      this.url = this.url.replace(/^wss?:\/\/(www\.)?steamstrike\.online/, 'wss://steamstrike-server.onrender.com');
+    }
+
     if (!token && typeof localStorage !== 'undefined') {
       try {
         token = localStorage.getItem('clockwork_auth_token_v1');
@@ -927,6 +931,9 @@ export class NetworkClient {
         pickups: latest.pickups || [],
         soundEvents: latest.soundEvents || [],
         hitEvents: latest.hitEvents || [],
+        smokeZones: latest.smokeZones || [],
+        steamCore: latest.steamCore || null,
+        waveInfo: latest.waveInfo || null,
         gameMode: latest.gameMode || this.gameMode,
         targetKills: latest.targetKills || this.targetKills,
         teamScores: latest.teamScores || { team1: 0, team2: 0 },
@@ -978,6 +985,9 @@ export class NetworkClient {
       pickups: latestSnap.pickups || [],
       soundEvents: latestSnap.soundEvents || [],
       hitEvents: latestSnap.hitEvents || [],
+      smokeZones: latestSnap.smokeZones || [],
+      steamCore: latestSnap.steamCore || null,
+      waveInfo: latestSnap.waveInfo || null,
       gameMode: latestSnap.gameMode || this.gameMode,
       targetKills: latestSnap.targetKills || this.targetKills,
       teamScores: latestSnap.teamScores || { team1: 0, team2: 0 },
