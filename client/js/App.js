@@ -378,7 +378,9 @@ export class App {
     const updateSoundButtons = () => {
       const isMuted = soundFX.isMuted;
       if (this.btnSoundToggle) {
-        this.btnSoundToggle.textContent = isMuted ? '🔇 Звук: Вимк' : '🔊 Звук';
+        this.btnSoundToggle.textContent = isMuted ? '🔇' : '🔊';
+        this.btnSoundToggle.title = isMuted ? 'Звукові ефекти: Вимкнено (натисніть, щоб увімкнути)' : 'Звукові ефекти: Увімкнено (натисніть, щоб вимкнути)';
+        this.btnSoundToggle.setAttribute('aria-label', this.btnSoundToggle.title);
       }
       if (this.mBtnSoundToggle) {
         this.mBtnSoundToggle.textContent = isMuted ? '🔇 Звукові ефекти: Вимк' : '🔊 Звукові ефекти: Увімк';
