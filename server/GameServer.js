@@ -14,6 +14,7 @@ export class GameServer {
   constructor(options = {}) {
     this.options = options;
     this.rooms = new Map();
+    this.teardownTimers = new Map();
 
     // Initialize canonical default room
     this.createRoom('default', { maxPlayers: 4 });
@@ -90,8 +91,30 @@ export class GameServer {
     const clientId = meta.id || (`client_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`);
     let currentRoom = null;
 
-    const cleanupEmptyRoom = (room) => {
-      if (room && room.id !== 'default' && room.players.size === 0) {
+    const cleanupEmptyRoom = (room, graceMs = (room?.state === 'IN_PROGRESS' ? 10000 : 0)) => {
+      if (!room || room.id === 'default') return;
+      if (room.players.size > 0) return;
+
+      if (!this.teardownTimers) this.teardownTimers = new Map();
+
+      if (graceMs > 0) {
+        if (this.teardownTimers.has(room.id)) {
+          clearTimeout(this.teardownTimers.get(room.id));
+        }
+        const timer = setTimeout(() => {
+          this.teardownTimers.delete(room.id);
+          if (room.players.size === 0) {
+            room.stopLoop();
+            this.rooms.delete(room.id);
+          }
+        }, graceMs);
+        if (typeof timer.unref === 'function') timer.unref();
+        this.teardownTimers.set(room.id, timer);
+      } else {
+        if (this.teardownTimers.has(room.id)) {
+          clearTimeout(this.teardownTimers.get(room.id));
+          this.teardownTimers.delete(room.id);
+        }
         room.stopLoop();
         this.rooms.delete(room.id);
       }
@@ -130,6 +153,11 @@ export class GameServer {
           const playerName = payload?.playerName || meta.playerName || `Mechanic_${clientId.slice(-4)}`;
 
           let room = this.rooms.get(roomId);
+          if (room && this.teardownTimers && this.teardownTimers.has(roomId)) {
+            clearTimeout(this.teardownTimers.get(roomId));
+            this.teardownTimers.delete(roomId);
+          }
+
           if (!room) {
             room = this.createRoom(roomId, { autoTick: true, password: payload?.password || null });
           }
@@ -145,15 +173,18 @@ export class GameServer {
             return;
           }
 
-          // Match in progress check
+          // Match in progress check: allow reconnecting players or rooms preserved under grace period to resume
           if (room.state === 'IN_PROGRESS') {
-            if (socket.readyState === 1) {
-              socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_ERROR, {
-                code: 'MATCH_IN_PROGRESS',
-                message: 'У цій паровій кімнаті вже йде бій'
-              }));
+            const isReconnecting = room.players.has(clientId) || room.players.size === 0 || !!(payload?.reconnectToken || payload?.token);
+            if (!isReconnecting) {
+              if (socket.readyState === 1) {
+                socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_ERROR, {
+                  code: 'MATCH_IN_PROGRESS',
+                  message: 'У цій паровій кімнаті вже йде бій'
+                }));
+              }
+              return;
             }
-            return;
           }
 
           // Password protection check
@@ -387,17 +418,19 @@ export class GameServer {
 
     const onClose = () => {
       if (currentRoom) {
-        currentRoom.removePlayer(clientId);
-        cleanupEmptyRoom(currentRoom);
+        const roomToClean = currentRoom;
         currentRoom = null;
+        roomToClean.removePlayer(clientId);
+        cleanupEmptyRoom(roomToClean, roomToClean.state === 'IN_PROGRESS' ? 10000 : 0);
       }
     };
 
     const onError = () => {
       if (currentRoom) {
-        currentRoom.removePlayer(clientId);
-        cleanupEmptyRoom(currentRoom);
+        const roomToClean = currentRoom;
         currentRoom = null;
+        roomToClean.removePlayer(clientId);
+        cleanupEmptyRoom(roomToClean, roomToClean.state === 'IN_PROGRESS' ? 10000 : 0);
       }
     };
 

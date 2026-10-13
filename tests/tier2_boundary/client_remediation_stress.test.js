@@ -532,6 +532,164 @@ export const tests = [
         }, `Syntax check failed for ${path.relative(ROOT_DIR, file)}`);
       }
     }
+  },
+  {
+    name: '[T2.13.6] M_R1: Elimination of 9 Hidden Dummy Buttons Across Markup & Scripts',
+    fn: async () => {
+      const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
+      const lobbyJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/ui/LobbyUI.js'), 'utf8');
+      const appJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/App.js'), 'utf8');
+      const editorToolbarJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/editor/EditorToolbar.js'), 'utf8');
+
+      const deadButtonIds = [
+        'btnHomeJoinRoom',
+        'btnHomeCreateRoom',
+        'btnOpenAllNews',
+        'btnCopyRoomCode',
+        'btnEditorReturnHome',
+        'btnLoadLocal',
+        'btnLaunchCustomMatch',
+        'btnGameFullscreen',
+        'btnReturnToEditor'
+      ];
+
+      for (const id of deadButtonIds) {
+        assert.ok(!html.includes(`id="${id}"`), `index.html must not contain dead button #${id}`);
+      }
+
+      for (const id of ['btnHomeJoinRoom', 'btnHomeCreateRoom', 'btnCopyRoomCode']) {
+        assert.ok(!lobbyJs.includes(id), `LobbyUI.js must not reference removed button #${id}`);
+      }
+
+      for (const id of ['btnOpenAllNews', 'btnGameFullscreen', 'btnReturnToEditor']) {
+        assert.ok(!appJs.includes(id), `App.js must not reference removed button #${id}`);
+      }
+
+      for (const id of ['btnEditorReturnHome', 'btnLoadLocal', 'btnLaunchCustomMatch']) {
+        assert.ok(!editorToolbarJs.includes(id), `EditorToolbar.js must not reference removed button #${id}`);
+      }
+    }
+  },
+  {
+    name: '[T2.13.7] M_R1: Dead DOM Lookups and Single Source of Action Cleanup',
+    fn: async () => {
+      const appJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/App.js'), 'utf8');
+      const lobbyJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/ui/LobbyUI.js'), 'utf8');
+
+      assert.ok(!appJs.includes('btnQuickPlay'), 'App.js must not query non-existent btnQuickPlay');
+      assert.ok(!lobbyJs.includes('btnQuickPlay'), 'LobbyUI.js must not query non-existent btnQuickPlay');
+      assert.ok(!appJs.includes('btnEnterEditor'), 'App.js must not query non-existent btnEnterEditor');
+      assert.ok(!lobbyJs.includes('btnEnterEditor'), 'LobbyUI.js must not query non-existent btnEnterEditor');
+      assert.ok(!appJs.includes('virtualJoystickContainer'), 'App.js must not query obsolete virtualJoystickContainer');
+      assert.ok(!appJs.includes('navButtons.game'), 'App.js must not reference undefined navButtons.game');
+      assert.ok(!appJs.includes('mNavButtons.game'), 'App.js must not reference undefined mNavButtons.game');
+
+      // Verify no duplicate listener for btnTouchExitMatch in App.js
+      assert.ok(!appJs.includes('btnTouchExitMatch'), 'App.js must not bind duplicate listener to #btnTouchExitMatch');
+    }
+  },
+  {
+    name: '[T2.13.8] M_R1: Uniform Branding "Steamstrike: Tactical Arena" Verification',
+    fn: async () => {
+      const html = fs.readFileSync(INDEX_HTML_PATH, 'utf8');
+      const adminHtml = fs.readFileSync(path.join(ROOT_DIR, 'client/admin.html'), 'utf8');
+      const adminPanelJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/ui/AdminPanelModal.js'), 'utf8');
+
+      assert.ok(
+        html.includes('<div class="header-title">Steamstrike: Tactical Arena</div>'),
+        'Desktop header brand in index.html must display "Steamstrike: Tactical Arena"'
+      );
+      assert.ok(
+        html.includes('<span>STEAMSTRIKE: TACTICAL ARENA</span>'),
+        'Mobile drawer brand in index.html must display "STEAMSTRIKE: TACTICAL ARENA"'
+      );
+      assert.ok(
+        adminHtml.includes('<span class="logo-text">STEAMSTRIKE: TACTICAL ARENA</span>'),
+        'Admin header brand in admin.html must display "STEAMSTRIKE: TACTICAL ARENA"'
+      );
+      assert.ok(
+        html.includes('⚔ <span id="gameStatusTitle">Steamstrike: Tactical Arena</span>'),
+        'Arena status title badge must display "Steamstrike: Tactical Arena"'
+      );
+      assert.ok(
+        html.includes('Новини та Патчі Steamstrike: Tactical Arena'),
+        'News modal header must display "Steamstrike: Tactical Arena"'
+      );
+      assert.ok(
+        html.includes('Публікація карти в Steamstrike: Tactical Arena'),
+        'Community map submission modal must display "Steamstrike: Tactical Arena"'
+      );
+
+      // M_R1 Iteration 2 Remediations
+      assert.ok(
+        html.includes('<h1>Steamstrike: Tactical Arena</h1>'),
+        'Match lobby banner must display "<h1>Steamstrike: Tactical Arena</h1>"'
+      );
+      assert.ok(
+        !html.includes('<h1>Steamstrike</h1>'),
+        'Match lobby banner must not display bare "<h1>Steamstrike</h1>"'
+      );
+      assert.ok(
+        adminPanelJs.includes('Панель Адміністратора Steamstrike: Tactical Arena'),
+        'AdminPanelModal header must display "Панель Адміністратора Steamstrike: Tactical Arena"'
+      );
+      assert.ok(
+        !adminPanelJs.includes('Панель Адміністратора Steamstrike</div>'),
+        'AdminPanelModal must not display bare "Панель Адміністратора Steamstrike"'
+      );
+      assert.ok(
+        html.includes('STEAMSTRIKE: TACTICAL ARENA v1.0'),
+        'Hero steam badge must contain colon delimiter in STEAMSTRIKE: TACTICAL ARENA'
+      );
+      assert.ok(
+        !html.includes('STEAMSTRIKE TACTICAL ARENA v1.0'),
+        'Hero steam badge must not omit colon delimiter'
+      );
+      assert.ok(
+        html.includes('Як грати в Steamstrike: Tactical Arena без встановлення?'),
+        'FAQ question heading must contain colon delimiter'
+      );
+      assert.ok(
+        html.includes('Як грати в Steamstrike: Tactical Arena онлайн без завантаження?'),
+        'FAQ schema question must contain colon delimiter'
+      );
+      assert.ok(
+        !html.includes('Як грати в Steamstrike Tactical Arena'),
+        'FAQ questions must not omit colon delimiter'
+      );
+    }
+  },
+  {
+    name: '[T2.13.9] M_R1: LobbyUI stopPolling & Background Polling Teardown Verification',
+    fn: async () => {
+      const lobbyJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/ui/LobbyUI.js'), 'utf8');
+      const appJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/App.js'), 'utf8');
+
+      assert.ok(
+        lobbyJs.includes('stopPolling()'),
+        'LobbyUI.js must define stopPolling() method'
+      );
+      assert.ok(
+        appJs.includes("viewName !== 'lobby' && viewName !== 'home'") &&
+        (appJs.includes('stopPolling') || appJs.includes('stopRoomsPoll')),
+        'App.switchView must stop background polling when switching away from lobby or home views'
+      );
+    }
+  },
+  {
+    name: '[T2.13.10] M_R1: AuthModal Shared Module Relative Import Depth Verification',
+    fn: async () => {
+      const authModalJs = fs.readFileSync(path.join(ROOT_DIR, 'client/js/ui/AuthModal.js'), 'utf8');
+
+      assert.ok(
+        authModalJs.includes("from '../../../shared/ProgressionSchema.js'"),
+        'AuthModal.js must import ProgressionSchema from ../../../shared/ProgressionSchema.js (3 directory levels up)'
+      );
+      assert.ok(
+        !authModalJs.includes("from '../../shared/ProgressionSchema.js'"),
+        'AuthModal.js must not use shallow ../../shared/ProgressionSchema.js import'
+      );
+    }
   }
 ];
 

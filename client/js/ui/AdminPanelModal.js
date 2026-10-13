@@ -192,7 +192,7 @@ export class AdminPanelModal {
           <div style="display: flex; align-items: center; gap: 10px;">
             <div style="font-size: 22px;">⚙️</div>
             <div>
-              <div class="auth-modal-title" style="margin: 0; font-size: 17px;">Панель Адміністратора Steamstrike</div>
+              <div class="auth-modal-title" style="margin: 0; font-size: 17px;">Панель Адміністратора Steamstrike: Tactical Arena</div>
               <div style="font-size: 11px; color: #94a3b8;">Глобальне калібрування балансу та симуляції в реальному часі</div>
             </div>
           </div>

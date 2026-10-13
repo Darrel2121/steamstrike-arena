@@ -32,6 +32,12 @@ export class VisibilityRenderer {
     this.fogCtx = null;
     this.lastPolygon = [];
 
+    // Performance optimization caches & reusable scratch buffers (F40)
+    this._scratchActiveOthers = [];
+    this._scratchActiveMapLanterns = [];
+    this._scratchOthersPassData = [];
+    this._gradCache = new Map();
+
     this.initFogCanvas();
   }
 
@@ -45,6 +51,8 @@ export class VisibilityRenderer {
         this.fogCanvas.width = 800;
         this.fogCanvas.height = 600;
       }
+      this.fogCtx = this.fogCanvas.getContext('2d');
+    } else if (this.fogCanvas && typeof this.fogCanvas.getContext === 'function') {
       this.fogCtx = this.fogCanvas.getContext('2d');
     }
   }
@@ -61,6 +69,271 @@ export class VisibilityRenderer {
         this.fogCanvas.height = height;
       }
     }
+  }
+
+  getLanternPunchGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `punch_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      g.addColorStop(0.65, 'rgba(255, 255, 255, 1.0)');
+      g.addColorStop(0.85, 'rgba(255, 255, 255, 0.65)');
+      g.addColorStop(0.95, 'rgba(255, 255, 255, 0.20)');
+      g.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getProxPunchGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `prox_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      g.addColorStop(0.70, 'rgba(255, 255, 255, 1.0)');
+      g.addColorStop(0.88, 'rgba(255, 255, 255, 0.50)');
+      g.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getWreckPunchGradient(ctx, radius = 34) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `wreck_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 130, 50, 0.35)');
+      g.addColorStop(0.60, 'rgba(180, 60, 20, 0.12)');
+      g.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getMapLanternPunchGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `map_punch_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+      g.addColorStop(0.55, 'rgba(255, 255, 255, 0.95)');
+      g.addColorStop(0.80, 'rgba(255, 255, 255, 0.60)');
+      g.addColorStop(0.95, 'rgba(255, 255, 255, 0.15)');
+      g.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getLocalMistGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `local_mist_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 205, 80, 0.10)');
+      g.addColorStop(0.35, 'rgba(215, 135, 45, 0.05)');
+      g.addColorStop(0.70, 'rgba(160, 85, 20, 0.012)');
+      g.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getLocalGlowGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `local_glow_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 220, 110, 0.18)');
+      g.addColorStop(0.28, 'rgba(240, 165, 55, 0.10)');
+      g.addColorStop(0.60, 'rgba(195, 105, 30, 0.035)');
+      g.addColorStop(0.85, 'rgba(130, 55, 15, 0.006)');
+      g.addColorStop(1.0, 'rgba(80, 30, 10, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getLocalCoreBloomGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `local_core_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 245, 185, 0.22)');
+      g.addColorStop(0.35, 'rgba(255, 200, 75, 0.09)');
+      g.addColorStop(0.70, 'rgba(200, 115, 35, 0.02)');
+      g.addColorStop(1.0, 'rgba(120, 50, 15, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getAllyMistGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `ally_mist_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(100, 180, 255, 0.16)');
+      g.addColorStop(0.45, 'rgba(60, 140, 240, 0.06)');
+      g.addColorStop(1.0, 'rgba(20, 80, 210, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getAllyGlowGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `ally_glow_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(120, 200, 255, 0.28)');
+      g.addColorStop(0.35, 'rgba(70, 150, 245, 0.12)');
+      g.addColorStop(0.75, 'rgba(30, 90, 220, 0.025)');
+      g.addColorStop(1.0, 'rgba(15, 50, 180, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getAllyLensGradient(ctx, radius = 20) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `ally_lens_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(210, 240, 255, 0.80)');
+      g.addColorStop(0.45, 'rgba(74, 144, 226, 0.30)');
+      g.addColorStop(1.0, 'rgba(74, 144, 226, 0.0)');
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getEnemyMistGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `enemy_mist_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 120, 40, 0.15)');
+      g.addColorStop(0.45, 'rgba(220, 70, 20, 0.05)');
+      g.addColorStop(1.0, 'rgba(150, 30, 10, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getEnemyGlowGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `enemy_glow_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 150, 60, 0.28)');
+      g.addColorStop(0.35, 'rgba(255, 90, 30, 0.14)');
+      g.addColorStop(0.70, 'rgba(200, 45, 15, 0.03)');
+      g.addColorStop(1.0, 'rgba(120, 20, 5, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getEnemyLampGradient(ctx, radius = 18) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `enemy_lamp_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 240, 190, 0.90)');
+      g.addColorStop(0.40, 'rgba(255, 110, 40, 0.40)');
+      g.addColorStop(1.0, 'rgba(255, 60, 20, 0.0)');
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getMapAmbientGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `map_amb_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 195, 75, 0.22)');
+      g.addColorStop(0.40, 'rgba(235, 145, 40, 0.10)');
+      g.addColorStop(0.75, 'rgba(180, 80, 15, 0.03)');
+      g.addColorStop(1.0, 'rgba(120, 40, 5, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getMapPoolGradient(ctx, radius) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `map_pool_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 230, 130, 0.35)');
+      g.addColorStop(0.50, 'rgba(255, 175, 50, 0.15)');
+      g.addColorStop(1.0, 'rgba(210, 110, 20, 0.0)');
+      if (this._gradCache.size > 128) this._gradCache.clear();
+      this._gradCache.set(key, g);
+    }
+    return g;
+  }
+
+  getMapBloomGradient(ctx, radius = 22) {
+    if (!this._gradCache) this._gradCache = new Map();
+    const key = `map_bloom_${Math.round(radius)}`;
+    let g = this._gradCache.get(key);
+    if (!g) {
+      const r = Math.max(1, Math.round(radius));
+      g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, 'rgba(255, 255, 220, 0.95)');
+      g.addColorStop(0.40, 'rgba(255, 210, 85, 0.60)');
+      g.addColorStop(0.75, 'rgba(255, 150, 30, 0.18)');
+      g.addColorStop(1.0, 'rgba(255, 100, 15, 0.0)');
+      this._gradCache.set(key, g);
+    }
+    return g;
   }
 
   /**
@@ -188,39 +461,55 @@ export class VisibilityRenderer {
     const maxLanternReach = this.lanternRange * 1.05;
 
     // Filter living other combatants with active lanterns intersecting the camera viewport
-    const activeOthers = (otherCombatants || []).filter(c => {
-      if (!c || c.id === player.id || !c.isAlive || (c.hp !== undefined && c.hp <= 0) || c.lanternOn === false) {
-        return false;
+    if (!this._scratchActiveOthers) this._scratchActiveOthers = [];
+    this._scratchActiveOthers.length = 0;
+    if (Array.isArray(otherCombatants)) {
+      for (let i = 0; i < otherCombatants.length; i++) {
+        const c = otherCombatants[i];
+        if (!c || c.id === player.id || !c.isAlive || (c.hp !== undefined && c.hp <= 0) || c.lanternOn === false) {
+          continue;
+        }
+        const cx = c.renderX ?? c.x;
+        const cy = c.renderY ?? c.y;
+        const cRange = c.range ?? c.lanternRange ?? maxLanternReach;
+        if (
+          cx >= camX - cRange &&
+          cx <= camX + viewWorldW + cRange &&
+          cy >= camY - cRange &&
+          cy <= camY + viewWorldH + cRange
+        ) {
+          this._scratchActiveOthers.push(c);
+        }
       }
-      const cx = c.renderX ?? c.x;
-      const cy = c.renderY ?? c.y;
-      const cRange = c.range ?? c.lanternRange ?? maxLanternReach;
-      return (
-        cx >= camX - cRange &&
-        cx <= camX + viewWorldW + cRange &&
-        cy >= camY - cRange &&
-        cy <= camY + viewWorldH + cRange
-      );
-    });
+    }
+    const activeOthers = this._scratchActiveOthers;
 
     // Filter stationary map lanterns (Victorian street lamps / wall fixtures) intersecting viewport
+    if (!this._scratchActiveMapLanterns) this._scratchActiveMapLanterns = [];
+    this._scratchActiveMapLanterns.length = 0;
     const ts = 40;
     const defaultMapLanternRadius = 115;
-    const activeMapLanterns = (mapLanterns || []).filter(l => {
-      if (!l) return false;
-      if (l.type && l.type !== 'lantern' && l.type !== 'lamp' && l.type !== 'street_lamp') {
-        return false;
+    if (Array.isArray(mapLanterns)) {
+      for (let i = 0; i < mapLanterns.length; i++) {
+        const l = mapLanterns[i];
+        if (!l) continue;
+        if (l.type && l.type !== 'lantern' && l.type !== 'lamp' && l.type !== 'street_lamp') {
+          continue;
+        }
+        const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
+        const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
+        const lr = l.radius || defaultMapLanternRadius;
+        if (
+          lx >= camX - lr &&
+          lx <= camX + viewWorldW + lr &&
+          ly >= camY - lr &&
+          ly <= camY + viewWorldH + lr
+        ) {
+          this._scratchActiveMapLanterns.push(l);
+        }
       }
-      const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
-      const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
-      const lr = l.radius || defaultMapLanternRadius;
-      return (
-        lx >= camX - lr &&
-        lx <= camX + viewWorldW + lr &&
-        ly >= camY - lr &&
-        ly <= camY + viewWorldH + lr
-      );
-    });
+    }
+    const activeMapLanterns = this._scratchActiveMapLanterns;
 
     // 1. Fill offscreen fog canvas with ambient darkness
     fCtx.save();
@@ -261,58 +550,51 @@ export class VisibilityRenderer {
       fCtx.closePath();
       fCtx.clip();
 
+      fCtx.translate(px, py);
       if (player.lanternOn !== false) {
         // High-efficiency unified feathered lantern beam (destination-out requires solid alpha 1.0 to clear darkness)
         const penumbraFovHalf = fovHalf * 1.18;
-        const lanternGrad = fCtx.createRadialGradient(px, py, 0, px, py, range);
-        lanternGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-        lanternGrad.addColorStop(0.65, 'rgba(255, 255, 255, 1.0)');
-        lanternGrad.addColorStop(0.85, 'rgba(255, 255, 255, 0.65)');
-        lanternGrad.addColorStop(0.95, 'rgba(255, 255, 255, 0.20)');
-        lanternGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-
-        fCtx.fillStyle = lanternGrad;
+        fCtx.fillStyle = this.getLanternPunchGradient(fCtx, range);
         fCtx.beginPath();
-        fCtx.moveTo(px, py);
-        fCtx.arc(px, py, range, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
+        fCtx.moveTo(0, 0);
+        fCtx.arc(0, 0, range, aimAngle - penumbraFovHalf, aimAngle + penumbraFovHalf);
         fCtx.closePath();
         fCtx.fill();
+
+        // Proximity awareness circle: soft ambient glow around the combatant
+        const proxRadius = this.proximityRadius * 1.15;
+        fCtx.fillStyle = this.getProxPunchGradient(fCtx, proxRadius);
+        fCtx.beginPath();
+        fCtx.arc(0, 0, proxRadius, 0, Math.PI * 2);
+        fCtx.fill();
+      } else {
+        const proxRadius = this.proximityRadius * 0.70;
+        fCtx.fillStyle = this.getProxPunchGradient(fCtx, proxRadius);
+        fCtx.beginPath();
+        fCtx.arc(0, 0, proxRadius, 0, Math.PI * 2);
+        fCtx.fill();
       }
-
-      // Proximity awareness circle: soft ambient glow around the combatant (dimmer when lantern is extinguished)
-      const proxRadius = (player.lanternOn !== false) ? (this.proximityRadius * 1.15) : (this.proximityRadius * 0.70);
-      const proxGrad = fCtx.createRadialGradient(px, py, 0, px, py, proxRadius);
-      proxGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      proxGrad.addColorStop(0.70, 'rgba(255, 255, 255, 1.0)');
-      proxGrad.addColorStop(0.88, 'rgba(255, 255, 255, 0.50)');
-      proxGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-
-      fCtx.fillStyle = proxGrad;
-      fCtx.beginPath();
-      fCtx.arc(px, py, proxRadius, 0, Math.PI * 2);
-      fCtx.fill();
       fCtx.restore();
     } else if (!isPlayerAlive && player) {
-      // Dead player: lantern extinguished, soft dying ember glow around wreck only (32px)
+      // Dead player: lantern extinguished, soft dying ember glow around wreck only (34px)
       const px = player.renderX ?? player.x;
       const py = player.renderY ?? player.y;
       fCtx.save();
-      const wreckGrad = fCtx.createRadialGradient(px, py, 0, px, py, 34);
-      wreckGrad.addColorStop(0, 'rgba(255, 130, 50, 0.35)');
-      wreckGrad.addColorStop(0.60, 'rgba(180, 60, 20, 0.12)');
-      wreckGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
-      fCtx.fillStyle = wreckGrad;
+      fCtx.translate(px, py);
+      fCtx.fillStyle = this.getWreckPunchGradient(fCtx, 34);
       fCtx.beginPath();
-      fCtx.arc(px, py, 34, 0, Math.PI * 2);
+      fCtx.arc(0, 0, 34, 0, Math.PI * 2);
       fCtx.fill();
       fCtx.restore();
     }
 
-    // Cache polygon and transform data for secondary lighter glow pass
-    const othersPassData = [];
+    // Cache polygon and transform data for secondary lighter glow pass reusing scratch pool
+    if (!this._scratchOthersPassData) this._scratchOthersPassData = [];
+    let passDataCount = 0;
 
     // 3b. Punch out lantern beams for Allies (Enemies only punch lamp glow, beams drawn on mainCtx over darkness)
-    for (const c of activeOthers) {
+    for (let cIdx = 0; cIdx < activeOthers.length; cIdx++) {
+      const c = activeOthers[cIdx];
       const cPoly = this.computePolygon(c, segments);
       if (!cPoly || cPoly.length < 3) continue;
 
@@ -324,7 +606,21 @@ export class VisibilityRenderer {
       const cRange = c.range ?? c.lanternRange ?? this.lanternRange;
       const isAlly = Boolean(myTeam && c.team && c.team === myTeam);
 
-      othersPassData.push({ c, cPoly, cx, cy, cAngle, cFov, cFovHalf, cRange, isAlly });
+      let item = this._scratchOthersPassData[passDataCount];
+      if (!item) {
+        item = { c: null, cPoly: null, cx: 0, cy: 0, cAngle: 0, cFov: 0, cFovHalf: 0, cRange: 0, isAlly: false };
+        this._scratchOthersPassData[passDataCount] = item;
+      }
+      item.c = c;
+      item.cPoly = cPoly;
+      item.cx = cx;
+      item.cy = cy;
+      item.cAngle = cAngle;
+      item.cFov = cFov;
+      item.cFovHalf = cFovHalf;
+      item.cRange = cRange;
+      item.isAlly = isAlly;
+      passDataCount++;
 
       fCtx.save();
       fCtx.beginPath();
@@ -336,36 +632,27 @@ export class VisibilityRenderer {
       fCtx.clip();
 
       if (isAlly) {
-        // Ally: Unified multi-stop feathered team vision (shared visibility)
+        fCtx.translate(cx, cy);
         const allyPenumbraHalf = cFovHalf * 1.18;
-        const allyGrad = fCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange);
-        allyGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-        allyGrad.addColorStop(0.65, 'rgba(255, 255, 255, 1.0)');
-        allyGrad.addColorStop(0.85, 'rgba(255, 255, 255, 0.65)');
-        allyGrad.addColorStop(0.95, 'rgba(255, 255, 255, 0.20)');
-        allyGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-        fCtx.fillStyle = allyGrad;
+        fCtx.fillStyle = this.getLanternPunchGradient(fCtx, cRange);
         fCtx.beginPath();
-        fCtx.moveTo(cx, cy);
-        fCtx.arc(cx, cy, cRange, cAngle - allyPenumbraHalf, cAngle + allyPenumbraHalf);
+        fCtx.moveTo(0, 0);
+        fCtx.arc(0, 0, cRange, cAngle - allyPenumbraHalf, cAngle + allyPenumbraHalf);
         fCtx.closePath();
         fCtx.fill();
 
         // Ally proximity circle
-        const allyProx = fCtx.createRadialGradient(cx, cy, 0, cx, cy, 45);
-        allyProx.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-        allyProx.addColorStop(0.70, 'rgba(255, 255, 255, 1.0)');
-        allyProx.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-        fCtx.fillStyle = allyProx;
+        fCtx.fillStyle = this.getProxPunchGradient(fCtx, 45);
         fCtx.beginPath();
-        fCtx.arc(cx, cy, 45, 0, Math.PI * 2);
+        fCtx.arc(0, 0, 45, 0, Math.PI * 2);
         fCtx.fill();
       }
       fCtx.restore();
     }
 
     // 3c. Punch out stationary Map Lanterns (Victorian street lamps / wall fixtures)
-    for (const l of activeMapLanterns) {
+    for (let lIdx = 0; lIdx < activeMapLanterns.length; lIdx++) {
+      const l = activeMapLanterns[lIdx];
       const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
       const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
       const lr = l.radius || defaultMapLanternRadius;
@@ -382,16 +669,10 @@ export class VisibilityRenderer {
       fCtx.closePath();
       fCtx.clip();
 
-      const punchGrad = fCtx.createRadialGradient(lx, ly, 0, lx, ly, lr);
-      punchGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
-      punchGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.95)');
-      punchGrad.addColorStop(0.80, 'rgba(255, 255, 255, 0.60)');
-      punchGrad.addColorStop(0.95, 'rgba(255, 255, 255, 0.15)');
-      punchGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
-
-      fCtx.fillStyle = punchGrad;
+      fCtx.translate(lx, ly);
+      fCtx.fillStyle = this.getMapLanternPunchGradient(fCtx, lr);
       fCtx.beginPath();
-      fCtx.arc(lx, ly, lr, 0, Math.PI * 2);
+      fCtx.arc(0, 0, lr, 0, Math.PI * 2);
       fCtx.fill();
       fCtx.restore();
     }
@@ -429,52 +710,44 @@ export class VisibilityRenderer {
       mainCtx.closePath();
       mainCtx.clip();
 
+      mainCtx.translate(px, py);
       if (player.lanternOn !== false) {
         // Broad soft volumetric steam mist glow
         const mistFovHalf = fovHalf * 1.18;
-        const mistGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.98);
-        mistGrad.addColorStop(0, 'rgba(255, 205, 80, 0.10)');
-        mistGrad.addColorStop(0.35, 'rgba(215, 135, 45, 0.05)');
-        mistGrad.addColorStop(0.70, 'rgba(160, 85, 20, 0.012)');
-        mistGrad.addColorStop(1.0, 'rgba(100, 40, 10, 0.0)');
-        mainCtx.fillStyle = mistGrad;
+        mainCtx.fillStyle = this.getLocalMistGradient(mainCtx, range * 0.98);
         mainCtx.beginPath();
-        mainCtx.moveTo(px, py);
-        mainCtx.arc(px, py, range * 0.98, aimAngle - mistFovHalf, aimAngle + mistFovHalf);
+        mainCtx.moveTo(0, 0);
+        mainCtx.arc(0, 0, range * 0.98, aimAngle - mistFovHalf, aimAngle + mistFovHalf);
         mainCtx.closePath();
         mainCtx.fill();
 
         // Core focused warm steam cone with smooth natural falloff
-        const glowGrad = mainCtx.createRadialGradient(px, py, 0, px, py, range * 0.94);
-        glowGrad.addColorStop(0, 'rgba(255, 220, 110, 0.18)');
-        glowGrad.addColorStop(0.28, 'rgba(240, 165, 55, 0.10)');
-        glowGrad.addColorStop(0.60, 'rgba(195, 105, 30, 0.035)');
-        glowGrad.addColorStop(0.85, 'rgba(130, 55, 15, 0.006)');
-        glowGrad.addColorStop(1.0, 'rgba(80, 30, 10, 0.0)');
-        mainCtx.fillStyle = glowGrad;
+        mainCtx.fillStyle = this.getLocalGlowGradient(mainCtx, range * 0.94);
         mainCtx.beginPath();
-        mainCtx.moveTo(px, py);
-        mainCtx.arc(px, py, range * 0.94, aimAngle - fovHalf * 0.85, aimAngle + fovHalf * 0.85);
+        mainCtx.moveTo(0, 0);
+        mainCtx.arc(0, 0, range * 0.94, aimAngle - fovHalf * 0.85, aimAngle + fovHalf * 0.85);
         mainCtx.closePath();
         mainCtx.fill();
-      }
 
-      // Soft core lantern housing bloom
-      const bloomRadius = (player.lanternOn !== false) ? (this.proximityRadius * 0.9) : (this.proximityRadius * 0.45);
-      const coreGrad = mainCtx.createRadialGradient(px, py, 0, px, py, bloomRadius);
-      coreGrad.addColorStop(0, 'rgba(255, 245, 185, 0.22)');
-      coreGrad.addColorStop(0.35, 'rgba(255, 200, 75, 0.09)');
-      coreGrad.addColorStop(0.70, 'rgba(200, 115, 35, 0.02)');
-      coreGrad.addColorStop(1.0, 'rgba(120, 50, 15, 0.0)');
-      mainCtx.fillStyle = coreGrad;
-      mainCtx.beginPath();
-      mainCtx.arc(px, py, bloomRadius, 0, Math.PI * 2);
-      mainCtx.fill();
+        // Soft core lantern housing bloom
+        const bloomRadius = this.proximityRadius * 0.9;
+        mainCtx.fillStyle = this.getLocalCoreBloomGradient(mainCtx, bloomRadius);
+        mainCtx.beginPath();
+        mainCtx.arc(0, 0, bloomRadius, 0, Math.PI * 2);
+        mainCtx.fill();
+      } else {
+        const bloomRadius = this.proximityRadius * 0.45;
+        mainCtx.fillStyle = this.getLocalCoreBloomGradient(mainCtx, bloomRadius);
+        mainCtx.beginPath();
+        mainCtx.arc(0, 0, bloomRadius, 0, Math.PI * 2);
+        mainCtx.fill();
+      }
       mainCtx.restore();
     }
 
     // 5b. Allies and Opponents' Volumetric Lantern Beams (Softened & No Hard Stroked Lines)
-    for (const item of othersPassData) {
+    for (let idx = 0; idx < passDataCount; idx++) {
+      const item = this._scratchOthersPassData[idx];
       const { cPoly, cx, cy, cAngle, cFovHalf, cRange, isAlly } = item;
 
       mainCtx.save();
@@ -486,83 +759,59 @@ export class VisibilityRenderer {
       }
       mainCtx.closePath();
       mainCtx.clip();
+      mainCtx.translate(cx, cy);
 
       if (isAlly) {
         // Ally: Soft Cool Cyan / Cobalt Steam-Lantern Beam
         const allyMistHalf = cFovHalf * 1.18;
-        const allyMist = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.98);
-        allyMist.addColorStop(0, 'rgba(100, 180, 255, 0.16)');
-        allyMist.addColorStop(0.45, 'rgba(60, 140, 240, 0.06)');
-        allyMist.addColorStop(1.0, 'rgba(20, 80, 210, 0.0)');
-        mainCtx.fillStyle = allyMist;
+        mainCtx.fillStyle = this.getAllyMistGradient(mainCtx, cRange * 0.98);
         mainCtx.beginPath();
-        mainCtx.moveTo(cx, cy);
-        mainCtx.arc(cx, cy, cRange * 0.98, cAngle - allyMistHalf, cAngle + allyMistHalf);
+        mainCtx.moveTo(0, 0);
+        mainCtx.arc(0, 0, cRange * 0.98, cAngle - allyMistHalf, cAngle + allyMistHalf);
         mainCtx.closePath();
         mainCtx.fill();
 
-        const allyGlow = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.94);
-        allyGlow.addColorStop(0, 'rgba(120, 200, 255, 0.28)');
-        allyGlow.addColorStop(0.35, 'rgba(70, 150, 245, 0.12)');
-        allyGlow.addColorStop(0.75, 'rgba(30, 90, 220, 0.025)');
-        allyGlow.addColorStop(1.0, 'rgba(15, 50, 180, 0.0)');
-        mainCtx.fillStyle = allyGlow;
+        mainCtx.fillStyle = this.getAllyGlowGradient(mainCtx, cRange * 0.94);
         mainCtx.beginPath();
-        mainCtx.moveTo(cx, cy);
-        mainCtx.arc(cx, cy, cRange * 0.94, cAngle - cFovHalf * 0.85, cAngle + cFovHalf * 0.85);
+        mainCtx.moveTo(0, 0);
+        mainCtx.arc(0, 0, cRange * 0.94, cAngle - cFovHalf * 0.85, cAngle + cFovHalf * 0.85);
         mainCtx.closePath();
         mainCtx.fill();
 
         // Friendly lens flare at ally origin
-        const allyLens = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 20);
-        allyLens.addColorStop(0, 'rgba(210, 240, 255, 0.80)');
-        allyLens.addColorStop(0.45, 'rgba(74, 144, 226, 0.30)');
-        allyLens.addColorStop(1.0, 'rgba(74, 144, 226, 0.0)');
-        mainCtx.fillStyle = allyLens;
+        mainCtx.fillStyle = this.getAllyLensGradient(mainCtx, 20);
         mainCtx.beginPath();
-        mainCtx.arc(cx, cy, 20, 0, Math.PI * 2);
+        mainCtx.arc(0, 0, 20, 0, Math.PI * 2);
         mainCtx.fill();
       } else {
         // Opponent / Enemy: Soft Threatening Incandescent Ember / Hot Steam Searchlight
         const enemyMistHalf = cFovHalf * 1.18;
-        const enemyMist = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.98);
-        enemyMist.addColorStop(0, 'rgba(255, 120, 40, 0.15)');
-        enemyMist.addColorStop(0.45, 'rgba(220, 70, 20, 0.05)');
-        enemyMist.addColorStop(1.0, 'rgba(150, 30, 10, 0.0)');
-        mainCtx.fillStyle = enemyMist;
+        mainCtx.fillStyle = this.getEnemyMistGradient(mainCtx, cRange * 0.98);
         mainCtx.beginPath();
-        mainCtx.moveTo(cx, cy);
-        mainCtx.arc(cx, cy, cRange * 0.98, cAngle - enemyMistHalf, cAngle + enemyMistHalf);
+        mainCtx.moveTo(0, 0);
+        mainCtx.arc(0, 0, cRange * 0.98, cAngle - enemyMistHalf, cAngle + enemyMistHalf);
         mainCtx.closePath();
         mainCtx.fill();
 
-        const enemyGlow = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, cRange * 0.94);
-        enemyGlow.addColorStop(0, 'rgba(255, 150, 60, 0.28)');
-        enemyGlow.addColorStop(0.35, 'rgba(255, 90, 30, 0.14)');
-        enemyGlow.addColorStop(0.70, 'rgba(200, 45, 15, 0.03)');
-        enemyGlow.addColorStop(1.0, 'rgba(120, 20, 5, 0.0)');
-        mainCtx.fillStyle = enemyGlow;
+        mainCtx.fillStyle = this.getEnemyGlowGradient(mainCtx, cRange * 0.94);
         mainCtx.beginPath();
-        mainCtx.moveTo(cx, cy);
-        mainCtx.arc(cx, cy, cRange * 0.94, cAngle - cFovHalf * 0.85, cAngle + cFovHalf * 0.85);
+        mainCtx.moveTo(0, 0);
+        mainCtx.arc(0, 0, cRange * 0.94, cAngle - cFovHalf * 0.85, cAngle + cFovHalf * 0.85);
         mainCtx.closePath();
         mainCtx.fill();
 
         // Hostile glowing lantern housing cutting softly through darkness
-        const enemyLamp = mainCtx.createRadialGradient(cx, cy, 0, cx, cy, 18);
-        enemyLamp.addColorStop(0, 'rgba(255, 240, 190, 0.90)');
-        enemyLamp.addColorStop(0.40, 'rgba(255, 110, 40, 0.40)');
-        enemyLamp.addColorStop(1.0, 'rgba(255, 60, 20, 0.0)');
-        mainCtx.fillStyle = enemyLamp;
+        mainCtx.fillStyle = this.getEnemyLampGradient(mainCtx, 18);
         mainCtx.beginPath();
-        mainCtx.arc(cx, cy, 18, 0, Math.PI * 2);
+        mainCtx.arc(0, 0, 18, 0, Math.PI * 2);
         mainCtx.fill();
       }
       mainCtx.restore();
     }
 
     // 5c. Map Lanterns Atmospheric Volumetric Glow Pass ('lighter')
-    for (const l of activeMapLanterns) {
+    for (let lIdx = 0; lIdx < activeMapLanterns.length; lIdx++) {
+      const l = activeMapLanterns[lIdx];
       const lx = l.x !== undefined ? l.x : (l.col !== undefined ? l.col * ts + ts / 2 : 0);
       const ly = l.y !== undefined ? l.y : (l.row !== undefined ? l.row * ts + ts / 2 : 0);
       const lr = l.radius || defaultMapLanternRadius;
@@ -577,37 +826,24 @@ export class VisibilityRenderer {
         }
         mainCtx.closePath();
         mainCtx.clip();
+        mainCtx.translate(lx, ly);
 
         // 1. Broad soft amber/gold ambient pool
-        const ambientGrad = mainCtx.createRadialGradient(lx, ly, 0, lx, ly, lr);
-        ambientGrad.addColorStop(0, 'rgba(255, 195, 75, 0.22)');
-        ambientGrad.addColorStop(0.40, 'rgba(235, 145, 40, 0.10)');
-        ambientGrad.addColorStop(0.75, 'rgba(180, 80, 15, 0.03)');
-        ambientGrad.addColorStop(1.0, 'rgba(120, 40, 5, 0.0)');
-        mainCtx.fillStyle = ambientGrad;
+        mainCtx.fillStyle = this.getMapAmbientGradient(mainCtx, lr);
         mainCtx.beginPath();
-        mainCtx.arc(lx, ly, lr, 0, Math.PI * 2);
+        mainCtx.arc(0, 0, lr, 0, Math.PI * 2);
         mainCtx.fill();
 
         // 2. Focused warm lantern light pool
-        const poolGrad = mainCtx.createRadialGradient(lx, ly, 0, lx, ly, lr * 0.52);
-        poolGrad.addColorStop(0, 'rgba(255, 230, 130, 0.35)');
-        poolGrad.addColorStop(0.50, 'rgba(255, 175, 50, 0.15)');
-        poolGrad.addColorStop(1.0, 'rgba(210, 110, 20, 0.0)');
-        mainCtx.fillStyle = poolGrad;
+        mainCtx.fillStyle = this.getMapPoolGradient(mainCtx, lr * 0.52);
         mainCtx.beginPath();
-        mainCtx.arc(lx, ly, lr * 0.52, 0, Math.PI * 2);
+        mainCtx.arc(0, 0, lr * 0.52, 0, Math.PI * 2);
         mainCtx.fill();
 
         // 3. Bright incandescent lamp filament core bloom (warm Victorian glow)
-        const coreBloom = mainCtx.createRadialGradient(lx, ly, 0, lx, ly, 22);
-        coreBloom.addColorStop(0, 'rgba(255, 255, 220, 0.95)');
-        coreBloom.addColorStop(0.40, 'rgba(255, 210, 85, 0.60)');
-        coreBloom.addColorStop(0.75, 'rgba(255, 150, 30, 0.18)');
-        coreBloom.addColorStop(1.0, 'rgba(255, 100, 15, 0.0)');
-        mainCtx.fillStyle = coreBloom;
+        mainCtx.fillStyle = this.getMapBloomGradient(mainCtx, 22);
         mainCtx.beginPath();
-        mainCtx.arc(lx, ly, 22, 0, Math.PI * 2);
+        mainCtx.arc(0, 0, 22, 0, Math.PI * 2);
         mainCtx.fill();
 
         mainCtx.restore();

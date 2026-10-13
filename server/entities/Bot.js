@@ -183,6 +183,24 @@ export class Bot extends Player {
     this.waypointIndex = 0;
     this.patrolTimer = 0;
     this.loseSightTimer = 0;
+    this.stuckTimer = 0;
+    this.lastWaypointDist = null;
+  }
+
+  /**
+   * Smoothly rotates bot towards target angle with rate limiting to prevent instant snapping.
+   * @param {number} desiredAngle
+   * @param {number} dt
+   * @param {number} [maxRate]
+   */
+  rotateTowards(desiredAngle, dt, maxRate = (this.turnRate || Math.PI * 3.5)) {
+    const maxTurn = maxRate * dt;
+    let angleDiff = desiredAngle - this.angle;
+    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+    this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurn);
+    while (this.angle > Math.PI) this.angle -= Math.PI * 2;
+    while (this.angle < -Math.PI) this.angle += Math.PI * 2;
   }
 
   /**
@@ -195,6 +213,8 @@ export class Bot extends Player {
     this.investigateTarget = null;
     this.waypoints = [];
     this.waypointIndex = 0;
+    this.stuckTimer = 0;
+    this.lastWaypointDist = null;
     this.fireCooldown = 1.0;
     this.aimTime = -1.0;
   }
@@ -443,11 +463,7 @@ export class Bot extends Player {
       desiredAngle = tacticalNeuralAgent.predictLeadAim(this, target, this.weaponSpeed || 1800);
     }
 
-    const maxTurnRate = (this.turnRate || (Math.PI * 3.5)) * dt;
-    let angleDiff = desiredAngle - this.angle;
-    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-    this.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), maxTurnRate);
+    this.rotateTowards(desiredAngle, dt);
 
     // Verify line of sight (or close proximity)
     const distSq = (target.x - this.x) ** 2 + (target.y - this.y) ** 2;
@@ -605,7 +621,8 @@ export class Bot extends Player {
 
       // If within firing distance of Steam Core, attack it
       if (distToCore <= 280) {
-        this.angle = Math.atan2(core.y - this.y, core.x - this.x);
+        const targetAngle = Math.atan2(core.y - this.y, core.x - this.x);
+        this.rotateTowards(targetAngle, dt);
         if (this.fireCooldown <= 0 && !this.isReloading && this.ammo > 0) {
           const proj = this.attemptFire(dt);
           if (proj && room) {
@@ -691,14 +708,40 @@ export class Bot extends Player {
 
     if (dist < 15) {
       this.waypointIndex++;
+      this.stuckTimer = 0;
+      this.lastWaypointDist = null;
+      return;
+    }
+
+    // Stuck detection: track progress toward current waypoint
+    if (typeof this.lastWaypointDist === 'number' && dist < this.lastWaypointDist - 2.0) {
+      this.lastWaypointDist = dist;
+      this.stuckTimer = 0;
+    } else {
+      if (typeof this.lastWaypointDist !== 'number') {
+        this.lastWaypointDist = dist;
+      }
+      this.stuckTimer = (this.stuckTimer || 0) + dt;
+    }
+
+    if (this.stuckTimer >= 1.5) {
+      // Stuck for >= 1.5s: advance waypoint index or replan path to unfreeze
+      this.stuckTimer = 0;
+      this.lastWaypointDist = null;
+      this.waypointIndex++;
+      if (this.waypointIndex >= this.waypoints.length) {
+        this.waypoints = null;
+        this.waypointIndex = 0;
+        this.patrolTimer = 0;
+      }
       return;
     }
 
     const angle = Math.atan2(dy, dx);
-    this.angle = angle;
+    this.rotateTowards(angle, dt);
     const stepDist = this.maxSpeed * dt;
-    const moveDx = Math.cos(angle) * stepDist;
-    const moveDy = Math.sin(angle) * stepDist;
+    const moveDx = Math.cos(this.angle) * stepDist;
+    const moveDy = Math.sin(this.angle) * stepDist;
 
     if (room && typeof room.moveWithSliding === 'function') {
       room.moveWithSliding(this, moveDx, moveDy, this.radius);
@@ -728,9 +771,9 @@ export class Bot extends Player {
 
     if (threat) {
       const awayAngle = Math.atan2(this.y - threat.y, this.x - threat.x);
-      this.angle = awayAngle;
-      const moveDx = Math.cos(awayAngle) * this.maxSpeed * dt;
-      const moveDy = Math.sin(awayAngle) * this.maxSpeed * dt;
+      this.rotateTowards(awayAngle, dt);
+      const moveDx = Math.cos(this.angle) * this.maxSpeed * dt;
+      const moveDy = Math.sin(this.angle) * this.maxSpeed * dt;
       if (room && typeof room.moveWithSliding === 'function') {
         room.moveWithSliding(this, moveDx, moveDy, this.radius);
       } else {

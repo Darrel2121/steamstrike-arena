@@ -47,6 +47,10 @@ export class Player {
     // Kinematic Position & Geometry
     this.x = typeof options.x === 'number' ? options.x : 100;
     this.y = typeof options.y === 'number' ? options.y : 100;
+    this.lastX = this.x;
+    this.lastY = this.y;
+    this.vx = 0;
+    this.vy = 0;
     this.angle = typeof options.angle === 'number' ? options.angle : 0;
     this.radius = options.radius ?? PLAYER_RADIUS ?? 16;
     this.maxSpeed = options.maxSpeed ?? 180;
@@ -348,6 +352,14 @@ export class Player {
   update(dt, isSprinting = false) {
     if (typeof dt !== 'number' || dt <= 0) return;
 
+    // Track entity kinematics (lastX, lastY, vx, vy) for ballistic lead aiming & neural imitation
+    if (typeof this.lastX !== 'number') this.lastX = this.x;
+    if (typeof this.lastY !== 'number') this.lastY = this.y;
+    this.vx = (this.x - this.lastX) / dt;
+    this.vy = (this.y - this.lastY) / dt;
+    this.lastX = this.x;
+    this.lastY = this.y;
+
     // 1. Advance reload timer
     if (this.isReloading) {
       this.reloadTimer -= dt;
@@ -413,6 +425,10 @@ export class Player {
   respawn(x, y, angle = 0) {
     this.x = x;
     this.y = y;
+    this.lastX = x;
+    this.lastY = y;
+    this.vx = 0;
+    this.vy = 0;
     this.angle = angle;
     this.hp = this.maxHp;
     this.ammo = this.maxAmmo;

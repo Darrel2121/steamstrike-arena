@@ -160,11 +160,34 @@ export const CHARACTER_CLASSES = {
 
 export const DEFAULT_CLASS_ID = 'vanguard';
 
+export const CLASS_ALIASES = {
+  stalker: 'sharpshooter',
+  sharpshooter: 'sharpshooter',
+  bruiser: 'juggernaut',
+  juggernaut: 'juggernaut',
+  vanguard: 'vanguard',
+  infiltrator: 'infiltrator'
+};
+
+/**
+ * Normalizes class identifiers and aliases (e.g. stalker -> sharpshooter, bruiser -> juggernaut).
+ * @param {string} classId
+ * @returns {string}
+ */
+export function normalizeClassId(classId) {
+  if (!classId) return DEFAULT_CLASS_ID;
+  const key = String(classId).toLowerCase().trim();
+  return CLASS_ALIASES[key] || key;
+}
+
 /**
  * Returns class definition by ID with fallback to vanguard.
+ * Supports class aliases (e.g. stalker -> sharpshooter, bruiser -> juggernaut).
  * @param {string} classId
  * @returns {Object}
  */
 export function getClassDefinition(classId) {
-  return CHARACTER_CLASSES[classId] || CHARACTER_CLASSES[DEFAULT_CLASS_ID];
+  const normalized = normalizeClassId(classId);
+  return CHARACTER_CLASSES[normalized] || CHARACTER_CLASSES[DEFAULT_CLASS_ID];
 }
+

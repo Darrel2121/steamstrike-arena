@@ -504,11 +504,41 @@ export class Room {
       socket = idOrOptions.socket || socket;
       profile = idOrOptions.profile || profile;
     }
+    const existingPlayer = this.players.get(id);
+
+    if (this.disconnectGraceTimers && this.disconnectGraceTimers.has(id)) {
+      clearTimeout(this.disconnectGraceTimers.get(id));
+      this.disconnectGraceTimers.delete(id);
+    }
+
+    if (existingPlayer) {
+      existingPlayer.socket = socket;
+      existingPlayer.disconnectedAt = null;
+      if (name) existingPlayer.name = name;
+      if (this.state === 'IN_PROGRESS' && socket && socket.readyState === 1) {
+        socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_MATCH_INIT, {
+          roomId: this.id,
+          playerId: existingPlayer.id,
+          gameMode: this.gameMode,
+          targetKills: this.targetKills,
+          team: existingPlayer.team,
+          maxSpeed: existingPlayer.maxSpeed,
+          sprintMultiplier: existingPlayer.sprintMultiplier,
+          mapWidth: this.map.width * (this.map.tileSize || 40),
+          mapHeight: this.map.height * (this.map.tileSize || 40),
+          spawn: { x: existingPlayer.x, y: existingPlayer.y, angle: existingPlayer.angle },
+          isHost: existingPlayer.isHost
+        }));
+      } else if (this.state === 'LOBBY') {
+        this.broadcastLobbyState();
+      }
+      return existingPlayer;
+    }
+
     const slotIndex = this.players.size;
     const spawn = this.getSpawnPosition('player', slotIndex);
-    const existingPlayer = this.players.get(id);
     const hasHost = Array.from(this.players.values()).some(p => p.isHost && p.id !== id);
-    const isHost = existingPlayer ? Boolean(existingPlayer.isHost) : (!hasHost || this.players.size === 0);
+    const isHost = !hasHost || this.players.size === 0;
 
     let maxHp = 100;
     let maxSpeed = 180;
@@ -569,6 +599,23 @@ export class Room {
 
     this.players.set(id, player);
 
+    // If match is in progress, dispatch initial match packet to admit player directly into combat
+    if (this.state === 'IN_PROGRESS' && socket && socket.readyState === 1) {
+      socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_MATCH_INIT, {
+        roomId: this.id,
+        playerId: player.id,
+        gameMode: this.gameMode,
+        targetKills: this.targetKills,
+        team: player.team,
+        maxSpeed: player.maxSpeed,
+        sprintMultiplier: player.sprintMultiplier,
+        mapWidth: this.map.width * (this.map.tileSize || 40),
+        mapHeight: this.map.height * (this.map.tileSize || 40),
+        spawn: { x: player.x, y: player.y, angle: player.angle },
+        isHost: player.isHost
+      }));
+    }
+
     // Broadcast updated lobby state with yourPlayerId to all connected clients
     this.broadcastLobbyState();
 
@@ -628,10 +675,24 @@ export class Room {
     const removed = this.players.get(id);
     this.players.delete(id);
 
+    if (this.disconnectGraceTimers && this.disconnectGraceTimers.has(id)) {
+      clearTimeout(this.disconnectGraceTimers.get(id));
+      this.disconnectGraceTimers.delete(id);
+    }
+
     // Transfer host if host left
     if (removed.isHost && this.players.size > 0) {
       const nextHost = this.players.values().next().value;
-      if (nextHost) nextHost.isHost = true;
+      if (nextHost) {
+        nextHost.isHost = true;
+        if (this.state === 'IN_PROGRESS') {
+          this.broadcast(PROTOCOL_MSG_TYPES.S2C_LOBBY_STATE, {
+            roomId: this.id,
+            hostId: nextHost.id,
+            players: Array.from(this.players.values()).map(p => ({ id: p.id, name: p.name, isHost: p.isHost }))
+          });
+        }
+      }
     }
 
     // Broadcast updated lobby state if still in lobby
@@ -641,12 +702,73 @@ export class Room {
   }
 
   /**
-   * Sweeps sockets with closed/closing states.
+   * Initiates a disconnection grace period (10 seconds default) for transient WebSocket drops.
+   * Prevents tearing down active rooms or destroying player state immediately.
+   * @param {string} id
+   * @param {number} [gracePeriodMs=10000]
+   * @param {Function} [onGraceExpired=null]
    */
-  cleanupDisconnected() {
+  handleSocketDisconnect(id, gracePeriodMs = 10000, onGraceExpired = null) {
+    const player = this.players.get(id);
+    if (!player) {
+      if (typeof onGraceExpired === 'function') onGraceExpired();
+      return;
+    }
+
+    player.socket = null;
+    player.disconnectedAt = Date.now();
+
+    if (!this.disconnectGraceTimers) {
+      this.disconnectGraceTimers = new Map();
+    }
+    if (this.disconnectGraceTimers.has(id)) {
+      clearTimeout(this.disconnectGraceTimers.get(id));
+    }
+
+    const timer = setTimeout(() => {
+      this.disconnectGraceTimers.delete(id);
+      const p = this.players.get(id);
+      if (p && p.disconnectedAt) {
+        this.removePlayer(id);
+        if (typeof onGraceExpired === 'function') {
+          onGraceExpired();
+        }
+      }
+    }, gracePeriodMs);
+
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+
+    this.disconnectGraceTimers.set(id, timer);
+  }
+
+  /**
+   * Sweeps sockets with closed/closing states respecting grace period.
+   * If gracePeriodMs is 0 (or not specified) and no explicit disconnect timer was scheduled,
+   * players with dead sockets are swept immediately.
+   * If a player has a pending disconnection grace period, it is respected until expired.
+   * @param {number} [gracePeriodMs=0]
+   */
+  cleanupDisconnected(gracePeriodMs = 0) {
+    const now = Date.now();
     for (const [id, player] of this.players) {
       if (player.socket && (player.socket.readyState === 2 || player.socket.readyState === 3 || player.socket.closed)) {
-        this.removePlayer(id);
+        player.socket = null;
+        if (!player.disconnectedAt) {
+          if (gracePeriodMs > 0) {
+            player.disconnectedAt = now;
+          } else {
+            this.removePlayer(id);
+            continue;
+          }
+        }
+      }
+      if (player.disconnectedAt) {
+        const requiredGrace = Math.max(gracePeriodMs, 10000);
+        if (now - player.disconnectedAt >= requiredGrace) {
+          this.removePlayer(id);
+        }
       }
     }
   }
@@ -1215,20 +1337,34 @@ export class Room {
       return false;
     };
 
+    const origX = entity.x;
+    const origY = entity.y;
+    const targetX = origX + dx;
+    const targetY = origY + dy;
+
     // 1. Try full diagonal step
-    const targetX = entity.x + dx;
-    const targetY = entity.y + dy;
     if (!checkCollision(targetX, targetY)) {
       entity.x = targetX;
       entity.y = targetY;
     } else {
       // 2. Try horizontal sliding
-      if (Math.abs(dx) > 0.0001 && !checkCollision(targetX, entity.y)) {
-        entity.x = targetX;
-      }
-      // 3. Try vertical sliding
-      if (Math.abs(dy) > 0.0001 && !checkCollision(entity.x, targetY)) {
-        entity.y = targetY;
+      const canSlideX = Math.abs(dx) > 0.0001 && !checkCollision(targetX, origY);
+      // 3. Try vertical sliding (relative to origX, not targetX)
+      const canSlideY = Math.abs(dy) > 0.0001 && !checkCollision(origX, targetY);
+
+      if (canSlideX && canSlideY) {
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          entity.x = targetX;
+        } else {
+          entity.y = targetY;
+        }
+      } else {
+        if (canSlideX) {
+          entity.x = targetX;
+        }
+        if (canSlideY) {
+          entity.y = targetY;
+        }
       }
     }
 
@@ -1347,6 +1483,10 @@ export class Room {
 
       for (const bot of this.bots.values()) {
         if (!bot.isAlive && bot.respawnTimer > 0) {
+          if (this.isWaveDefense()) {
+            bot.respawnTimer = 0;
+            continue;
+          }
           bot.respawnTimer -= dtSec;
           if (bot.respawnTimer <= 0) {
             bot.respawnTimer = 0;
@@ -1668,7 +1808,11 @@ export class Room {
         }
 
         if (this.isRespawnMode()) {
-          target.respawnTimer = 3.0;
+          if (this.isWaveDefense() && this.bots.has(targetId)) {
+            target.respawnTimer = 0;
+          } else {
+            target.respawnTimer = 3.0;
+          }
         }
 
         if (this.matchStats.has(targetId)) {
@@ -2069,6 +2213,12 @@ export class Room {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+    if (this.disconnectGraceTimers) {
+      for (const timer of this.disconnectGraceTimers.values()) {
+        clearTimeout(timer);
+      }
+      this.disconnectGraceTimers.clear();
     }
   }
 }

@@ -26,13 +26,10 @@ export class EditorToolbar {
     this.btnDefaultMap = document.getElementById('btnDefaultMap');
 
     this.btnSaveLocal = document.getElementById('btnSaveLocal');
-    this.btnLoadLocal = document.getElementById('btnLoadLocal');
     this.btnExportJson = document.getElementById('btnExportJson');
     this.btnImportJson = document.getElementById('btnImportJson');
     this.btnProposeMapOnline = document.getElementById('btnProposeMapOnline');
     this.fileInputMap = document.getElementById('fileInputMap');
-    this.btnLaunchCustomMatch = document.getElementById('btnLaunchCustomMatch');
-    this.btnEditorReturnHome = document.getElementById('btnEditorReturnHome');
     this.btnEditorPlaySolo = document.getElementById('btnEditorPlaySolo');
     this.btnEditorPlayOnline = document.getElementById('btnEditorPlayOnline');
 
@@ -120,11 +117,6 @@ export class EditorToolbar {
       this.btnSaveLocal.addEventListener('click', () => this.editor.saveToLocalStorage());
     }
 
-    // Load from LocalStorage
-    if (this.btnLoadLocal) {
-      this.btnLoadLocal.addEventListener('click', () => this.editor.loadFromLocalStorage());
-    }
-
     // Export JSON File Download
     if (this.btnExportJson) {
       this.btnExportJson.addEventListener('click', () => this.editor.exportJsonFile());
@@ -151,13 +143,6 @@ export class EditorToolbar {
       });
     }
 
-    // Launch Match on Custom Map (Legacy & Direct)
-    if (this.btnLaunchCustomMatch) {
-      this.btnLaunchCustomMatch.addEventListener('click', () => {
-        this.editor.launchMatch('solo');
-      });
-    }
-
     if (this.btnEditorPlaySolo) {
       this.btnEditorPlaySolo.addEventListener('click', () => {
         this.editor.launchMatch('solo');
@@ -167,12 +152,6 @@ export class EditorToolbar {
     if (this.btnEditorPlayOnline) {
       this.btnEditorPlayOnline.addEventListener('click', () => {
         this.editor.launchMatch('online');
-      });
-    }
-
-    if (this.btnEditorReturnHome) {
-      this.btnEditorReturnHome.addEventListener('click', () => {
-        this.editor.returnHome();
       });
     }
 

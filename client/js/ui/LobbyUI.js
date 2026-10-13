@@ -59,8 +59,6 @@ export class LobbyUI {
       btnLeaveRoom: document.getElementById('btnLeaveRoom'),
       btnToggleReady: document.getElementById('btnToggleReady'),
       btnStartMatch: document.getElementById('btnStartMatch'),
-      btnQuickPlay: document.getElementById('btnQuickPlay'),
-      btnEnterEditor: document.getElementById('btnEnterEditor'),
       lobbyStatusCard: document.getElementById('lobbyStatusCard'),
       lobbyRoomTitle: document.getElementById('lobbyRoomTitle'),
       lobbyMapTitle: document.getElementById('lobbyMapTitle'),
@@ -86,15 +84,12 @@ export class LobbyUI {
       homeTargetKillsGroup: document.getElementById('homeTargetKillsGroup'),
       homeTargetKillsInput: document.getElementById('homeTargetKillsInput'),
       homeTargetKillsSelect: document.getElementById('homeTargetKillsSelect'),
-      btnCopyRoomCode: document.getElementById('btnCopyRoomCode'),
       btnCopyRoomLink: document.getElementById('btnCopyRoomLink'),
       lobbyCopyToast: document.getElementById('lobbyCopyToast'),
       btnLobbyRefreshRooms: document.getElementById('btnLobbyRefreshRooms'),
       lobbyRoomsList: document.getElementById('lobbyRoomsList'),
       homeRoomsList: document.getElementById('homeRoomsList'),
       btnHomeRefreshRooms: document.getElementById('btnHomeRefreshRooms'),
-      btnHomeJoinRoom: document.getElementById('btnHomeJoinRoom'),
-      btnHomeCreateRoom: document.getElementById('btnHomeCreateRoom'),
       roomPasswordInput: document.getElementById('roomPasswordInput'),
       homeRoomPasswordInput: document.getElementById('homeRoomPasswordInput'),
       lobbyLockBadge: document.getElementById('lobbyLockBadge'),
@@ -129,7 +124,6 @@ export class LobbyUI {
     this.addTapAndClick(this.dom.btnLeaveRoom, () => this.handleLeaveRoom());
     this.addTapAndClick(this.dom.btnToggleReady, () => this.handleToggleReady());
     this.addTapAndClick(this.dom.btnStartMatch, () => this.handleStartMatch());
-    this.addTapAndClick(this.dom.btnCopyRoomCode, () => this.handleCopyRoomCode());
     this.addTapAndClick(this.dom.btnCopyRoomLink, () => this.handleCopyRoomLink());
     this.addTapAndClick(this.dom.btnLobbyRefreshRooms, () => this.fetchAndRenderRooms());
     this.addTapAndClick(this.dom.btnHomeRefreshRooms, () => this.fetchAndRenderRooms());
@@ -306,28 +300,6 @@ export class LobbyUI {
     this.addTapAndClick(this.dom.btnSelectTeam2, () => {
       this.networkClient.changeTeam('team2');
     });
-
-    this.addTapAndClick(this.dom.btnHomeJoinRoom, () => {
-      const homeInput = document.getElementById('homeRoomInput');
-      const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
-      const room = homeInput?.value?.trim() || 'Sector_Omega';
-      const password = homePwdInput?.value?.trim() || null;
-      this.handleJoinRoom(room, password);
-      if (typeof this.options.onSwitchToLobby === 'function') {
-        this.options.onSwitchToLobby();
-      }
-    });
-
-    this.addTapAndClick(this.dom.btnHomeCreateRoom, () => {
-      const homeInput = document.getElementById('homeRoomInput');
-      const homePwdInput = this.dom.homeRoomPasswordInput || document.getElementById('homeRoomPasswordInput');
-      const room = homeInput?.value?.trim() || 'Sector_Omega';
-      const password = homePwdInput?.value?.trim() || null;
-      this.handleCreateRoom(room, password);
-      if (typeof this.options.onSwitchToLobby === 'function') {
-        this.options.onSwitchToLobby();
-      }
-    });
   }
 
   bindNetworkEvents() {
@@ -415,9 +387,7 @@ export class LobbyUI {
   resetAllActionButtons() {
     this.resetButtonBusy(this.dom.btnStartMatch, '⚔ Почати бій');
     this.resetButtonBusy(this.dom.btnCreateRoom, '⚙ Створити кімнату');
-    this.resetButtonBusy(this.dom.btnHomeCreateRoom, '⚙ Створити');
     this.resetButtonBusy(this.dom.btnJoinRoom, '⚡ Приєднатися');
-    this.resetButtonBusy(this.dom.btnHomeJoinRoom, '⚡ Приєднатися');
   }
 
   async fetchCommunityMaps() {
@@ -527,6 +497,10 @@ export class LobbyUI {
       clearInterval(this.roomsPollInterval);
       this.roomsPollInterval = null;
     }
+  }
+
+  stopPolling() {
+    this.stopRoomsPoll();
   }
 
   async fetchAndRenderRooms() {
@@ -731,7 +705,6 @@ export class LobbyUI {
 
     this.showError('');
     this.setButtonBusy(this.dom.btnJoinRoom, '⚡ Приєднання...');
-    this.setButtonBusy(this.dom.btnHomeJoinRoom, '⚡ Приєднання...');
 
     const doJoin = () => {
       if (prof) {
@@ -837,7 +810,6 @@ export class LobbyUI {
 
     this.showError('');
     this.setButtonBusy(this.dom.btnCreateRoom, '⚙ Створення...');
-    this.setButtonBusy(this.dom.btnHomeCreateRoom, '⚙ Створення...');
 
     const doCreate = () => {
       const prof = this.options.progressionManager?.getProfile();

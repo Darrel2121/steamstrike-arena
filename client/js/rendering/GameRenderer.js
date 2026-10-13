@@ -22,6 +22,38 @@ import {
 import { TILE_TYPES } from '../../../shared/MapSchema.js';
 import { assetManager } from './AssetManager.js';
 import { soundFX } from '../audio/SoundFX.js';
+import { normalizeClassId } from '../../../shared/CharacterClasses.js';
+
+// Pre-calculated static lobe offset templates for volumetric steam exhaust particles
+const STEAM_LOBE_TEMPLATES = [
+  { dx: 0, dy: 0, rMult: 1.0 },
+  { dx: 0.35, dy: -0.22, rMult: 0.72 },
+  { dx: -0.32, dy: 0.26, rMult: 0.68 }
+];
+
+// Weapon recoil kickback profiles (decaying over 80-120ms)
+export const WEAPON_RECOIL_CONFIGS = {
+  revolver: { kickback: 3.2, duration: 0.10 },
+  steam_carbine: { kickback: 3.6, duration: 0.10 },
+  blunderbuss: { kickback: 5.5, duration: 0.12 },
+  needle_gun: { kickback: 4.0, duration: 0.09 },
+  tesla_rifle: { kickback: 2.4, duration: 0.08 },
+  steam_mortar: { kickback: 6.0, duration: 0.12 },
+  aether_flamethrower: { kickback: 1.5, duration: 0.08 },
+  gatling_cannon: { kickback: 2.0, duration: 0.07 }
+};
+
+// Weapon barrel tip positions in local coordinate space (+X forward)
+export const WEAPON_BARREL_OFFSETS = {
+  revolver: { x: 20, y: 0, scale: 1.0, hasCasings: true },
+  steam_carbine: { x: 27, y: 0, scale: 1.2, hasCasings: true },
+  blunderbuss: { x: 23.5, y: 0, scale: 1.5, hasCasings: true },
+  needle_gun: { x: 35, y: 0, scale: 1.1, hasCasings: true },
+  tesla_rifle: { x: 26, y: 0, scale: 1.2, hasCasings: false },
+  steam_mortar: { x: 22, y: 0, scale: 1.6, hasCasings: true },
+  aether_flamethrower: { x: 26, y: 0, scale: 1.3, hasCasings: false },
+  gatling_cannon: { x: 28, y: 0, scale: 1.3, hasCasings: true }
+};
 
 export class GameRenderer {
   /**
@@ -69,6 +101,12 @@ export class GameRenderer {
     this.steamParticles = [];
     this.entityExhaustTimers = new Map();
 
+    // Weapon dynamic combat effects (M_R4 / F43)
+    this.entityRecoils = new Map();
+    this.muzzleFlashes = [];
+    this.casingParticles = [];
+    this.casingPool = [];
+
     // Subsystems
     this.visibilityRenderer = new VisibilityRenderer(options.visibility || {});
     this.soundWaveRenderer = new SoundWaveRenderer(options.sound || {});
@@ -92,6 +130,16 @@ export class GameRenderer {
       });
     }
 
+    // Performance optimization caches (F40 & F41)
+    this._cachedVignette = null;
+    this._vignetteWidth = 0;
+    this._vignetteHeight = 0;
+    this._vignetteCtx = null;
+    this._smokeGradCache = new Map();
+    this._smokeCoreGradCache = new Map();
+    this._steamGradCache = new Map();
+    this._viewportBounds = { left: 0, top: 0, right: 0, bottom: 0 };
+
     // Texture pattern caching
     this.floorPattern = null;
     this.floorImage = null;
@@ -114,6 +162,122 @@ export class GameRenderer {
         }
       };
     }
+  }
+
+  /**
+   * Calculates camera viewport culling boundaries with margin in world coordinates.
+   * Reuses internal bounds object to avoid GC allocation.
+   * @param {number} [margin=80]
+   * @returns {{ left: number, top: number, right: number, bottom: number }}
+   */
+  getViewportBounds(margin = 80) {
+    const zoom = this.camera?.zoom || 1.0;
+    const viewW = (this.camera?.width || 800) / zoom;
+    const viewH = (this.camera?.height || 600) / zoom;
+    const camX = this.camera?.x || 0;
+    const camY = this.camera?.y || 0;
+
+    if (!this._viewportBounds) {
+      this._viewportBounds = { left: 0, top: 0, right: 0, bottom: 0 };
+    }
+    this._viewportBounds.left = camX - margin;
+    this._viewportBounds.top = camY - margin;
+    this._viewportBounds.right = camX + viewW + margin;
+    this._viewportBounds.bottom = camY + viewH + margin;
+    return this._viewportBounds;
+  }
+
+  /**
+   * Fast AABB check whether an entity position falls within camera viewport bounds.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} [radius=0]
+   * @param {number} [margin=80]
+   * @returns {boolean}
+   */
+  isEntityInViewport(x, y, radius = 0, margin = 80) {
+    const b = this.getViewportBounds(margin);
+    return (
+      x + radius >= b.left &&
+      x - radius <= b.right &&
+      y + radius >= b.top &&
+      y - radius <= b.bottom
+    );
+  }
+
+  /**
+   * Returns a cached radial gradient for steam lobes.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} radius
+   * @param {boolean} [isSoot=false]
+   * @returns {CanvasGradient}
+   */
+  getSteamLobeGradient(ctx, radius, isSoot = false) {
+    if (!this._steamGradCache) this._steamGradCache = new Map();
+    const key = (isSoot ? 'soot_' : 'steam_') + Math.round(radius);
+    let grad = this._steamGradCache.get(key);
+    if (!grad) {
+      const lr = Math.max(1, Math.round(radius));
+      grad = ctx.createRadialGradient(0, 0, 0, 0, 0, lr);
+      if (isSoot) {
+        grad.addColorStop(0, 'rgba(65, 70, 80, 0.60)');
+        grad.addColorStop(0.45, 'rgba(45, 50, 60, 0.32)');
+        grad.addColorStop(1, 'rgba(25, 30, 38, 0)');
+      } else {
+        grad.addColorStop(0, 'rgba(240, 248, 255, 0.52)');
+        grad.addColorStop(0.45, 'rgba(215, 235, 252, 0.28)');
+        grad.addColorStop(0.85, 'rgba(180, 210, 235, 0.08)');
+        grad.addColorStop(1, 'rgba(160, 195, 225, 0)');
+      }
+      if (this._steamGradCache.size > 128) this._steamGradCache.clear();
+      this._steamGradCache.set(key, grad);
+    }
+    return grad;
+  }
+
+  /**
+   * Returns a cached radial gradient for smoke zone puffs.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} radius
+   * @returns {CanvasGradient}
+   */
+  getSmokePuffGradient(ctx, radius) {
+    if (!this._smokeGradCache) this._smokeGradCache = new Map();
+    const key = Math.round(radius);
+    let grad = this._smokeGradCache.get(key);
+    if (!grad) {
+      const r = Math.max(1, key);
+      grad = ctx.createRadialGradient(0, 0, 4, 0, 0, r);
+      grad.addColorStop(0, 'rgba(40, 45, 55, 0.75)');
+      grad.addColorStop(0.5, 'rgba(28, 32, 40, 0.60)');
+      grad.addColorStop(0.85, 'rgba(20, 24, 30, 0.35)');
+      grad.addColorStop(1, 'rgba(15, 18, 22, 0)');
+      if (this._smokeGradCache.size > 128) this._smokeGradCache.clear();
+      this._smokeGradCache.set(key, grad);
+    }
+    return grad;
+  }
+
+  /**
+   * Returns a cached radial gradient for smoke zone core.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} radius
+   * @returns {CanvasGradient}
+   */
+  getSmokeCoreGradient(ctx, radius) {
+    if (!this._smokeCoreGradCache) this._smokeCoreGradCache = new Map();
+    const key = Math.round(radius);
+    let grad = this._smokeCoreGradCache.get(key);
+    if (!grad) {
+      const r = Math.max(1, key);
+      grad = ctx.createRadialGradient(0, 0, 5, 0, 0, r);
+      grad.addColorStop(0, 'rgba(25, 28, 35, 0.85)');
+      grad.addColorStop(0.6, 'rgba(20, 24, 30, 0.65)');
+      grad.addColorStop(1, 'rgba(15, 18, 22, 0)');
+      if (this._smokeCoreGradCache.size > 32) this._smokeCoreGradCache.clear();
+      this._smokeCoreGradCache.set(key, grad);
+    }
+    return grad;
   }
 
   /**
@@ -281,9 +445,16 @@ export class GameRenderer {
           // Audio playback and mini-map ping for combat sound events
           if (snd.type === 'pickup') {
             soundFX.playPickup(snd.pickupType || 'ammo', snd.x, snd.y);
-          } else if (localPlayer && snd.sourceId !== localPlayer.id) {
-            if (snd.type === 'gunfire') {
-              soundFX.playGunshot('revolver', snd.x, snd.y);
+          } else if (snd.type === 'gunfire') {
+            const shooter = (state.players || []).find(p => p.id === snd.sourceId) || (localPlayer && localPlayer.id === snd.sourceId ? localPlayer : null);
+            const wId = shooter?.weaponId || 'revolver';
+            const sAngle = shooter?.angle ?? shooter?.aimAngle ?? Math.atan2(snd.vy || 0, snd.vx || 0);
+            const sX = shooter?.renderX ?? shooter?.x ?? snd.x;
+            const sY = shooter?.renderY ?? shooter?.y ?? snd.y;
+            this.triggerWeaponFire(snd.sourceId, wId, sX, sY, sAngle);
+
+            if (localPlayer && snd.sourceId !== localPlayer.id) {
+              soundFX.playGunshot(wId, snd.x, snd.y);
               // Register enemy gunfire acoustic ping for mini-map radar
               this.gunfirePings.push({
                 x: snd.x,
@@ -292,7 +463,9 @@ export class GameRenderer {
                 life: 2.0,
                 maxLife: 2.0
               });
-            } else if (snd.type === 'reload') {
+            }
+          } else if (localPlayer && snd.sourceId !== localPlayer.id) {
+            if (snd.type === 'reload') {
               soundFX.playReload(snd.x, snd.y);
             } else if (snd.type === 'ability') {
               soundFX.playAbility('vanguard', snd.x, snd.y);
@@ -325,6 +498,69 @@ export class GameRenderer {
 
     // 3. Update acoustic sound waves simulation
     this.soundWaveRenderer.update(dt);
+
+    // 3.1 Update entity weapon recoil kickback (decaying over 80-120ms)
+    if (this.entityRecoils && this.entityRecoils.size > 0) {
+      for (const [id, r] of this.entityRecoils.entries()) {
+        r.elapsed += dt;
+        if (r.elapsed >= r.duration) {
+          this.entityRecoils.delete(id);
+        } else {
+          const progress = r.elapsed / r.duration;
+          r.distance = r.maxDistance * (1.0 - progress);
+        }
+      }
+    }
+
+    // 3.2 Update barrel-tip muzzle flashes (brief 40-80ms lifespan)
+    if (this.muzzleFlashes && this.muzzleFlashes.length > 0) {
+      let writeIdx = 0;
+      const count = this.muzzleFlashes.length;
+      for (let i = 0; i < count; i++) {
+        const f = this.muzzleFlashes[i];
+        f.life -= dt;
+        if (f.life > 0) {
+          this.muzzleFlashes[writeIdx++] = f;
+        }
+      }
+      this.muzzleFlashes.length = writeIdx > 60 ? 60 : writeIdx;
+    }
+
+    // 3.3 Update spinning brass cartridge casing particles (air drag, spin damping, zero-allocation pooling)
+    if (this.casingParticles && this.casingParticles.length > 0) {
+      let writeIdx = 0;
+      const count = this.casingParticles.length;
+      for (let i = 0; i < count; i++) {
+        const c = this.casingParticles[i];
+        c.x += (c.vx || 0) * dt;
+        c.y += (c.vy || 0) * dt;
+        const drag = Math.pow(0.86, dt * 60);
+        c.vx = (c.vx || 0) * drag;
+        c.vy = (c.vy || 0) * drag;
+        const spinDamp = Math.pow(0.90, dt * 60);
+        c.spin = (c.spin || 0) * spinDamp;
+        c.angle += (c.spin || 0) * dt;
+        c.life -= dt;
+        c.alpha = Math.max(0, c.life / c.maxLife);
+        if (c.life > 0) {
+          this.casingParticles[writeIdx++] = c;
+        } else {
+          if (this.casingPool && this.casingPool.length < 64) {
+            this.casingPool.push(c);
+          }
+        }
+      }
+      if (writeIdx > 48) {
+        for (let k = 48; k < writeIdx; k++) {
+          if (this.casingPool && this.casingPool.length < 64) {
+            this.casingPool.push(this.casingParticles[k]);
+          }
+        }
+        this.casingParticles.length = 48;
+      } else {
+        this.casingParticles.length = writeIdx;
+      }
+    }
 
     // 3.5 Update bullet impact micro-sparks & floating combat text (fast in-place compaction)
     if (this.impactParticles && this.impactParticles.length > 0) {
@@ -597,6 +833,246 @@ export class GameRenderer {
   }
 
   /**
+   * Triggers momentary backward recoil kickback for an entity's equipped weapon.
+   * Decays smoothly to resting position over 80-120ms.
+   * @param {string} entityId
+   * @param {string} [weaponId]
+   */
+  triggerRecoil(entityId, weaponId = 'revolver') {
+    const id = entityId || 'local';
+    const cfg = WEAPON_RECOIL_CONFIGS[weaponId] || WEAPON_RECOIL_CONFIGS.revolver;
+    this.entityRecoils.set(id, {
+      distance: cfg.kickback,
+      maxDistance: cfg.kickback,
+      duration: cfg.duration,
+      elapsed: 0
+    });
+  }
+
+  /**
+   * Returns current weapon recoil kickback displacement in pixels (0 if resting).
+   * @param {string} entityId
+   * @returns {number}
+   */
+  getRecoilDistance(entityId) {
+    const id = entityId || 'local';
+    const r = this.entityRecoils.get(id);
+    if (!r) return 0;
+    return r.distance || 0;
+  }
+
+  /**
+   * Generates a fiery incandescent muzzle flash at the firearm barrel tip.
+   * Lifespan: 40-80ms (default 0.06s).
+   * @param {Object} options
+   * @returns {Object}
+   */
+  addMuzzleFlash({ entityId, x = 0, y = 0, angle = 0, weaponId = 'revolver', life = 0.06 } = {}) {
+    const offset = WEAPON_BARREL_OFFSETS[weaponId] || WEAPON_BARREL_OFFSETS.revolver;
+    const cos = Math.cos(angle || 0);
+    const sin = Math.sin(angle || 0);
+    const tipX = x + cos * offset.x - sin * offset.y;
+    const tipY = y + sin * offset.x + cos * offset.y;
+    const duration = typeof life === 'number' && life > 0 ? life : 0.06;
+
+    const flash = {
+      id: `${entityId || 'flash'}_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      entityId: entityId || 'local',
+      x: tipX,
+      y: tipY,
+      localOffsetX: offset.x,
+      localOffsetY: offset.y,
+      angle: angle || 0,
+      weaponId,
+      scale: offset.scale || 1.0,
+      life: duration,
+      maxLife: duration,
+      points: (weaponId === 'blunderbuss' || weaponId === 'steam_mortar') ? 8 : 6
+    };
+    this.muzzleFlashes.push(flash);
+    return flash;
+  }
+
+  /**
+   * Ejects a small spinning brass cartridge casing to the side upon firearm discharge.
+   * Incorporates initial ejection velocity, spin rotation, air drag, and zero-allocation pooling.
+   * @param {number} x
+   * @param {number} y
+   * @param {number} angle
+   * @param {string} [weaponId]
+   * @param {number} [entityVx]
+   * @param {number} [entityVy]
+   * @returns {Object|null}
+   */
+  addEjectedCasing(x = 0, y = 0, angle = 0, weaponId = 'revolver', entityVx = 0, entityVy = 0) {
+    const offset = WEAPON_BARREL_OFFSETS[weaponId] || WEAPON_BARREL_OFFSETS.revolver;
+    if (offset.hasCasings === false) return null;
+
+    const sideSign = Math.random() > 0.4 ? 1 : -1;
+    const cos = Math.cos(angle || 0);
+    const sin = Math.sin(angle || 0);
+    const portOffsetX = 10;
+    const portOffsetY = sideSign * 4;
+
+    const startX = x + cos * portOffsetX - sin * portOffsetY;
+    const startY = y + sin * portOffsetX + cos * portOffsetY;
+
+    const ejectAngle = (angle || 0) + (sideSign * Math.PI * 0.48) + (Math.random() - 0.5) * 0.35;
+    const ejectSpeed = 75 + Math.random() * 65;
+    const spinRate = (18 + Math.random() * 18) * (Math.random() > 0.5 ? 1 : -1);
+
+    let casing;
+    if (this.casingPool && this.casingPool.length > 0) {
+      casing = this.casingPool.pop();
+    } else if (this.casingParticles && this.casingParticles.length >= 48) {
+      casing = this.casingParticles.shift();
+    } else {
+      casing = {};
+    }
+
+    casing.x = startX;
+    casing.y = startY;
+    casing.vx = Math.cos(ejectAngle) * ejectSpeed + (entityVx || 0) * 0.25;
+    casing.vy = Math.sin(ejectAngle) * ejectSpeed + (entityVy || 0) * 0.25;
+    casing.angle = Math.random() * Math.PI * 2;
+    casing.spin = spinRate;
+    casing.length = 3.6 + Math.random() * 1.4;
+    casing.width = 1.6 + Math.random() * 0.4;
+    casing.life = 0.50 + Math.random() * 0.15;
+    casing.maxLife = casing.life;
+    casing.alpha = 1.0;
+
+    this.casingParticles.push(casing);
+    return casing;
+  }
+
+  /**
+   * Unified trigger for dynamic weapon discharge effects (recoil, muzzle flash, ejected casing).
+   * @param {string} sourceId
+   * @param {string} weaponId
+   * @param {number} originX
+   * @param {number} originY
+   * @param {number} angle
+   */
+  triggerWeaponFire(sourceId, weaponId = 'revolver', originX = 0, originY = 0, angle = 0) {
+    this.triggerRecoil(sourceId, weaponId);
+    this.addMuzzleFlash({ entityId: sourceId, x: originX, y: originY, angle, weaponId });
+    this.addEjectedCasing(originX, originY, angle, weaponId);
+  }
+
+  /**
+   * Helper to draw a crisp multi-point star polygon for muzzle bursts.
+   */
+  drawStarPolygon(ctx, cx, cy, spikes, outerRadius, innerRadius) {
+    let rot = (Math.PI / 2) * 3;
+    let x = cx;
+    let y = cy;
+    const step = Math.PI / spikes;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - outerRadius);
+    for (let i = 0; i < spikes; i++) {
+      x = cx + Math.cos(rot) * outerRadius;
+      y = cy + Math.sin(rot) * outerRadius;
+      ctx.lineTo(x, y);
+      rot += step;
+
+      x = cx + Math.cos(rot) * innerRadius;
+      y = cy + Math.sin(rot) * innerRadius;
+      ctx.lineTo(x, y);
+      rot += step;
+    }
+    ctx.lineTo(cx, cy - outerRadius);
+    ctx.closePath();
+  }
+
+  /**
+   * Renders active incandescent barrel-tip muzzle flashes in world coordinates.
+   */
+  renderMuzzleFlashes(ctx) {
+    if (!this.muzzleFlashes || this.muzzleFlashes.length === 0) return;
+    const bounds = this.getViewportBounds(60);
+
+    for (const f of this.muzzleFlashes) {
+      if (f.x < bounds.left || f.x > bounds.right || f.y < bounds.top || f.y > bounds.bottom) {
+        continue;
+      }
+      const progress = Math.max(0, f.life / f.maxLife);
+      const alpha = Math.min(1.0, progress * 1.5);
+      const baseRadius = (10 + (1 - progress) * 4) * (f.scale || 1.0);
+
+      ctx.save();
+      ctx.translate(f.x, f.y);
+      ctx.rotate(f.angle);
+
+      // 1. Fiery incandescent outer star burst (gold/orange)
+      ctx.globalAlpha = alpha * 0.75;
+      ctx.fillStyle = '#ff7b00';
+      this.drawStarPolygon(ctx, 0, 0, f.points, baseRadius * 1.35, baseRadius * 0.42);
+      ctx.fill();
+
+      // 2. Mid bright incandescent gold star
+      ctx.globalAlpha = alpha * 0.90;
+      ctx.fillStyle = '#ffd152';
+      this.drawStarPolygon(ctx, 0, 0, f.points, baseRadius, baseRadius * 0.35);
+      ctx.fill();
+
+      // 3. Core white-hot star burst
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#fffbf0';
+      this.drawStarPolygon(ctx, 0, 0, f.points, baseRadius * 0.55, baseRadius * 0.22);
+      ctx.fill();
+
+      // 4. White-hot center focal point
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(0, 0, baseRadius * 0.25, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Renders ejected spinning brass cartridge casings on the floor beneath combatants.
+   */
+  renderCasingParticles(ctx) {
+    if (!this.casingParticles || this.casingParticles.length === 0) return;
+    const bounds = this.getViewportBounds(40);
+
+    for (const c of this.casingParticles) {
+      if (c.x < bounds.left || c.x > bounds.right || c.y < bounds.top || c.y > bounds.bottom) {
+        continue;
+      }
+      ctx.save();
+      ctx.translate(c.x, c.y);
+      ctx.rotate(c.angle);
+      ctx.globalAlpha = Math.min(1.0, c.alpha || 1.0);
+
+      const hw = c.length / 2;
+      const hh = c.width / 2;
+
+      // Drop shadow for small elevation
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.fillRect(-hw + 0.6, -hh + 0.8, c.length, c.width);
+
+      // Brass casing body (#c59b27 base)
+      ctx.fillStyle = '#c59b27';
+      ctx.fillRect(-hw, -hh, c.length, c.width);
+
+      // Specular brass highlight (#ffd152 top strip)
+      ctx.fillStyle = '#ffd152';
+      ctx.fillRect(-hw, -hh, c.length, hh * 0.8);
+
+      // Casing rim / primer base (#8b6914)
+      ctx.fillStyle = '#8b6914';
+      ctx.fillRect(-hw, -hh, 1.0, c.width);
+
+      ctx.restore();
+    }
+  }
+
+  /**
    * Registers an eliminated combatant entity to persist permanently as a wrecked chassis.
    * @param {Object} entity
    */
@@ -821,7 +1297,7 @@ export class GameRenderer {
       ctx.fillStyle = pattern;
       ctx.fillRect(0, 0, mapWidth, mapHeight);
     } else {
-      // Procedural Steampunk Floor (Cobblestone / Dark Wood Plank)
+      // Procedural Steampunk Floor (Cobblestone / Dark Wood Plank with brass rivets and steam vents)
       ctx.fillStyle = '#181b22';
       ctx.fillRect(0, 0, mapWidth, mapHeight);
 
@@ -839,6 +1315,41 @@ export class GameRenderer {
         ctx.moveTo(x, 0);
         ctx.lineTo(x, mapHeight);
         ctx.stroke();
+      }
+
+      // Subtle brass corner rivets at tile grid seams
+      ctx.fillStyle = '#c59b27';
+      const step = this.tileSize;
+      for (let y = 0; y <= mapHeight; y += step) {
+        for (let x = 0; x <= mapWidth; x += step * 2) {
+          ctx.beginPath();
+          ctx.arc(x, y, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Procedural steam vent grates in alternating floor grid positions
+      const cols = Math.floor(mapWidth / step);
+      const rows = Math.floor(mapHeight / step);
+      for (let r = 0; r < rows; r += 4) {
+        for (let c = 0; c < cols; c += 4) {
+          const vx = c * step + step * 0.25;
+          const vy = r * step + step * 0.25;
+          const vw = step * 0.50;
+          const vh = step * 0.50;
+          ctx.fillStyle = '#101217';
+          ctx.fillRect(vx, vy, vw, vh);
+          ctx.strokeStyle = '#323a47';
+          ctx.lineWidth = 0.8;
+          ctx.strokeRect(vx, vy, vw, vh);
+          ctx.strokeStyle = '#252a33';
+          ctx.beginPath();
+          ctx.moveTo(vx + 3, vy + vh * 0.33);
+          ctx.lineTo(vx + vw - 3, vy + vh * 0.33);
+          ctx.moveTo(vx + 3, vy + vh * 0.66);
+          ctx.lineTo(vx + vw - 3, vy + vh * 0.66);
+          ctx.stroke();
+        }
       }
     }
 
@@ -900,9 +1411,13 @@ export class GameRenderer {
             ctx.fillRect(x, y + ts - 2, ts, 2);
             ctx.fillRect(x + ts - 2, y, 2, ts);
           } else {
-            // Solid Wall: Dark riveted iron plate
+            // Solid Wall: Dark riveted cast-iron armor plate
             ctx.fillStyle = '#22262d';
             ctx.fillRect(x, y, ts, ts);
+
+            // Center horizontal reinforcement band
+            ctx.fillStyle = '#2d333c';
+            ctx.fillRect(x + 2, y + ts / 2 - 3, ts - 4, 6);
 
             // Top highlight bevel
             ctx.fillStyle = '#3c434f';
@@ -914,18 +1429,37 @@ export class GameRenderer {
             ctx.fillRect(x, y + ts - 3, ts, 3);
             ctx.fillRect(x + ts - 3, y, 3, ts);
 
-            // Corner brass rivets
+            // Brass corner trims
             ctx.fillStyle = '#c59b27';
+            ctx.fillRect(x + 2, y + 2, 4, 1.2);
+            ctx.fillRect(x + 2, y + 2, 1.2, 4);
+            ctx.fillRect(x + ts - 6, y + 2, 4, 1.2);
+            ctx.fillRect(x + ts - 3.2, y + 2, 1.2, 4);
+            ctx.fillRect(x + 2, y + ts - 3.2, 4, 1.2);
+            ctx.fillRect(x + 2, y + ts - 6, 1.2, 4);
+            ctx.fillRect(x + ts - 6, y + ts - 3.2, 4, 1.2);
+            ctx.fillRect(x + ts - 3.2, y + ts - 6, 1.2, 4);
+
+            // Corner brass rivets
             ctx.beginPath();
             ctx.arc(x + 4, y + 4, 1.5, 0, Math.PI * 2);
             ctx.arc(x + ts - 4, y + 4, 1.5, 0, Math.PI * 2);
             ctx.arc(x + 4, y + ts - 4, 1.5, 0, Math.PI * 2);
             ctx.arc(x + ts - 4, y + ts - 4, 1.5, 0, Math.PI * 2);
+            // Center band rivets
+            ctx.arc(x + ts * 0.3, y + ts / 2, 1.2, 0, Math.PI * 2);
+            ctx.arc(x + ts * 0.7, y + ts / 2, 1.2, 0, Math.PI * 2);
             ctx.fill();
           }
         } else if (tile === TILE_TYPES.OBSTACLE) {
           if (obstacleImg) {
             ctx.drawImage(obstacleImg, x, y, ts, ts);
+            // Industrial bevel & corner brass plates overlay
+            ctx.fillStyle = '#ffd152';
+            ctx.fillRect(x + 2, y + 2, 3, 3);
+            ctx.fillRect(x + ts - 5, y + 2, 3, 3);
+            ctx.fillRect(x + 2, y + ts - 5, 3, 3);
+            ctx.fillRect(x + ts - 5, y + ts - 5, 3, 3);
           } else {
             // Cover / Steam Boiler: Copper warm cylinder / crate
             ctx.fillStyle = '#703816';
@@ -936,11 +1470,38 @@ export class GameRenderer {
             ctx.lineWidth = 2;
             ctx.strokeRect(x + 2, y + 2, ts - 4, ts - 4);
 
-            // Machinery center dial
+            // Corner brass reinforcement brackets
+            ctx.fillStyle = '#ffd152';
+            ctx.fillRect(x + 3, y + 3, 3, 3);
+            ctx.fillRect(x + ts - 6, y + 3, 3, 3);
+            ctx.fillRect(x + 3, y + ts - 6, 3, 3);
+            ctx.fillRect(x + ts - 6, y + ts - 6, 3, 3);
+
+            // Machinery center dial (pressure gauge)
             ctx.fillStyle = '#ffcf48';
             ctx.beginPath();
-            ctx.arc(x + ts / 2, y + ts / 2, 4, 0, Math.PI * 2);
+            ctx.arc(x + ts / 2, y + ts / 2, 5.2, 0, Math.PI * 2);
             ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(x + ts / 2, y + ts / 2, 3.8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#181b22';
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+
+            // Gauge red needle
+            ctx.strokeStyle = '#d63031';
+            ctx.lineWidth = 0.9;
+            ctx.beginPath();
+            ctx.moveTo(x + ts / 2, y + ts / 2);
+            ctx.lineTo(x + ts / 2 + 2.4, y + ts / 2 - 2.0);
+            ctx.stroke();
+
+            // Side copper pipe fittings
+            ctx.fillStyle = '#b87333';
+            ctx.fillRect(x, y + ts / 2 - 2, 2.5, 4);
+            ctx.fillRect(x + ts - 2.5, y + ts / 2 - 2, 2.5, 4);
           }
         }
       }
@@ -1219,9 +1780,13 @@ export class GameRenderer {
     const players = state.players || [];
     const projectiles = state.projectiles || [];
     const pickups = state.pickups || [];
+    const bounds = this.getViewportBounds(80);
 
-    // 1. Pickups (Alchemical Health Elixirs & Ammo Drums)
+    // 1. Pickups (Alchemical Health Elixirs & Ammo Drums) — culled outside viewport
     for (const p of pickups) {
+      if (p.x < bounds.left || p.x > bounds.right || p.y < bounds.top || p.y > bounds.bottom) {
+        continue;
+      }
       this.renderPickup(ctx, p);
     }
 
@@ -1236,10 +1801,18 @@ export class GameRenderer {
       }
     }
 
-    // 3. Render all persistent wrecked automatons on the arena floor (stopped, never vanish)
+    // 3. Render all persistent wrecked automatons on the arena floor (stopped, never vanish) — culled outside viewport
     for (const wreck of this.wreckedEntities.values()) {
+      const wx = wreck.renderX ?? wreck.x ?? 0;
+      const wy = wreck.renderY ?? wreck.y ?? 0;
+      if (wx < bounds.left || wx > bounds.right || wy < bounds.top || wy > bounds.bottom) {
+        continue;
+      }
       this.renderDestroyedAvatar(ctx, wreck);
     }
+
+    // 3.4 Render ejected spinning brass cartridge casings on the arena floor (underneath combatants)
+    this.renderCasingParticles(ctx);
 
     // 3.5 Render Steam Core in Wave Defense mode
     if (state.steamCore) {
@@ -1254,10 +1827,17 @@ export class GameRenderer {
     // 4.5 Volumetric Steam Engine Exhaust Particles (Automaton & Boiler plumes)
     this.renderSteamParticles(ctx);
 
-    // 5. Living Players and Bots (rendered on top of floor wrecks & steam trails)
+    // 5. Living Players and Bots (rendered on top of floor wrecks & steam trails) — remote combatants culled outside viewport
     for (const pl of players) {
       if (pl.isAlive && (pl.hp === undefined || pl.hp > 0)) {
         const isLocal = state.localPlayer && state.localPlayer.id === pl.id;
+        if (!isLocal) {
+          const px = pl.renderX ?? pl.x ?? 0;
+          const py = pl.renderY ?? pl.y ?? 0;
+          if (px < bounds.left || px > bounds.right || py < bounds.top || py > bounds.bottom) {
+            continue;
+          }
+        }
         this.renderPlayerAvatar(ctx, pl, isLocal);
       }
     }
@@ -1396,7 +1976,9 @@ export class GameRenderer {
    */
   renderLayerProjectilesOverDarkness(ctx, state) {
     const projectiles = state.projectiles || [];
-    if (!projectiles || projectiles.length === 0) return;
+    const hasProjectiles = projectiles && projectiles.length > 0;
+    const hasFlashes = this.muzzleFlashes && this.muzzleFlashes.length > 0;
+    if (!hasProjectiles && !hasFlashes) return;
 
     const zoom = this.camera.zoom || 1.0;
     ctx.save();
@@ -1404,9 +1986,23 @@ export class GameRenderer {
       ctx.scale(zoom, zoom);
     }
     ctx.translate(-this.camera.x, -this.camera.y);
-    for (const b of projectiles) {
-      this.renderProjectile(ctx, b);
+    const bounds = this.getViewportBounds(80);
+
+    // 1. Luminous projectile tracers cutting through darkness & fog
+    if (hasProjectiles) {
+      for (const b of projectiles) {
+        if (b.x < bounds.left || b.x > bounds.right || b.y < bounds.top || b.y > bounds.bottom) {
+          continue;
+        }
+        this.renderProjectile(ctx, b);
+      }
     }
+
+    // 2. Incandescent barrel-tip muzzle flashes cutting through darkness & fog
+    if (hasFlashes) {
+      this.renderMuzzleFlashes(ctx);
+    }
+
     ctx.restore();
   }
 
@@ -1621,37 +2217,26 @@ export class GameRenderer {
       ctx.translate(p.x, p.y);
       const angle = Number.isFinite(p.angle) ? p.angle : 0;
       ctx.rotate(angle);
+      ctx.globalAlpha = alpha;
 
       const r = Math.max(2.0, Number.isFinite(p.size) ? p.size : 6.0);
 
-      // Multi-lobe organic steam cloud structure (3 slightly offset overlapping soft lobes)
-      const lobes = [
-        { x: 0, y: 0, r: r },
-        { x: r * 0.35, y: -r * 0.22, r: Math.max(1.0, r * 0.72) },
-        { x: -r * 0.32, y: r * 0.26, r: Math.max(1.0, r * 0.68) }
-      ];
-
-      for (const lobe of lobes) {
-        const lr = Math.max(1.0, lobe.r);
+      // Multi-lobe organic steam cloud structure reusing static offset templates
+      for (let i = 0; i < STEAM_LOBE_TEMPLATES.length; i++) {
+        const lobe = STEAM_LOBE_TEMPLATES[i];
+        const lx = lobe.dx * r;
+        const ly = lobe.dy * r;
+        const lr = Math.max(1.0, r * lobe.rMult);
         try {
-          const grad = ctx.createRadialGradient(lobe.x, lobe.y, 0, lobe.x, lobe.y, lr);
-          if (p.isSoot) {
-            // Scorched/overheated dark industrial soot steam
-            grad.addColorStop(0, `rgba(65, 70, 80, ${(alpha * 0.60).toFixed(3)})`);
-            grad.addColorStop(0.45, `rgba(45, 50, 60, ${(alpha * 0.32).toFixed(3)})`);
-            grad.addColorStop(1, 'rgba(25, 30, 38, 0)');
-          } else {
-            // Pure luminous steam vapor with soft atmospheric condensation
-            grad.addColorStop(0, `rgba(240, 248, 255, ${(alpha * 0.52).toFixed(3)})`);
-            grad.addColorStop(0.45, `rgba(215, 235, 252, ${(alpha * 0.28).toFixed(3)})`);
-            grad.addColorStop(0.85, `rgba(180, 210, 235, ${(alpha * 0.08).toFixed(3)})`);
-            grad.addColorStop(1, 'rgba(160, 195, 225, 0)');
+          const grad = this.getSteamLobeGradient(ctx, lr, p.isSoot);
+          if (grad) {
+            ctx.translate(lx, ly);
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(0, 0, lr, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.translate(-lx, -ly);
           }
-
-          ctx.fillStyle = grad;
-          ctx.beginPath();
-          ctx.arc(lobe.x, lobe.y, lr, 0, Math.PI * 2);
-          ctx.fill();
         } catch (_) {}
       }
 
@@ -1791,28 +2376,27 @@ export class GameRenderer {
         const dist = (baseRadius * 0.55) + Math.sin(i * 1.7 + now * 0.001) * (baseRadius * 0.35);
         const puffX = zx + Math.cos(angle) * dist;
         const puffY = zy + Math.sin(angle) * dist;
-        const puffR = baseRadius * 0.45 + Math.cos(i * 2.3 + now * 0.0015) * 15;
+        const puffR = Math.max(8, baseRadius * 0.45 + Math.cos(i * 2.3 + now * 0.0015) * 15);
 
-        const smokeGrad = ctx.createRadialGradient(puffX, puffY, 4, puffX, puffY, puffR);
-        smokeGrad.addColorStop(0, 'rgba(40, 45, 55, 0.75)');
-        smokeGrad.addColorStop(0.5, 'rgba(28, 32, 40, 0.60)');
-        smokeGrad.addColorStop(0.85, 'rgba(20, 24, 30, 0.35)');
-        smokeGrad.addColorStop(1, 'rgba(15, 18, 22, 0)');
-
+        const smokeGrad = this.getSmokePuffGradient(ctx, puffR);
+        ctx.save();
+        ctx.translate(puffX, puffY);
         ctx.fillStyle = smokeGrad;
         ctx.beginPath();
-        ctx.arc(puffX, puffY, puffR, 0, Math.PI * 2);
+        ctx.arc(0, 0, puffR, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
       }
 
-      const coreGrad = ctx.createRadialGradient(zx, zy, 5, zx, zy, baseRadius * 0.6);
-      coreGrad.addColorStop(0, 'rgba(25, 28, 35, 0.85)');
-      coreGrad.addColorStop(0.6, 'rgba(20, 24, 30, 0.65)');
-      coreGrad.addColorStop(1, 'rgba(15, 18, 22, 0)');
+      const coreR = Math.max(8, baseRadius * 0.6);
+      const coreGrad = this.getSmokeCoreGradient(ctx, coreR);
+      ctx.save();
+      ctx.translate(zx, zy);
       ctx.fillStyle = coreGrad;
       ctx.beginPath();
-      ctx.arc(zx, zy, baseRadius * 0.6, 0, Math.PI * 2);
+      ctx.arc(0, 0, coreR, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
 
       ctx.restore();
     }
@@ -1839,16 +2423,21 @@ export class GameRenderer {
       }
     }
 
-    // Cinematic Steampunk Vignette
-    const maxRadius = Math.hypot(width, height) / 2;
-    const vignette = ctx.createRadialGradient(
-      width / 2, height / 2, maxRadius * 0.45,
-      width / 2, height / 2, maxRadius * 0.98
-    );
-    vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    vignette.addColorStop(0.7, 'rgba(8, 10, 14, 0.35)');
-    vignette.addColorStop(1, 'rgba(5, 6, 8, 0.78)');
-    ctx.fillStyle = vignette;
+    // Cinematic Steampunk Vignette (cached on dimensions)
+    if (!this._cachedVignette || this._vignetteWidth !== width || this._vignetteHeight !== height || this._vignetteCtx !== ctx) {
+      const maxRadius = Math.hypot(width, height) / 2;
+      this._cachedVignette = ctx.createRadialGradient(
+        width / 2, height / 2, maxRadius * 0.45,
+        width / 2, height / 2, maxRadius * 0.98
+      );
+      this._cachedVignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      this._cachedVignette.addColorStop(0.7, 'rgba(8, 10, 14, 0.35)');
+      this._cachedVignette.addColorStop(1, 'rgba(5, 6, 8, 0.78)');
+      this._vignetteWidth = width;
+      this._vignetteHeight = height;
+      this._vignetteCtx = ctx;
+    }
+    ctx.fillStyle = this._cachedVignette;
     ctx.fillRect(0, 0, width, height);
   }
 
@@ -1975,14 +2564,15 @@ export class GameRenderer {
     const py = pl.renderY ?? pl.y;
     ctx.translate(px, py);
 
-    const isStealth = Boolean(pl.smokeActive || (pl.classId === 'infiltrator' && pl.abilityActive));
+    const rawCId = pl.classId || 'vanguard';
+    const cId = normalizeClassId(rawCId);
+    const isStealth = Boolean(pl.smokeActive || (cId === 'infiltrator' && pl.abilityActive));
     if (isStealth) {
       ctx.globalAlpha = isLocal ? 0.50 : 0.28;
     }
 
     const aimAngle = pl.angle ?? pl.aimAngle ?? 0;
     const isBot = pl.isBot || pl.id?.startsWith('bot_');
-    const cId = pl.classId || 'vanguard';
     const wId = pl.weaponId || 'revolver';
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
@@ -2078,6 +2668,11 @@ export class GameRenderer {
     let coatGradHighlight = '#6a4324';
     let trimColor = '#c59b27';
 
+    const isJugg = cId === 'juggernaut' || cId === 'bruiser';
+    const isSharp = cId === 'sharpshooter' || cId === 'stalker';
+    const isInfil = cId === 'infiltrator';
+    const isVanguard = !isJugg && !isSharp && !isInfil;
+
     if (pl.team === 'team1') {
       coatGradBase = '#152c48';
       coatGradHighlight = '#254e7d';
@@ -2086,38 +2681,42 @@ export class GameRenderer {
       coatGradBase = '#4f1414';
       coatGradHighlight = '#782222';
       trimColor = '#f2616d';
-    } else if (cId === 'juggernaut') {
+    } else if (isJugg) {
       coatGradBase = '#1f232b';
       coatGradHighlight = '#343b47';
       trimColor = '#ff7b00';
-    } else if (cId === 'sharpshooter') {
+    } else if (isSharp) {
       coatGradBase = '#17222c';
       coatGradHighlight = '#283c4f';
       trimColor = '#5ffbf1';
-    } else if (cId === 'infiltrator') {
+    } else if (isInfil) {
       coatGradBase = '#121418';
       coatGradHighlight = '#22262e';
       trimColor = '#b33939';
     }
 
-    // Arm sleeves extending forward to grip points
+    // Dynamic weapon recoil kickback displacement
+    const recoilDist = this.getRecoilDistance(pl.id || (isLocal ? 'local' : null));
+    const handRecoil = recoilDist * 0.7;
+
+    // Arm sleeves extending forward to grip points (follow recoil kickback)
     ctx.strokeStyle = coatGradBase;
     ctx.lineWidth = 4.2;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    // Right arm (trigger arm) -> shoulder (-1, 8.5) -> elbow (3.5, 7.5) -> right hand (8, 3.5)
+    // Right arm (trigger arm) -> shoulder (-1, 8.5) -> elbow (3.5, 7.5) -> right hand (8 - handRecoil, 3.5)
     ctx.beginPath();
     ctx.moveTo(-1, 8.5);
     ctx.lineTo(3.5, 7.5);
-    ctx.lineTo(8, 3.5);
+    ctx.lineTo(8 - handRecoil, 3.5);
     ctx.stroke();
 
-    // Left arm (support arm) -> shoulder (-1, -8.5) -> elbow (4, -7) -> left hand (13, -2)
+    // Left arm (support arm) -> shoulder (-1, -8.5) -> elbow (4, -7) -> left hand (13 - handRecoil, -2)
     ctx.beginPath();
     ctx.moveTo(-1, -8.5);
     ctx.lineTo(4, -7);
-    ctx.lineTo(13, -2);
+    ctx.lineTo(13 - handRecoil, -2);
     ctx.stroke();
 
     // Brass buckles on forearm sleeves
@@ -2130,27 +2729,27 @@ export class GameRenderer {
     ctx.strokeStyle = '#14110d';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.arc(8, 3.5, 2.4, 0, Math.PI * 2);
+    ctx.arc(8 - handRecoil, 3.5, 2.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     ctx.beginPath();
-    ctx.arc(13, -2, 2.4, 0, Math.PI * 2);
+    ctx.arc(13 - handRecoil, -2, 2.4, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     // Brass knuckle rivets on gloves
     ctx.fillStyle = '#ffcf48';
     ctx.beginPath();
-    ctx.arc(8.6, 3.5, 0.9, 0, Math.PI * 2);
-    ctx.arc(13.6, -2, 0.9, 0, Math.PI * 2);
+    ctx.arc(8.6 - handRecoil, 3.5, 0.9, 0, Math.PI * 2);
+    ctx.arc(13.6 - handRecoil, -2, 0.9, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3. Top-Down Steampunk Weapon
-    this.renderTopDownWeapon(ctx, wId, now);
+    // 3. Top-Down Steampunk Weapon with Dynamic Recoil Kickback
+    this.renderTopDownWeapon(ctx, wId, now, recoilDist);
 
     // 4. Steam Boiler Backpack / Gas Reservoir (X < 0) with Rich Metallic Details
-    if (cId === 'juggernaut') {
+    if (isJugg) {
       // Dual heavy high-pressure iron boilers with glowing heat core
       ctx.fillStyle = '#2c1a0c';
       ctx.beginPath();
@@ -2169,7 +2768,7 @@ export class GameRenderer {
       ctx.fillStyle = '#ffea75';
       ctx.fillRect(-11.5, -6.5, 1.5, 1.5);
       ctx.fillRect(-11.5, 5.5, 1.5, 1.5);
-    } else if (cId === 'sharpshooter') {
+    } else if (isSharp) {
       // Slim pressurized pneumatic canister with glowing cyan core
       ctx.fillStyle = '#152533';
       ctx.fillRect(-12, -3.5, 6.5, 7);
@@ -2182,7 +2781,7 @@ export class GameRenderer {
       ctx.fillRect(-10.5, -2, 3, 4);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(-9.5, -1, 1, 2);
-    } else if (cId === 'infiltrator') {
+    } else if (isInfil) {
       // Dual matte black smoke pods with red release valves
       ctx.fillStyle = '#14161b';
       ctx.fillRect(-11.5, -6, 5.5, 4.2);
@@ -2229,8 +2828,8 @@ export class GameRenderer {
     }
 
     // 5. Torso & Shoulder Pauldrons (Top-down anatomical span with convex shading)
-    const torsoRadiusX = cId === 'juggernaut' ? 9.8 : 8.2;
-    const torsoRadiusY = cId === 'juggernaut' ? 14.5 : 12.0;
+    const torsoRadiusX = isJugg ? 9.8 : 8.2;
+    const torsoRadiusY = isJugg ? 14.5 : 12.0;
 
     ctx.fillStyle = coatGradBase;
     ctx.beginPath();
@@ -2241,6 +2840,38 @@ export class GameRenderer {
     ctx.strokeStyle = trimColor;
     ctx.lineWidth = 1.6;
     ctx.stroke();
+
+    // Distinct class front chest / collar silhouettes
+    if (isVanguard) {
+      // Flared triangular brass collar trim
+      ctx.fillStyle = '#ffcf48';
+      ctx.beginPath();
+      ctx.moveTo(3, -4);
+      ctx.lineTo(7, 0);
+      ctx.lineTo(3, 4);
+      ctx.closePath();
+      ctx.fill();
+    } else if (isSharp) {
+      // Elongated split coat trim
+      ctx.strokeStyle = '#5ffbf1';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(-5, -6);
+      ctx.lineTo(-10, -9);
+      ctx.moveTo(-5, 6);
+      ctx.lineTo(-10, 9);
+      ctx.stroke();
+    } else if (isInfil) {
+      // Compact diamond shadow cowl trim
+      ctx.fillStyle = '#b33939';
+      ctx.beginPath();
+      ctx.moveTo(2, -2.5);
+      ctx.lineTo(4.5, 0);
+      ctx.lineTo(2, 2.5);
+      ctx.lineTo(0.5, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // Diagonal leather bandolier strap with individual brass cartridges
     ctx.strokeStyle = '#1c1510';
@@ -2258,14 +2889,14 @@ export class GameRenderer {
 
     // Ornate Metallic Shoulder Pauldrons (Left & Right armor plates)
     const pauldronY = torsoRadiusY - 2.5;
-    const pauldronRad = cId === 'juggernaut' ? 5.4 : 4.4;
+    const pauldronRad = isJugg ? 5.4 : 4.4;
 
     const renderPauldron = (py) => {
-      ctx.fillStyle = '#c59b27';
+      ctx.fillStyle = isJugg ? '#3a404d' : '#c59b27';
       ctx.beginPath();
       ctx.arc(-1, py, pauldronRad, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#ffd866';
+      ctx.strokeStyle = isJugg ? '#ff7b00' : '#ffd866';
       ctx.lineWidth = 1.2;
       ctx.stroke();
 
@@ -2283,11 +2914,11 @@ export class GameRenderer {
     const headRad = 6.4;
     let capGradBase = '#3a2416';
 
-    if (cId === 'juggernaut') {
+    if (isJugg) {
       capGradBase = '#1f242d';
-    } else if (cId === 'sharpshooter') {
+    } else if (isSharp) {
       capGradBase = '#182430';
-    } else if (cId === 'infiltrator') {
+    } else if (isInfil) {
       capGradBase = '#101216';
     }
 
@@ -2309,13 +2940,13 @@ export class GameRenderer {
     // 7. Luminous Forward-Facing Optical Goggles (Facing +X)
     let opticColor = '#5ffbf1'; // Cyan standard
     let opticGlow = 'rgba(95, 251, 241, 0.45)';
-    if (cId === 'vanguard') {
+    if (isVanguard) {
       opticColor = '#ffcf48';
       opticGlow = 'rgba(255, 207, 72, 0.45)';
-    } else if (cId === 'juggernaut') {
+    } else if (isJugg) {
       opticColor = '#ff7b00';
       opticGlow = 'rgba(255, 123, 0, 0.50)';
-    } else if (cId === 'infiltrator') {
+    } else if (isInfil) {
       opticColor = '#ff4757';
       opticGlow = 'rgba(255, 71, 87, 0.50)';
     }
@@ -2379,17 +3010,20 @@ export class GameRenderer {
     renderTread(-12.5, osc);
     renderTread(12.5, -osc);
 
-    // 2. Hydraulic Manipulator Piston Arms -> holding weapon
+    // 2. Hydraulic Manipulator Piston Arms -> holding weapon with dynamic recoil kickback
+    const recoilDist = this.getRecoilDistance(pl.id);
+    const clawRecoil = recoilDist * 0.7;
+
     ctx.strokeStyle = '#2d3340';
     ctx.lineWidth = 3.8;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(-2, -9);
     ctx.lineTo(5, -6);
-    ctx.lineTo(10, -2);
+    ctx.lineTo(10 - clawRecoil, -2);
     ctx.moveTo(-2, 9);
     ctx.lineTo(5, 6);
-    ctx.lineTo(9, 3);
+    ctx.lineTo(9 - clawRecoil, 3);
     ctx.stroke();
 
     // Chrome hydraulic piston shaft rods
@@ -2397,20 +3031,20 @@ export class GameRenderer {
     ctx.lineWidth = 1.8;
     ctx.beginPath();
     ctx.moveTo(1, -7.5);
-    ctx.lineTo(7, -4);
+    ctx.lineTo(7 - clawRecoil, -4);
     ctx.moveTo(1, 7.5);
-    ctx.lineTo(7, 4);
+    ctx.lineTo(7 - clawRecoil, 4);
     ctx.stroke();
 
     // Brass claw manipulator hands
     ctx.fillStyle = '#ffd152';
     ctx.beginPath();
-    ctx.arc(10, -2, 2.3, 0, Math.PI * 2);
-    ctx.arc(9, 3, 2.3, 0, Math.PI * 2);
+    ctx.arc(10 - clawRecoil, -2, 2.3, 0, Math.PI * 2);
+    ctx.arc(9 - clawRecoil, 3, 2.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3. Top-Down Steampunk Weapon
-    this.renderTopDownWeapon(ctx, pl.weaponId || 'revolver', now);
+    // 3. Top-Down Steampunk Weapon with Dynamic Recoil Kickback
+    this.renderTopDownWeapon(ctx, pl.weaponId || 'revolver', now, recoilDist);
 
     // 4. Rear Brass Steam Exhaust Chimneys with Glowing Heat Interior (X < 0)
     const renderChimney = (cy) => {
@@ -2523,7 +3157,12 @@ export class GameRenderer {
    * @param {string} wId - Weapon Identifier
    * @param {number} now - Timestamp for animated effects
    */
-  renderTopDownWeapon(ctx, wId, now) {
+  renderTopDownWeapon(ctx, wId, now, recoilDist = 0) {
+    const kick = (typeof recoilDist === 'number' && recoilDist > 0) ? recoilDist : 0;
+    ctx.save();
+    if (kick > 0) {
+      ctx.translate(-kick, 0);
+    }
     ctx.lineWidth = 1.5;
 
     if (wId === 'blunderbuss') {
@@ -2705,6 +3344,7 @@ export class GameRenderer {
       ctx.fillStyle = '#ffd152';
       ctx.fillRect(17, -2.5, 2.5, 5);
     }
+    ctx.restore();
   }
 
   /**
@@ -2847,6 +3487,9 @@ export class GameRenderer {
       this.camera.zoom = opt;
       this.camera.targetZoom = opt;
     }
+    this._cachedVignette = null;
+    this._vignetteWidth = 0;
+    this._vignetteHeight = 0;
     this.visibilityRenderer.resize(width, height);
   }
 }

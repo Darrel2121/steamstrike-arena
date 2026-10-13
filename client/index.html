@@ -103,7 +103,7 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "Як грати в Steamstrike Tactical Arena онлайн без завантаження?",
+            "name": "Як грати в Steamstrike: Tactical Arena онлайн без завантаження?",
             "acceptedAnswer": {
               "@type": "Answer",
               "text": "Гра працює безпосередньо у будь-якому сучасному веб-браузері (Chrome, Safari, Firefox, Edge, мобільні браузери) без необхідності завантаження чи встановлення. Просто введіть свій позивний на головній сторінці та натисніть «В БІЙ!»."
@@ -161,7 +161,7 @@
   <header class="steampunk-header">
     <div class="header-title-wrap" id="headerBrand" title="На головну сторінку" style="cursor: pointer;">
       <div class="gear-icon"></div>
-      <div class="header-title">Steamstrike</div>
+      <div class="header-title">Steamstrike: Tactical Arena</div>
       <span class="badge-beta">ВІДКРИТА БЕТА</span>
     </div>
     <!-- Desktop Navigation Bar -->
@@ -195,7 +195,7 @@
       <div class="mobile-nav-header">
         <div class="mobile-nav-brand">
           <div class="gear-icon" style="width: 20px; height: 20px;"></div>
-          <span>STEAMSTRIKE</span>
+          <span>STEAMSTRIKE: TACTICAL ARENA</span>
           <span class="badge-beta" style="font-size: 9px; padding: 1px 6px;">BETA</span>
         </div>
         <button type="button" id="btnCloseMobileNav" class="mobile-nav-close" title="Закрити меню">✕</button>
@@ -222,7 +222,7 @@
       
       <!-- Hero Section -->
       <section class="home-hero-section">
-        <div class="hero-steam-badge">🔥 ВІДКРИТА БЕТА &bull; STEAMSTRIKE TACTICAL ARENA v1.0 🔥</div>
+        <div class="hero-steam-badge">🔥 ВІДКРИТА БЕТА &bull; STEAMSTRIKE: TACTICAL ARENA v1.0 🔥</div>
         <div class="hero-brand">
           <h1 class="hero-title">STEAMSTRIKE</h1>
           <p class="hero-subtitle">Tactical Arena &bull; Тактичний мультиплеєрний 2D-шутер у світі вікторіанського стімпанку</p>
@@ -348,8 +348,6 @@
               <label for="homeRoomInput">Код або назва кімнати (Chamber ID):</label>
               <div class="room-input-action-wrap">
                 <input type="text" id="homeRoomInput" class="steampunk-input" value="Sector_Omega" maxlength="24" style="flex: 1; min-width: 140px;" placeholder="Введіть код кімнати...">
-                <button type="button" id="btnHomeJoinRoom" style="display: none;">Приєднатися</button>
-                <button type="button" id="btnHomeCreateRoom" style="display: none;">Створити</button>
               </div>
 
               <!-- Password Protection Field -->
@@ -654,16 +652,12 @@
       <section class="portal-section" id="homeNewsSection">
         <div class="portal-section-header">
           <div class="section-badge">📰 ОСТАННІ ОНОВЛЕННЯ</div>
-          <h2 class="section-title">Хроніки та Патчноути Steamstrike</h2>
+          <h2 class="section-title">Хроніки та Патчноути Steamstrike: Tactical Arena</h2>
           <p class="section-desc">Слідкуйте за розвитком бойових секторів, виправленнями балансу та новими подіями на арені.</p>
         </div>
 
         <div id="homeNewsGrid" class="showcase-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
           <!-- Dynamically populated by NewsModal -->
-        </div>
-
-        <div style="text-align: center; margin-top: 10px;">
-          <button id="btnOpenAllNews" style="display: none;"></button>
         </div>
       </section>
 
@@ -672,7 +666,7 @@
         <h2 class="section-heading"><span>❓</span> ЧАСТІ ЗАПИТАННЯ ТА ГАЙД (FAQ) <span>❓</span></h2>
         <div class="faq-grid">
           <article class="faq-card">
-            <h3 class="faq-question"><span class="faq-q-icon">⚙</span> Як грати в Steamstrike Tactical Arena без встановлення?</h3>
+            <h3 class="faq-question"><span class="faq-q-icon">⚙</span> Як грати в Steamstrike: Tactical Arena без встановлення?</h3>
             <p class="faq-answer">Steamstrike — це повністю безкоштовний браузерний тактичний 2D-шутер на рушії HTML5 Canvas та WebSocket. Вам не потрібно завантажувати сторонні клієнти чи програми: просто введіть позивний на головній сторінці та миттєво вступайте в бій!</p>
           </article>
 
@@ -721,7 +715,7 @@
   <div id="view-lobby" class="view-container">
     <div class="lobby-hero">
       <div class="lobby-title-banner">
-        <h1>Steamstrike</h1>
+        <h1>Steamstrike: Tactical Arena</h1>
         <p>Tactical Arena &bull; Top-Down Tactical Steam Shooter &bull; Lantern Field-of-View &bull; Acoustic Fog Tracking</p>
       </div>
 
@@ -887,7 +881,6 @@
 
             <!-- Share button for friend invitation -->
             <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-              <button type="button" id="btnCopyRoomCode" style="display: none;"></button>
               <button type="button" id="btnCopyRoomLink" class="btn-steampunk btn-brass" style="flex: 1; font-size: 12px; padding: 7px 10px;">
                 🔗 Скопіювати запрошення для друзів
               </button>
@@ -943,7 +936,6 @@
     <!-- Top Action Bar -->
     <div class="editor-topbar">
       <div class="editor-topbar-left">
-        <button id="btnEditorReturnHome" style="display: none;"></button>
         <input type="text" id="mapNameInput" class="map-name-input" value="The Clockwork Foundry" title="Map Name">
         <select id="editorTemplateSelect" class="editor-size-select" title="Завантажити готовий шаблон арени" style="background: rgba(44, 28, 14, 0.9); border-color: var(--color-brass-primary); color: var(--color-brass-light);">
           <option value="" disabled selected>📋 Шаблони арен...</option>
@@ -969,7 +961,6 @@
 
       <div class="editor-topbar-center">
         <button id="btnSaveLocal" class="btn-steampunk btn-copper" title="Зберегти карту в пам'ять браузера">💾 Зберегти</button>
-        <button id="btnLoadLocal" style="display: none;"></button>
         <button id="btnExportJson" class="btn-steampunk btn-iron" title="Завантажити файл карти JSON">📥 Експорт</button>
         <button id="btnImportJson" class="btn-steampunk btn-iron" title="Відкрити файл карти JSON">📂 Імпорт</button>
         <button id="btnProposeMapOnline" class="btn-steampunk btn-brass" title="Запропонувати цю карту для офіційної публікації у грі">🌟 Запропонувати для гри</button>
@@ -983,7 +974,6 @@
         <button id="btnEditorPlayOnline" class="btn-steampunk btn-copper" title="Створити онлайн-кімнату з цією картою для гри з друзями">
           🌐 Онлайн-матч
         </button>
-        <button id="btnLaunchCustomMatch" style="display: none;"></button>
       </div>
     </div>
 
@@ -1157,11 +1147,9 @@
   <div id="view-game" class="view-container">
     <div class="steampunk-header" style="height: 40px; background: #0c0e14;">
       <div style="font-size: 14px; color: var(--color-brass-bright);">
-        ⚔ <span id="gameStatusTitle">Бойова арена</span> &bull; <span id="gameMapNameDisplay">The Clockwork Foundry</span>
+        ⚔ <span id="gameStatusTitle">Steamstrike: Tactical Arena</span> &bull; <span id="gameMapNameDisplay">The Clockwork Foundry</span>
       </div>
       <div style="display: flex; gap: 8px;">
-        <button id="btnGameFullscreen" style="display: none;"></button>
-        <button id="btnReturnToEditor" style="display: none;"></button>
         <button id="btnReturnToLobby" class="btn-steampunk btn-iron" style="font-size: 12px; padding: 4px 14px;" title="Завершити матч та вийти до меню">
           🚪 Вийти з бою
         </button>
@@ -1597,7 +1585,7 @@
       <div class="auth-modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid rgba(197, 155, 39, 0.3); padding-bottom: 10px; margin-bottom: 12px;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 24px;">📰</span>
-          <h3 style="margin: 0; font-family: var(--font-header); font-size: 18px; color: #ffcf48;">Новини та Патчі Steamstrike</h3>
+          <h3 style="margin: 0; font-family: var(--font-header); font-size: 18px; color: #ffcf48;">Новини та Патчі Steamstrike: Tactical Arena</h3>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
           <button type="button" id="btnBackToNewsList" class="btn-steampunk btn-iron" style="font-size: 11px; padding: 4px 10px; display: none;">← До списку</button>
@@ -1625,7 +1613,7 @@
       <div class="auth-modal-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid rgba(197, 155, 39, 0.3); padding-bottom: 10px; margin-bottom: 12px;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 24px;">🌟</span>
-          <h3 style="margin: 0; font-family: var(--font-header); font-size: 18px; color: #ffcf48;">Публікація карти в Steamstrike</h3>
+          <h3 style="margin: 0; font-family: var(--font-header); font-size: 18px; color: #ffcf48;">Публікація карти в Steamstrike: Tactical Arena</h3>
         </div>
         <button type="button" id="btnCloseSubmitMapModal" class="auth-close-btn" style="background: none; border: none; font-size: 20px; color: #ffcf48; cursor: pointer;">✕</button>
       </div>

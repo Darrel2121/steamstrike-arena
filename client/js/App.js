@@ -142,12 +142,8 @@ export class App {
     this.homeUserBadge = document.getElementById('homeUserBadge');
 
     // Lobby & Game elements
-    this.btnEnterEditor = document.getElementById('btnEnterEditor');
-    this.btnQuickPlay = document.getElementById('btnQuickPlay');
-    this.btnReturnToEditor = document.getElementById('btnReturnToEditor');
     this.btnReturnToLobby = document.getElementById('btnReturnToLobby');
     this.btnGlobalFullscreen = document.getElementById('btnGlobalFullscreen');
-    this.btnGameFullscreen = document.getElementById('btnGameFullscreen');
     this.btnEditorFullscreen = document.getElementById('btnEditorFullscreen');
     this.btnSoundToggle = document.getElementById('btnSoundToggle');
     this.mBtnSoundToggle = document.getElementById('mBtnSoundToggle');
@@ -361,18 +357,11 @@ export class App {
     if (this.navButtons.editor) {
       this.navButtons.editor.addEventListener('click', () => this.switchView('editor'));
     }
-    if (this.navButtons.game) {
-      this.navButtons.game.addEventListener('click', () => this.switchView('game'));
-    }
     if (this.navButtons.workshop) {
       this.navButtons.workshop.addEventListener('click', () => this.switchView('workshop'));
     }
     if (this.navButtons.auth) {
       this.navButtons.auth.addEventListener('click', () => this.authModal.open());
-    }
-    const btnOpenAllNews = document.getElementById('btnOpenAllNews');
-    if (btnOpenAllNews) {
-      btnOpenAllNews.addEventListener('click', () => this.newsModal?.open());
     }
 
     const updateSoundButtons = () => {
@@ -459,10 +448,6 @@ export class App {
       });
       addTap(this.mNavButtons.editor, () => {
         this.switchView('editor');
-        closeMobileDrawer();
-      });
-      addTap(this.mNavButtons.game, () => {
-        this.switchView('game');
         closeMobileDrawer();
       });
       addTap(this.mNavButtons.workshop, () => {
@@ -614,38 +599,8 @@ export class App {
       });
     }
 
-    if (this.btnEnterEditor) {
-      this.btnEnterEditor.addEventListener('click', () => this.switchView('editor'));
-    }
-    if (this.btnQuickPlay) {
-      addTap(this.btnQuickPlay, () => {
-        this.requestLandscapeOrientation();
-        const defaultMap = this.editor?.map ? this.editor.map : createDefaultMap();
-        this.launchSoloTraining(defaultMap);
-      });
-    }
-
-    if (this.btnReturnToEditor) {
-      addTap(this.btnReturnToEditor, () => {
-        this.isMatchOver = false;
-        this.activeMatchMap = null;
-        if (this.gameRenderer) {
-          this.gameRenderer.clearMatchOutcome();
-          this.gameRenderer.clearWrecks();
-        }
-        this.stopGameLoop({ keepOverlayHidden: true });
-        this.switchView('editor');
-      });
-    }
     if (this.btnReturnToLobby) {
       addTap(this.btnReturnToLobby, () => {
-        this.returnToLobbyFromMatch();
-      });
-    }
-
-    const btnTouchExitMatch = document.getElementById('btnTouchExitMatch');
-    if (btnTouchExitMatch) {
-      addTap(btnTouchExitMatch, () => {
         this.returnToLobbyFromMatch();
       });
     }
@@ -671,9 +626,6 @@ export class App {
     // Fullscreen Mode Controls
     if (this.btnGlobalFullscreen) {
       this.btnGlobalFullscreen.addEventListener('click', () => this.toggleFullscreen());
-    }
-    if (this.btnGameFullscreen) {
-      this.btnGameFullscreen.addEventListener('click', () => this.toggleFullscreen());
     }
     if (this.btnEditorFullscreen) {
       this.btnEditorFullscreen.addEventListener('click', () => this.toggleFullscreen());
@@ -820,10 +772,8 @@ export class App {
   updateFullscreenUI() {
     const isFs = Boolean(document.fullscreenElement);
     const label = isFs ? '🗗 Віконний режим' : '⛶ Повний екран';
-    const gameLabel = isFs ? '🗗 Вікно (F)' : '⛶ Повний екран (F)';
 
     if (this.btnGlobalFullscreen) this.btnGlobalFullscreen.textContent = label;
-    if (this.btnGameFullscreen) this.btnGameFullscreen.textContent = gameLabel;
     if (this.btnEditorFullscreen) this.btnEditorFullscreen.textContent = isFs ? '🗗' : '⛶';
 
     setTimeout(() => {
@@ -934,6 +884,16 @@ export class App {
           }
         }
       });
+    }
+
+    if (viewName !== 'lobby' && viewName !== 'home') {
+      if (this.lobbyUI) {
+        if (typeof this.lobbyUI.stopPolling === 'function') {
+          this.lobbyUI.stopPolling();
+        } else if (typeof this.lobbyUI.stopRoomsPoll === 'function') {
+          this.lobbyUI.stopRoomsPoll();
+        }
+      }
     }
 
     if (viewName === 'home') {
@@ -1053,14 +1013,10 @@ export class App {
 
     this.isMatchOver = false;
 
-    // Restore mobile touch controls & joystick
+    // Restore mobile touch controls
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
       mobileTouchControls.style.display = '';
-    }
-    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
-    if (virtualJoystickContainer) {
-      virtualJoystickContainer.style.display = '';
     }
 
     if (!this.matchOrigin) {
@@ -1280,11 +1236,25 @@ export class App {
             const currentAmmo = localPlayerPredicted.ammo ?? 6;
             const isReloading = Boolean(localPlayerPredicted.isReloading);
 
-            // Gunfire audio on ammo consumption or initial trigger
+            // Gunfire audio and dynamic visual feedback on ammo consumption or initial trigger
             if (typeof this.lastLocalAmmo === 'number' && currentAmmo < this.lastLocalAmmo && !isReloading) {
               soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
+              this.gameRenderer?.triggerWeaponFire(
+                localPlayerPredicted.id || 'local',
+                localPlayerPredicted.weaponId || 'revolver',
+                localPlayerPredicted.renderX ?? localPlayerPredicted.x,
+                localPlayerPredicted.renderY ?? localPlayerPredicted.y,
+                localPlayerPredicted.angle || 0
+              );
             } else if (input.firing && !this.lastInputWasFiring && currentAmmo > 0 && !isReloading) {
               soundFX.playGunshot(localPlayerPredicted.weaponId || 'revolver');
+              this.gameRenderer?.triggerWeaponFire(
+                localPlayerPredicted.id || 'local',
+                localPlayerPredicted.weaponId || 'revolver',
+                localPlayerPredicted.renderX ?? localPlayerPredicted.x,
+                localPlayerPredicted.renderY ?? localPlayerPredicted.y,
+                localPlayerPredicted.angle || 0
+              );
             }
             this.lastLocalAmmo = currentAmmo;
 
@@ -1365,16 +1335,11 @@ export class App {
       this.inputManager.reset();
     }
 
-    // Completely hide mobile touch controls & joystick when match is over
+    // Completely hide mobile touch controls when match is over
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
       mobileTouchControls.classList.add('hidden');
       mobileTouchControls.style.display = 'none';
-    }
-    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
-    if (virtualJoystickContainer) {
-      virtualJoystickContainer.classList.add('hidden');
-      virtualJoystickContainer.style.display = 'none';
     }
     const viewGame = document.getElementById('view-game');
     if (viewGame) {
@@ -1424,16 +1389,11 @@ export class App {
       this.inputManager.reset();
     }
 
-    // Restore mobile touch controls & joystick
+    // Restore mobile touch controls
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
       mobileTouchControls.classList.remove('hidden');
       mobileTouchControls.style.display = '';
-    }
-    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
-    if (virtualJoystickContainer) {
-      virtualJoystickContainer.classList.remove('hidden');
-      virtualJoystickContainer.style.display = '';
     }
     const viewGame = document.getElementById('view-game');
     if (viewGame) {
@@ -1476,16 +1436,11 @@ export class App {
       this.inputManager.reset();
     }
 
-    // Restore mobile touch controls & joystick
+    // Restore mobile touch controls
     const mobileTouchControls = document.getElementById('mobileTouchControls');
     if (mobileTouchControls) {
       mobileTouchControls.classList.remove('hidden');
       mobileTouchControls.style.display = '';
-    }
-    const virtualJoystickContainer = document.getElementById('virtualJoystickContainer');
-    if (virtualJoystickContainer) {
-      virtualJoystickContainer.classList.remove('hidden');
-      virtualJoystickContainer.style.display = '';
     }
     const viewGame = document.getElementById('view-game');
     if (viewGame) {

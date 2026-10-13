@@ -5,7 +5,7 @@
  */
 
 import { generateSteampunkCallsign } from '../ProgressionManager.js';
-import { STEAMPUNK_EMBLEMS, getEmblemDefinition } from '../../shared/ProgressionSchema.js';
+import { STEAMPUNK_EMBLEMS, getEmblemDefinition } from '../../../shared/ProgressionSchema.js';
 
 export class AuthModal {
   /**

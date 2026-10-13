@@ -621,25 +621,11 @@ export const tests = [
         players: [{ id: 'player_ooo', x: 115.0, y: 100, lastProcessedSeq: 5 }]
       };
 
-      // Demonstrating empirical behavior:
-      // In unbuffered raw snapshot processing, an older snapshot without a tick monotonicity guard resets base to 115.0
+      // Verification of Monotonicity Defense:
+      // With built-in tick monotonicity guard in handleWorldSnapshot, stale snapshot is discarded
       client.handleWorldSnapshot(snapOld);
-      assertEpsilon(client.predictedX, 115.0, 0.2, 'Empirical finding: unbuffered older snapshot sets base to stale coordinate');
-
-      // Verification of Monotonicity Defense Pattern:
-      // Implementing a sequence/tick guard (ignore snapshot if tick <= lastProcessedTick)
-      let lastReconciledTick = snapNew.tick;
-      const guardedHandleSnapshot = (snap) => {
-        if (snap.tick <= lastReconciledTick) {
-          return false; // Safely discard stale/out-of-order snapshot
-        }
-        lastReconciledTick = snap.tick;
-        client.handleWorldSnapshot(snap);
-        return true;
-      };
-
-      const accepted = guardedHandleSnapshot(snapOld);
-      assert.strictEqual(accepted, false, 'Monotonicity guard must strictly discard stale out-of-order snapshot');
+      assertEpsilon(client.predictedX, 130.0, 0.2, 'Monotonicity guard must discard older snapshot and prevent rubber-banding');
+      assert.strictEqual(client.lastReconciledTick, 10, 'lastReconciledTick remains latest tick 10');
     }
   }
 ];

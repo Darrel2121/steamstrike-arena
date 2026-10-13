@@ -98,6 +98,10 @@ export class NetworkClient {
     // Event listeners
     this.listeners = new Map();
 
+    // Authentication & snapshot monotonicity tracking
+    this.authToken = null;
+    this.lastReconciledTick = null;
+
     // Heartbeat ping timer
     this.pingInterval = null;
   }
@@ -139,16 +143,26 @@ export class NetworkClient {
       this.url = this.url.replace(/^wss?:\/\/(www\.)?steamstrike\.online/, 'wss://steamstrike-server.onrender.com');
     }
 
-    if (!token && typeof localStorage !== 'undefined') {
+    if (token) {
+      this.authToken = token;
+    } else if (!this.authToken && typeof localStorage !== 'undefined') {
       try {
-        token = localStorage.getItem('clockwork_auth_token_v1');
+        this.authToken = localStorage.getItem('clockwork_auth_token_v1');
       } catch (_) {}
     }
+    const activeToken = this.authToken || token;
 
-    if (token && !this.url.includes('token=')) {
-      const separator = this.url.includes('?') ? '&' : '?';
-      this.url = `${this.url}${separator}token=${encodeURIComponent(token)}`;
+    // Dynamically build connection URL, stripping stale query parameters to prevent token retention
+    const rawUrl = this.url || 'ws://localhost:3000';
+    const baseUrl = rawUrl.split('?')[0];
+    const queryParts = [];
+    if (activeToken) {
+      queryParts.push(`token=${encodeURIComponent(activeToken)}`);
     }
+    if (this.roomId) {
+      queryParts.push(`roomCode=${encodeURIComponent(this.roomId)}`);
+    }
+    this.url = queryParts.length > 0 ? `${baseUrl}?${queryParts.join('&')}` : baseUrl;
 
     // If socket is already open or currently connecting, do not re-create
     if (this.socket && (this.socket.readyState === 0 || this.socket.readyState === 1)) {
@@ -176,6 +190,15 @@ export class NetworkClient {
       this.reconnectAttempts = 0;
       this.emit('open');
       this.startPingHeartbeat();
+
+      // Automatically rejoin previous chamber on reconnect if room was active
+      if (this.roomId) {
+        this.send(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, {
+          roomId: this.roomId,
+          token: this.authToken,
+          reconnectToken: this.authToken
+        });
+      }
     };
 
     this.socket.onmessage = (event) => {
@@ -271,6 +294,7 @@ export class NetworkClient {
         if (payload?.mapHeight) this.mapHeight = payload.mapHeight;
         this.snapshotBuffer = [];
         this.pendingInputs = [];
+        this.lastReconciledTick = null;
         this.emit('matchInit', payload);
         break;
       }
@@ -340,6 +364,14 @@ export class NetworkClient {
   handleWorldSnapshot(snapshot) {
     if (!snapshot) return;
 
+    // Tick monotonicity guard: reject delayed / out-of-order snapshots to prevent rubber-banding
+    if (typeof snapshot.tick === 'number') {
+      if (typeof this.lastReconciledTick === 'number' && snapshot.tick <= this.lastReconciledTick) {
+        return;
+      }
+      this.lastReconciledTick = snapshot.tick;
+    }
+
     this.snapshotBuffer.push({
       receivedAt: Date.now(),
       data: snapshot
@@ -369,8 +401,10 @@ export class NetworkClient {
    * Identical to Room.moveWithSliding.
    */
   applyMovementWithSliding(currX, currY, dx, dy, radius = 14) {
-    let targetX = currX + dx;
-    let targetY = currY + dy;
+    const origX = currX;
+    const origY = currY;
+    const targetX = origX + dx;
+    const targetY = origY + dy;
 
     const checkCollision = (cx, cy) => {
       if (!this.geometrySegments || this.geometrySegments.length === 0) return false;
@@ -392,12 +426,23 @@ export class NetworkClient {
       currY = targetY;
     } else {
       // 2. Try horizontal sliding
-      if (Math.abs(dx) > 0.0001 && !checkCollision(targetX, currY)) {
-        currX = targetX;
-      }
-      // 3. Try vertical sliding
-      if (Math.abs(dy) > 0.0001 && !checkCollision(currX, targetY)) {
-        currY = targetY;
+      const canSlideX = Math.abs(dx) > 0.0001 && !checkCollision(targetX, origY);
+      // 3. Try vertical sliding (relative to origX, not targetX)
+      const canSlideY = Math.abs(dy) > 0.0001 && !checkCollision(origX, targetY);
+
+      if (canSlideX && canSlideY) {
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          currX = targetX;
+        } else {
+          currY = targetY;
+        }
+      } else {
+        if (canSlideX) {
+          currX = targetX;
+        }
+        if (canSlideY) {
+          currY = targetY;
+        }
       }
     }
 
@@ -787,7 +832,17 @@ export class NetworkClient {
     const latestSnapshot = this.snapshotBuffer.length > 0
       ? this.snapshotBuffer[this.snapshotBuffer.length - 1].data
       : null;
-    const serverPlayer = latestSnapshot?.players?.find(p => p.id === this.playerId);
+
+    let serverPlayer = null;
+    if (latestSnapshot && Array.isArray(latestSnapshot.players) && this.playerId) {
+      const snapPlayers = latestSnapshot.players;
+      for (let i = 0; i < snapPlayers.length; i++) {
+        if (snapPlayers[i].id === this.playerId) {
+          serverPlayer = snapPlayers[i];
+          break;
+        }
+      }
+    }
 
     if (!this.isPredictionInitialized && !serverPlayer) {
       return null;
@@ -799,43 +854,47 @@ export class NetworkClient {
       ? (this.clientRespawnTimer > 0 ? this.clientRespawnTimer : (serverPlayer?.respawnTimer || 0))
       : (serverPlayer?.respawnTimer || 0);
 
-    return {
-      id: this.playerId || 'local_player',
-      name: serverPlayer?.name || 'LocalPlayer',
-      x: this.predictedX,
-      y: this.predictedY,
-      renderX: this.predictedX + (this.visualErrorX || 0),
-      renderY: this.predictedY + (this.visualErrorY || 0),
-      angle: this.predictedAngle,
-      hp,
-      maxHp: serverPlayer?.maxHp ?? 100,
-      stamina: Math.round(this.predictedStamina ?? serverPlayer?.stamina ?? 100),
-      maxStamina: serverPlayer?.maxStamina ?? 100,
-      team: serverPlayer?.team || this.team || null,
-      kills: serverPlayer?.kills || 0,
-      deaths: serverPlayer?.deaths || 0,
-      respawnTimer,
-      ammo: serverPlayer?.ammo ?? 6,
-      maxAmmo: serverPlayer?.maxAmmo ?? 6,
-      weaponId: serverPlayer?.weaponId || this.equippedWeapon || 'revolver',
-      weaponName: serverPlayer?.weaponName || WEAPON_DEFINITIONS[serverPlayer?.weaponId || this.equippedWeapon]?.name || 'Годинниковий револьвер',
-      isAlive,
-      isReloading: serverPlayer?.isReloading ?? false,
-      isInvulnerable: serverPlayer?.isInvulnerable ?? false,
-      isHost: serverPlayer?.isHost ?? false,
-      lanternOn: serverPlayer ? (serverPlayer.lanternOn !== false) : true,
-      lanternOffTimer: serverPlayer?.lanternOffTimer || 0,
-      lanternCooldownTimer: serverPlayer?.lanternCooldownTimer || 0,
-      classId: serverPlayer?.classId || this.equippedClass || 'vanguard',
-      abilityActive: Boolean(serverPlayer?.abilityActive),
-      abilityCooldown: serverPlayer?.abilityCooldown || 0,
-      shieldHp: serverPlayer?.shieldHp || 0,
-      sonarActive: Boolean(serverPlayer?.sonarActive),
-      smokeActive: Boolean(serverPlayer?.smokeActive),
-      overdriveActive: Boolean(serverPlayer?.overdriveActive),
-      emblem: serverPlayer?.emblem || 'gear',
-      isLocal: true
-    };
+    if (!this._predictedPlayerObj) {
+      this._predictedPlayerObj = {};
+    }
+    const p = this._predictedPlayerObj;
+    p.id = this.playerId || 'local_player';
+    p.name = serverPlayer?.name || 'LocalPlayer';
+    p.x = this.predictedX;
+    p.y = this.predictedY;
+    p.renderX = this.predictedX + (this.visualErrorX || 0);
+    p.renderY = this.predictedY + (this.visualErrorY || 0);
+    p.angle = this.predictedAngle;
+    p.hp = hp;
+    p.maxHp = serverPlayer?.maxHp ?? 100;
+    p.stamina = Math.round(this.predictedStamina ?? serverPlayer?.stamina ?? 100);
+    p.maxStamina = serverPlayer?.maxStamina ?? 100;
+    p.team = serverPlayer?.team || this.team || null;
+    p.kills = serverPlayer?.kills || 0;
+    p.deaths = serverPlayer?.deaths || 0;
+    p.respawnTimer = respawnTimer;
+    p.ammo = serverPlayer?.ammo ?? 6;
+    p.maxAmmo = serverPlayer?.maxAmmo ?? 6;
+    p.weaponId = serverPlayer?.weaponId || this.equippedWeapon || 'revolver';
+    p.weaponName = serverPlayer?.weaponName || WEAPON_DEFINITIONS[serverPlayer?.weaponId || this.equippedWeapon]?.name || 'Годинниковий револьвер';
+    p.isAlive = isAlive;
+    p.isReloading = serverPlayer?.isReloading ?? false;
+    p.isInvulnerable = serverPlayer?.isInvulnerable ?? false;
+    p.isHost = serverPlayer?.isHost ?? false;
+    p.lanternOn = serverPlayer ? (serverPlayer.lanternOn !== false) : true;
+    p.lanternOffTimer = serverPlayer?.lanternOffTimer || 0;
+    p.lanternCooldownTimer = serverPlayer?.lanternCooldownTimer || 0;
+    p.classId = serverPlayer?.classId || this.equippedClass || 'vanguard';
+    p.abilityActive = Boolean(serverPlayer?.abilityActive);
+    p.abilityCooldown = serverPlayer?.abilityCooldown || 0;
+    p.shieldHp = serverPlayer?.shieldHp || 0;
+    p.sonarActive = Boolean(serverPlayer?.sonarActive);
+    p.smokeActive = Boolean(serverPlayer?.smokeActive);
+    p.overdriveActive = Boolean(serverPlayer?.overdriveActive);
+    p.emblem = serverPlayer?.emblem || 'gear';
+    p.isLocal = true;
+
+    return p;
   }
 
   /**
@@ -881,6 +940,9 @@ export class NetworkClient {
         pickups: [],
         soundEvents: [],
         hitEvents: [],
+        smokeZones: [],
+        steamCore: null,
+        waveInfo: null,
         gameMode: this.gameMode,
         targetKills: this.targetKills,
         teamScores: { team1: 0, team2: 0 },
@@ -890,7 +952,31 @@ export class NetworkClient {
 
     if (this.snapshotBuffer.length === 1) {
       const snap = this.snapshotBuffer[0].data;
-      const players = (snap.players || []).map(p => (this.playerId && p.id === this.playerId && localPlayer) ? localPlayer : p);
+      const rawPlayers = snap.players || [];
+      let players = rawPlayers;
+      if (this.playerId && localPlayer) {
+        let hasLocal = false;
+        for (let i = 0; i < rawPlayers.length; i++) {
+          if (rawPlayers[i].id === this.playerId) {
+            hasLocal = true;
+            break;
+          }
+        }
+        if (hasLocal) {
+          players = new Array(rawPlayers.length);
+          for (let i = 0; i < rawPlayers.length; i++) {
+            players[i] = rawPlayers[i].id === this.playerId ? localPlayer : rawPlayers[i];
+          }
+        }
+      }
+      let aliveCount = snap.aliveCount;
+      if (aliveCount === undefined) {
+        let c = 0;
+        for (let i = 0; i < players.length; i++) {
+          if (players[i].isAlive) c++;
+        }
+        aliveCount = c;
+      }
       return {
         localPlayer,
         players,
@@ -898,10 +984,13 @@ export class NetworkClient {
         pickups: snap.pickups || [],
         soundEvents: snap.soundEvents || [],
         hitEvents: snap.hitEvents || [],
+        smokeZones: snap.smokeZones || [],
+        steamCore: snap.steamCore || null,
+        waveInfo: snap.waveInfo || null,
         gameMode: snap.gameMode || this.gameMode,
         targetKills: snap.targetKills || this.targetKills,
         teamScores: snap.teamScores || { team1: 0, team2: 0 },
-        aliveCount: snap.aliveCount || players.filter(p => p.isAlive).length
+        aliveCount
       };
     }
 
@@ -923,7 +1012,31 @@ export class NetworkClient {
     // If renderTime is ahead of the buffer, use the latest snapshot
     if (!older || !newer) {
       const latest = this.snapshotBuffer[this.snapshotBuffer.length - 1].data;
-      const players = (latest.players || []).map(p => (this.playerId && p.id === this.playerId && localPlayer) ? localPlayer : p);
+      const rawPlayers = latest.players || [];
+      let players = rawPlayers;
+      if (this.playerId && localPlayer) {
+        let hasLocal = false;
+        for (let i = 0; i < rawPlayers.length; i++) {
+          if (rawPlayers[i].id === this.playerId) {
+            hasLocal = true;
+            break;
+          }
+        }
+        if (hasLocal) {
+          players = new Array(rawPlayers.length);
+          for (let i = 0; i < rawPlayers.length; i++) {
+            players[i] = rawPlayers[i].id === this.playerId ? localPlayer : rawPlayers[i];
+          }
+        }
+      }
+      let aliveCount = latest.aliveCount;
+      if (aliveCount === undefined) {
+        let c = 0;
+        for (let i = 0; i < players.length; i++) {
+          if (players[i].isAlive) c++;
+        }
+        aliveCount = c;
+      }
       return {
         localPlayer,
         players,
@@ -937,7 +1050,7 @@ export class NetworkClient {
         gameMode: latest.gameMode || this.gameMode,
         targetKills: latest.targetKills || this.targetKills,
         teamScores: latest.teamScores || { team1: 0, team2: 0 },
-        aliveCount: latest.aliveCount || players.filter(p => p.isAlive).length
+        aliveCount
       };
     }
 
@@ -978,6 +1091,14 @@ export class NetworkClient {
     }
 
     const latestSnap = newer.data || {};
+    let aliveCount = latestSnap.aliveCount;
+    if (aliveCount === undefined) {
+      let c = 0;
+      for (let i = 0; i < interpolatedPlayers.length; i++) {
+        if (interpolatedPlayers[i].isAlive) c++;
+      }
+      aliveCount = c;
+    }
     return {
       localPlayer,
       players: interpolatedPlayers,
@@ -991,7 +1112,7 @@ export class NetworkClient {
       gameMode: latestSnap.gameMode || this.gameMode,
       targetKills: latestSnap.targetKills || this.targetKills,
       teamScores: latestSnap.teamScores || { team1: 0, team2: 0 },
-      aliveCount: latestSnap.aliveCount || interpolatedPlayers.filter(p => p.isAlive).length
+      aliveCount
     };
   }
 
@@ -1060,6 +1181,7 @@ export class NetworkClient {
     this.roomId = null;
     this.snapshotBuffer = [];
     this.pendingInputs = [];
+    this.lastReconciledTick = null;
     this.isPredictionInitialized = false;
     this.isLocallyDead = false;
     this.clientRespawnTimer = 0;
