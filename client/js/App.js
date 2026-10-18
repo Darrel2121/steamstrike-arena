@@ -545,8 +545,10 @@ export class App {
           const pwd = (document.getElementById('homeRoomPasswordInput')?.value || '').trim();
           if (this.lobbyUI?.dom?.roomInput) this.lobbyUI.dom.roomInput.value = room;
           if (this.lobbyUI?.dom?.roomPasswordInput) this.lobbyUI.dom.roomPasswordInput.value = pwd;
-          this.switchView('lobby');
           this.lobbyUI.handleCreateRoom(room, pwd || null);
+          if (this.currentView !== 'lobby') {
+            this.switchView('lobby');
+          }
           this.resetHeroPlayButton();
         }
       };

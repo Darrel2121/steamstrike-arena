@@ -1003,6 +1003,13 @@ export function startServer(port = process.env.PORT || 3000) {
     let profile = null;
     let token = null;
 
+    // Buffer any early WebSocket messages that arrive while async profile lookup is in flight
+    const earlyMessages = [];
+    const onEarlyMessage = (raw, isBinary) => {
+      earlyMessages.push({ raw, isBinary });
+    };
+    socket.on('message', onEarlyMessage);
+
     try {
       const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       token = parsedUrl.searchParams.get('token');
@@ -1013,6 +1020,11 @@ export function startServer(port = process.env.PORT || 3000) {
         }
       }
     } catch (_) {}
+
+    socket.off('message', onEarlyMessage);
+    if (socket.readyState !== 1 && socket.readyState !== undefined) {
+      return;
+    }
 
     const clientIp = String(req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1').split(',')[0].trim();
 
@@ -1043,6 +1055,10 @@ export function startServer(port = process.env.PORT || 3000) {
     socket.meta = meta;
     socket.profile = profile;
     gameServer.handleConnection(socket, meta);
+
+    for (const msg of earlyMessages) {
+      socket.emit('message', msg.raw, msg.isBinary);
+    }
   });
 
   server.listen(port, () => {
@@ -1057,6 +1073,17 @@ export function startServer(port = process.env.PORT || 3000) {
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const PORT = process.env.PORT || 3000;
   startServer(PORT);
+
+  // Keep Render WebSocket companion server warm if running on primary host
+  const renderHealthUrl = process.env.RENDER_WS_HEALTH_URL || 'https://steamstrike-server.onrender.com/api/health';
+  if (!process.env.RENDER && typeof fetch === 'function') {
+    const pingRender = () => {
+      fetch(renderHealthUrl, { method: 'GET' }).catch(() => {});
+    };
+    pingRender();
+    const keepAliveTimer = setInterval(pingRender, 4 * 60 * 1000);
+    if (typeof keepAliveTimer.unref === 'function') keepAliveTimer.unref();
+  }
 }
 
 export default startServer;

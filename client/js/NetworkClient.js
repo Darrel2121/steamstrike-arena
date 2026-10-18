@@ -164,6 +164,11 @@ export class NetworkClient {
     }
     this.url = queryParts.length > 0 ? `${baseUrl}?${queryParts.join('&')}` : baseUrl;
 
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
     // If socket is already open or currently connecting, do not re-create
     if (this.socket && (this.socket.readyState === 0 || this.socket.readyState === 1)) {
       if (this.socket.readyState === 1) {
@@ -186,15 +191,22 @@ export class NetworkClient {
     if (!this.socket) return;
 
     this.socket.onopen = () => {
+      const wasReconnect = Boolean(this._hasConnectedOnce);
+      const previousRoomId = this.roomId;
+      this._dispatchedRoomActionInOpen = false;
+
       this.isConnected = true;
+      this._hasConnectedOnce = true;
       this.reconnectAttempts = 0;
       this.emit('open');
       this.startPingHeartbeat();
 
-      // Automatically rejoin previous chamber on reconnect if room was active
-      if (this.roomId) {
+      // Automatically rejoin previous chamber ONLY on genuine reconnect when no open listener already dispatched a create/join
+      if (wasReconnect && previousRoomId && !this._dispatchedRoomActionInOpen && this.roomId === previousRoomId) {
         this.send(PROTOCOL_MSG_TYPES.C2S_LOBBY_JOIN, {
-          roomId: this.roomId,
+          roomId: previousRoomId,
+          playerName: this.lastPlayerName || undefined,
+          password: this.lastRoomPassword || null,
           token: this.authToken,
           reconnectToken: this.authToken
         });
@@ -646,6 +658,9 @@ export class NetworkClient {
    */
   joinLobby(roomId = 'default', playerName = 'Mechanic', options = {}) {
     this.roomId = roomId;
+    this.lastPlayerName = playerName;
+    this.lastRoomPassword = options.password || null;
+    this._dispatchedRoomActionInOpen = true;
     const payload = {
       roomId,
       playerName,
@@ -674,15 +689,20 @@ export class NetworkClient {
   createLobby(roomIdOrOptions = 'default', playerName = 'HostEngineer', mapName = 'The Clockwork Foundry', maxPlayers = 4, map = null, autoFillBots = false, gameMode = 'solo_elim', targetKills = 10, password = null) {
     let payload;
     if (typeof roomIdOrOptions === 'object' && roomIdOrOptions !== null) {
+      const fillBots = roomIdOrOptions.fillWithBots !== undefined
+        ? Boolean(roomIdOrOptions.fillWithBots)
+        : (roomIdOrOptions.autoFillBots !== undefined ? Boolean(roomIdOrOptions.autoFillBots) : false);
       payload = {
         roomId: roomIdOrOptions.roomId || 'default',
         playerName: roomIdOrOptions.playerName || 'HostEngineer',
         mapName: roomIdOrOptions.mapName || roomIdOrOptions.map?.name || 'The Clockwork Foundry',
         maxPlayers: roomIdOrOptions.maxPlayers || 4,
         map: roomIdOrOptions.map || null,
-        autoFillBots: roomIdOrOptions.autoFillBots ?? false,
+        autoFillBots: fillBots,
+        fillWithBots: fillBots,
+        botDifficulty: roomIdOrOptions.botDifficulty || 'normal',
         gameMode: roomIdOrOptions.gameMode || 'solo_elim',
-        targetKills: roomIdOrOptions.targetKills || 10,
+        targetKills: roomIdOrOptions.targetKills ?? 10,
         equippedWeapon: roomIdOrOptions.equippedWeapon || this.equippedWeapon || 'revolver',
         equippedClass: roomIdOrOptions.equippedClass || this.equippedClass || 'vanguard',
         profile: roomIdOrOptions.profile || this.cachedProfile || null,
@@ -693,11 +713,13 @@ export class NetworkClient {
         roomId: roomIdOrOptions || 'default',
         playerName: playerName || 'HostEngineer',
         mapName: mapName || map?.name || 'The Clockwork Foundry',
+        maxPlayers: maxPlayers || 4,
+        map: map || null,
         autoFillBots: autoFillBots !== undefined ? !!autoFillBots : true,
-        fillWithBots: (roomIdOrOptions && typeof roomIdOrOptions === 'object') ? (roomIdOrOptions.fillWithBots !== undefined ? roomIdOrOptions.fillWithBots : roomIdOrOptions.autoFillBots) : true,
-        botDifficulty: (roomIdOrOptions && typeof roomIdOrOptions === 'object' && roomIdOrOptions.botDifficulty) ? roomIdOrOptions.botDifficulty : 'normal',
+        fillWithBots: autoFillBots !== undefined ? !!autoFillBots : true,
+        botDifficulty: 'normal',
         gameMode: gameMode || 'solo_elim',
-        targetKills: targetKills || 10,
+        targetKills: targetKills ?? 10,
         equippedWeapon: this.equippedWeapon || 'revolver',
         equippedClass: this.equippedClass || 'vanguard',
         profile: this.cachedProfile || null,
@@ -705,6 +727,9 @@ export class NetworkClient {
       };
     }
     this.roomId = payload.roomId;
+    this.lastPlayerName = payload.playerName;
+    this.lastRoomPassword = payload.password || null;
+    this._dispatchedRoomActionInOpen = true;
     this.send(PROTOCOL_MSG_TYPES.C2S_LOBBY_CREATE, payload);
   }
 

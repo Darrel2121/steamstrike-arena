@@ -329,6 +329,7 @@ export class LobbyUI {
     });
 
     this.networkClient.on('lobbyState', (state) => {
+      this._pendingCreateRoom = false;
       this.resetAllActionButtons();
       this.renderLobbyState(state);
     });
@@ -338,6 +339,7 @@ export class LobbyUI {
     });
 
     this.networkClient.on('matchInit', (matchInitPayload) => {
+      this._pendingCreateRoom = false;
       this.resetAllActionButtons();
       this.stopRoomsPoll();
       if (typeof this.onMatchStart === 'function') {
@@ -346,6 +348,18 @@ export class LobbyUI {
     });
 
     this.networkClient.on('errorPacket', (errorPayload) => {
+      if (
+        this._pendingCreateRoom &&
+        this._lastAttemptedCreateRoomId === 'Sector_Omega' &&
+        (errorPayload.code === 'ROOM_EXISTS' || errorPayload.code === 'MATCH_IN_PROGRESS' || errorPayload.code === 'LOBBY_FULL')
+      ) {
+        this._pendingCreateRoom = false;
+        const fallbackRoomId = `Sector_${Math.floor(1000 + Math.random() * 9000)}`;
+        const pwd = (this.dom.roomPasswordInput?.value || this.dom.homeRoomPasswordInput?.value || '').trim();
+        this.handleCreateRoom(fallbackRoomId, pwd || null);
+        return;
+      }
+      this._pendingCreateRoom = false;
       this.resetAllActionButtons();
       this.showError(`${errorPayload.code || 'ПОМИЛКА'}: ${errorPayload.message || 'Дію відхилено сервером'}`);
       if (errorPayload.code === 'PASSWORD_REQUIRED' || errorPayload.code === 'INVALID_PASSWORD') {
@@ -680,7 +694,69 @@ export class LobbyUI {
     }
   }
 
+  _waitForSocketAndRun(actionFn) {
+    if (this._pendingOpenCleanup) {
+      this._pendingOpenCleanup();
+      this._pendingOpenCleanup = null;
+    }
+
+    this.showError('Підключення до парового сервера...');
+    this.ensureConnected();
+
+    if (typeof fetch === 'function' && String(this.networkClient?.serverUrl || '').includes('onrender.com')) {
+      fetch('https://steamstrike-server.onrender.com/api/health', { mode: 'cors' }).catch(() => {});
+    }
+
+    let timeoutTimer = null;
+    let wakeupHintTimer = null;
+    let retryInterval = null;
+
+    const cleanup = () => {
+      clearTimeout(timeoutTimer);
+      clearTimeout(wakeupHintTimer);
+      clearInterval(retryInterval);
+      this.networkClient.off('open', onOpen);
+      if (this._pendingOpenCleanup === cleanup) {
+        this._pendingOpenCleanup = null;
+      }
+    };
+
+    const onOpen = () => {
+      cleanup();
+      this.showError('');
+      actionFn();
+    };
+
+    wakeupHintTimer = setTimeout(() => {
+      if (!this.networkClient.isSocketReady) {
+        this.showError('Пробудження парового сервера... Зачекайте кілька секунд.');
+      }
+    }, 2500);
+
+    retryInterval = setInterval(() => {
+      if (this.networkClient.isSocketReady) {
+        onOpen();
+        return;
+      }
+      const state = this.networkClient.socket?.readyState;
+      if (state !== 0 && state !== 1) {
+        this.ensureConnected();
+      }
+    }, 3500);
+
+    timeoutTimer = setTimeout(() => {
+      cleanup();
+      this._pendingCreateRoom = false;
+      this.resetAllActionButtons();
+      this.showError('Не вдалося з\'єднатися з паровим сервером. Перевірте статус сервера.');
+    }, 30000);
+
+    this._pendingOpenCleanup = cleanup;
+    this.networkClient.on('open', onOpen);
+  }
+
   handleJoinRoom(targetRoomId = null, candidatePassword = null) {
+    this._pendingCreateRoom = false;
     if (typeof this.options.onSwitchToLobby === 'function') {
       this.options.onSwitchToLobby();
     }
@@ -725,24 +801,7 @@ export class LobbyUI {
     if (this.networkClient.isSocketReady) {
       doJoin();
     } else {
-      this.showError('Підключення до парового сервера...');
-      this.ensureConnected();
-
-      let timeoutTimer = null;
-      const onOpen = () => {
-        clearTimeout(timeoutTimer);
-        this.networkClient.off('open', onOpen);
-        this.showError('');
-        doJoin();
-      };
-
-      timeoutTimer = setTimeout(() => {
-        this.networkClient.off('open', onOpen);
-        this.resetAllActionButtons();
-        this.showError('Не вдалося з\'єднатися з паровим сервером. Перевірте статус сервера.');
-      }, 5000);
-
-      this.networkClient.on('open', onOpen);
+      this._waitForSocketAndRun(doJoin);
     }
   }
 
@@ -752,6 +811,8 @@ export class LobbyUI {
   }
 
   handleCreateRoom(targetRoomId = null, candidatePassword = null) {
+    const isHomeContext = (typeof window !== 'undefined' && window.app && window.app.currentView === 'home');
+
     if (typeof this.options.onSwitchToLobby === 'function') {
       this.options.onSwitchToLobby();
     }
@@ -779,7 +840,6 @@ export class LobbyUI {
 
     const selectedMap = this.getSelectedMap();
 
-    const isHomeContext = (typeof window !== 'undefined' && window.app && window.app.currentView === 'home');
     const gameMode = isHomeContext
       ? (homeModeSelect?.value || this.dom.lobbyGameModeSelect?.value || 'ffa_dm')
       : (this.dom.lobbyGameModeSelect?.value || homeModeSelect?.value || 'ffa_dm');
@@ -789,9 +849,12 @@ export class LobbyUI {
     const fillWithBots = isHomeContext
       ? (this.dom.homeBotFillSelect?.value !== 'false')
       : (this.dom.lobbyBotFillSelect?.value !== 'false');
+    if (this.dom.lobbyBotFillSelect) this.dom.lobbyBotFillSelect.value = String(fillWithBots);
+
     const botDifficulty = isHomeContext
       ? (this.dom.homeBotDifficultySelect?.value || 'normal')
       : (this.dom.lobbyBotDifficultySelect?.value || 'normal');
+    if (this.dom.lobbyBotDifficultySelect) this.dom.lobbyBotDifficultySelect.value = botDifficulty;
 
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
     let targetKills = 30;
@@ -802,11 +865,16 @@ export class LobbyUI {
       const val = parseInt(this.dom.lobbyTargetKillsInput?.value || this.dom.lobbyTargetKillsSelect?.value, 10);
       if (Number.isFinite(val) && val > 0) targetKills = val;
     }
+    if (this.dom.lobbyTargetKillsInput && isDm) this.dom.lobbyTargetKillsInput.value = String(targetKills);
     if (!isDm) targetKills = 0;
 
     const maxPlayers = isHomeContext
       ? (parseInt(this.dom.homeMaxPlayersSelect?.value, 10) || 4)
       : (parseInt(this.dom.lobbyMaxPlayersSelect?.value, 10) || 4);
+    if (this.dom.lobbyMaxPlayersSelect) this.dom.lobbyMaxPlayersSelect.value = String(maxPlayers);
+
+    this._pendingCreateRoom = true;
+    this._lastAttemptedCreateRoomId = roomId;
 
     this.showError('');
     this.setButtonBusy(this.dom.btnCreateRoom, '⚙ Створення...');
@@ -840,24 +908,7 @@ export class LobbyUI {
     if (this.networkClient.isSocketReady) {
       doCreate();
     } else {
-      this.showError('Підключення до парового сервера...');
-      this.ensureConnected();
-
-      let timeoutTimer = null;
-      const onOpen = () => {
-        clearTimeout(timeoutTimer);
-        this.networkClient.off('open', onOpen);
-        this.showError('');
-        doCreate();
-      };
-
-      timeoutTimer = setTimeout(() => {
-        this.networkClient.off('open', onOpen);
-        this.resetAllActionButtons();
-        this.showError('Не вдалося з\'єднатися з паровим сервером. Перевірте статус сервера.');
-      }, 5000);
-
-      this.networkClient.on('open', onOpen);
+      this._waitForSocketAndRun(doCreate);
     }
   }
 

@@ -234,7 +234,25 @@ export class GameServer {
 
         case PROTOCOL_MSG_TYPES.C2S_LOBBY_CREATE: {
           const roomId = payload?.roomId || (`room_${Date.now().toString(36)}`);
+          if (this.teardownTimers && this.teardownTimers.has(roomId)) {
+            clearTimeout(this.teardownTimers.get(roomId));
+            this.teardownTimers.delete(roomId);
+          }
+
           let room = this.rooms.get(roomId);
+          if (room) {
+            for (const [pid, p] of Array.from(room.players.entries())) {
+              const sock = p.socket;
+              if (!sock || sock.readyState === 2 || sock.readyState === 3 || sock.closed) {
+                room.removePlayer(pid);
+              }
+            }
+            if (room.players.size === 0 || (room.players.size === 1 && room.players.has(clientId) && room.state !== 'LOBBY')) {
+              room.stopLoop();
+              this.rooms.delete(roomId);
+              room = null;
+            }
+          }
 
           if (room) {
             const isClientHost = room.players.get(clientId)?.isHost;
@@ -267,6 +285,9 @@ export class GameServer {
                 }));
               }
               return;
+            }
+            if (room.state === 'GAME_OVER') {
+              room.state = 'LOBBY';
             }
 
             // Update room config with payload if host or empty
