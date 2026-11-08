@@ -691,7 +691,7 @@ export class NetworkClient {
     if (typeof roomIdOrOptions === 'object' && roomIdOrOptions !== null) {
       const fillBots = roomIdOrOptions.fillWithBots !== undefined
         ? Boolean(roomIdOrOptions.fillWithBots)
-        : (roomIdOrOptions.autoFillBots !== undefined ? Boolean(roomIdOrOptions.autoFillBots) : false);
+        : (roomIdOrOptions.autoFillBots !== undefined ? Boolean(roomIdOrOptions.autoFillBots) : true);
       payload = {
         roomId: roomIdOrOptions.roomId || 'default',
         playerName: roomIdOrOptions.playerName || 'HostEngineer',

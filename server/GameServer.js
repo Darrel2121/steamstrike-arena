@@ -59,20 +59,35 @@ export class GameServer {
         existing.compileGeometry();
         existing.initPickups();
       }
-      if (options.gameMode && existing.state === 'LOBBY') {
-        existing.setGameMode(options.gameMode, options.targetKills);
-      }
-      if (options.password !== undefined && existing.state === 'LOBBY') {
-        existing.setPassword(options.password);
+      if (existing.state === 'LOBBY') {
+        if (options.maxPlayers) {
+          existing.maxPlayers = options.maxPlayers;
+        }
+        if (options.gameMode || options.targetKills !== undefined || options.autoFillBots !== undefined || options.fillWithBots !== undefined || options.botDifficulty) {
+          existing.setRoomConfig({
+            gameMode: options.gameMode,
+            targetKills: options.targetKills,
+            fillWithBots: options.fillWithBots !== undefined ? options.fillWithBots : options.autoFillBots,
+            botDifficulty: options.botDifficulty,
+            maxPlayers: options.maxPlayers
+          });
+        }
+        if (options.password !== undefined) {
+          existing.setPassword(options.password);
+        }
       }
       return existing;
     }
     const room = new Room({
       id: roomId,
       map: options.map,
+      mapName: options.mapName,
       maxPlayers: options.maxPlayers || 4,
       tickRate: options.tickRate || 30,
       autoTick: options.autoTick ?? false,
+      autoFillBots: options.autoFillBots !== undefined ? options.autoFillBots : (options.fillWithBots !== undefined ? options.fillWithBots : (options.fillBots !== undefined ? options.fillBots : true)),
+      fillWithBots: options.fillWithBots !== undefined ? options.fillWithBots : options.autoFillBots,
+      botDifficulty: options.botDifficulty || 'normal',
       gameMode: options.gameMode,
       targetKills: options.targetKills,
       password: options.password

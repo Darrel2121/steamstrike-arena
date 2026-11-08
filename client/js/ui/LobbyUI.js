@@ -138,18 +138,32 @@ export class LobbyUI {
     this.dom.playerNameInput?.addEventListener('change', saveLobbyName);
     this.dom.playerNameInput?.addEventListener('blur', saveLobbyName);
 
-    // Host live room config update button
-    this.addTapAndClick(this.dom.btnUpdateRoomTargetKills, () => {
+    // Host live room config update (both via button and automatic on change)
+    const syncHostRoomConfigToServer = () => {
       if (this.currentLobbyState && this.isHost()) {
-        const mode = this.currentLobbyState.gameMode || 'ffa_dm';
+        const mode = this.currentLobbyState.gameMode || this.dom.lobbyGameModeSelect?.value || 'ffa_dm';
         const val = parseInt(this.dom.roomActiveTargetKillsInput?.value || 30, 10);
         const targetKills = Number.isFinite(val) && val > 0 ? val : 30;
         const fillWithBots = this.dom.roomActiveBotFillSelect ? (this.dom.roomActiveBotFillSelect.value === 'true') : true;
         const botDifficulty = this.dom.roomActiveBotDifficultySelect ? this.dom.roomActiveBotDifficultySelect.value : 'normal';
         const maxPlayers = parseInt(this.dom.roomActiveMaxPlayersSelect?.value || 4, 10);
+
+        if (this.dom.lobbyBotFillSelect) this.dom.lobbyBotFillSelect.value = String(fillWithBots);
+        if (this.dom.homeBotFillSelect) this.dom.homeBotFillSelect.value = String(fillWithBots);
+        if (this.dom.lobbyBotDifficultySelect) this.dom.lobbyBotDifficultySelect.value = botDifficulty;
+        if (this.dom.homeBotDifficultySelect) this.dom.homeBotDifficultySelect.value = botDifficulty;
+        if (this.dom.lobbyMaxPlayersSelect) this.dom.lobbyMaxPlayersSelect.value = String(maxPlayers);
+        if (this.dom.homeMaxPlayersSelect) this.dom.homeMaxPlayersSelect.value = String(maxPlayers);
+
         this.networkClient.changeGameMode(mode, targetKills, fillWithBots, botDifficulty, maxPlayers);
       }
-    });
+    };
+
+    this.addTapAndClick(this.dom.btnUpdateRoomTargetKills, syncHostRoomConfigToServer);
+    this.dom.roomActiveBotFillSelect?.addEventListener('change', syncHostRoomConfigToServer);
+    this.dom.roomActiveBotDifficultySelect?.addEventListener('change', syncHostRoomConfigToServer);
+    this.dom.roomActiveMaxPlayersSelect?.addEventListener('change', syncHostRoomConfigToServer);
+    this.dom.roomActiveTargetKillsInput?.addEventListener('change', syncHostRoomConfigToServer);
 
     // Sync Home & Lobby Bot Selects
     if (this.dom.homeBotFillSelect) {
@@ -850,28 +864,35 @@ export class LobbyUI {
       ? (this.dom.homeBotFillSelect?.value !== 'false')
       : (this.dom.lobbyBotFillSelect?.value !== 'false');
     if (this.dom.lobbyBotFillSelect) this.dom.lobbyBotFillSelect.value = String(fillWithBots);
+    if (this.dom.homeBotFillSelect) this.dom.homeBotFillSelect.value = String(fillWithBots);
+    if (this.dom.roomActiveBotFillSelect) this.dom.roomActiveBotFillSelect.value = String(fillWithBots);
 
     const botDifficulty = isHomeContext
       ? (this.dom.homeBotDifficultySelect?.value || 'normal')
       : (this.dom.lobbyBotDifficultySelect?.value || 'normal');
     if (this.dom.lobbyBotDifficultySelect) this.dom.lobbyBotDifficultySelect.value = botDifficulty;
+    if (this.dom.homeBotDifficultySelect) this.dom.homeBotDifficultySelect.value = botDifficulty;
+    if (this.dom.roomActiveBotDifficultySelect) this.dom.roomActiveBotDifficultySelect.value = botDifficulty;
 
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
     let targetKills = 30;
     if (isHomeContext) {
-      const val = parseInt(this.dom.homeTargetKillsInput?.value || this.dom.homeTargetKillsSelect?.value, 10);
+      const val = parseInt(this.dom.homeTargetKillsSelect?.value || this.dom.homeTargetKillsInput?.value, 10);
       if (Number.isFinite(val) && val > 0) targetKills = val;
     } else {
-      const val = parseInt(this.dom.lobbyTargetKillsInput?.value || this.dom.lobbyTargetKillsSelect?.value, 10);
+      const val = parseInt(this.dom.lobbyTargetKillsSelect?.value || this.dom.lobbyTargetKillsInput?.value, 10);
       if (Number.isFinite(val) && val > 0) targetKills = val;
     }
     if (this.dom.lobbyTargetKillsInput && isDm) this.dom.lobbyTargetKillsInput.value = String(targetKills);
+    if (this.dom.roomActiveTargetKillsInput && isDm) this.dom.roomActiveTargetKillsInput.value = String(targetKills);
     if (!isDm) targetKills = 0;
 
     const maxPlayers = isHomeContext
       ? (parseInt(this.dom.homeMaxPlayersSelect?.value, 10) || 4)
       : (parseInt(this.dom.lobbyMaxPlayersSelect?.value, 10) || 4);
     if (this.dom.lobbyMaxPlayersSelect) this.dom.lobbyMaxPlayersSelect.value = String(maxPlayers);
+    if (this.dom.homeMaxPlayersSelect) this.dom.homeMaxPlayersSelect.value = String(maxPlayers);
+    if (this.dom.roomActiveMaxPlayersSelect) this.dom.roomActiveMaxPlayersSelect.value = String(maxPlayers);
 
     this._pendingCreateRoom = true;
     this._lastAttemptedCreateRoomId = roomId;
@@ -947,10 +968,16 @@ export class LobbyUI {
     if (typeof this.options.onRequestLandscape === 'function') {
       this.options.onRequestLandscape();
     }
-    const fillBots = this.currentLobbyState?.fillWithBots !== undefined
-      ? Boolean(this.currentLobbyState.fillWithBots)
-      : (this.dom.lobbyBotFillSelect?.value !== 'false');
-    const botDifficulty = this.currentLobbyState?.botDifficulty || this.dom.lobbyBotDifficultySelect?.value || 'normal';
+    const isHost = this.isHost();
+    const fillBots = (isHost && this.dom.roomActiveBotFillSelect)
+      ? (this.dom.roomActiveBotFillSelect.value !== 'false')
+      : (this.currentLobbyState?.fillWithBots !== undefined
+          ? Boolean(this.currentLobbyState.fillWithBots)
+          : (this.dom.lobbyBotFillSelect?.value !== 'false'));
+    const botDifficulty = (isHost && this.dom.roomActiveBotDifficultySelect?.value)
+      || this.currentLobbyState?.botDifficulty
+      || this.dom.lobbyBotDifficultySelect?.value
+      || 'normal';
     this.networkClient.startMatch({ fillBots, botDifficulty });
   }
 

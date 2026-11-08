@@ -1070,12 +1070,38 @@ export class App {
           profile: prof
         });
       }
+      const isHomeContext = (this.currentView === 'home' || this.matchOrigin === 'home');
+      const fillWithBots = isHomeContext
+        ? (document.getElementById('homeBotFillSelect')?.value !== 'false')
+        : (document.getElementById('lobbyBotFillSelect')?.value !== 'false');
+      const botDifficulty = isHomeContext
+        ? (document.getElementById('homeBotDifficultySelect')?.value || 'normal')
+        : (document.getElementById('lobbyBotDifficultySelect')?.value || 'normal');
+      const maxPlayers = isHomeContext
+        ? (parseInt(document.getElementById('homeMaxPlayersSelect')?.value, 10) || 4)
+        : (parseInt(document.getElementById('lobbyMaxPlayersSelect')?.value, 10) || 4);
+      const gameMode = isHomeContext
+        ? (document.getElementById('homeGameModeSelect')?.value || 'ffa_dm')
+        : (document.getElementById('lobbyGameModeSelect')?.value || 'ffa_dm');
+      const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
+      const targetKills = isDm
+        ? (parseInt(
+            (isHomeContext ? document.getElementById('homeTargetKillsSelect')?.value : document.getElementById('lobbyTargetKillsSelect')?.value) || 30,
+            10
+          ) || 30)
+        : 0;
+
       this.networkClient.createLobby({
         roomId,
         playerName,
         mapName: map.name || 'Custom Arena',
-        maxPlayers: 4,
+        maxPlayers,
         map,
+        autoFillBots: fillWithBots,
+        fillWithBots,
+        botDifficulty,
+        gameMode,
+        targetKills,
         equippedWeapon: prof?.equippedWeapon || 'revolver',
         equippedClass: prof?.equippedClass || 'vanguard',
         profile: prof
@@ -1151,20 +1177,30 @@ export class App {
     const soloRoomId = `solo_${Date.now().toString(36)}`;
     const prof = this.progressionManager?.getProfile();
     const playerName = (prof?.username || this.homePlayerNameInput?.value || this.lobbyUI?.dom?.playerNameInput?.value || 'Механік').trim();
-    const isHomeContext = (this.currentView === 'home');
+    const isHomeContext = (this.matchOrigin === 'home');
     const gameMode = isHomeContext
       ? (document.getElementById('homeGameModeSelect')?.value || document.getElementById('lobbyGameModeSelect')?.value || 'ffa_dm')
       : (document.getElementById('lobbyGameModeSelect')?.value || document.getElementById('homeGameModeSelect')?.value || 'ffa_dm');
     const isDm = gameMode === 'ffa_dm' || gameMode === 'team_dm';
     let targetKills = 30;
     if (isHomeContext) {
-      const val = parseInt(document.getElementById('homeTargetKillsInput')?.value || document.getElementById('homeTargetKillsSelect')?.value, 10);
+      const val = parseInt(document.getElementById('homeTargetKillsSelect')?.value || document.getElementById('homeTargetKillsInput')?.value, 10);
       if (Number.isFinite(val) && val > 0) targetKills = val;
     } else {
-      const val = parseInt(document.getElementById('lobbyTargetKillsInput')?.value || document.getElementById('lobbyTargetKillsSelect')?.value, 10);
+      const val = parseInt(document.getElementById('lobbyTargetKillsSelect')?.value || document.getElementById('lobbyTargetKillsInput')?.value, 10);
       if (Number.isFinite(val) && val > 0) targetKills = val;
     }
     if (!isDm) targetKills = 0;
+
+    const fillWithBots = isHomeContext
+      ? (document.getElementById('homeBotFillSelect')?.value !== 'false')
+      : (document.getElementById('lobbyBotFillSelect')?.value !== 'false');
+    const botDifficulty = isHomeContext
+      ? (document.getElementById('homeBotDifficultySelect')?.value || document.getElementById('lobbyBotDifficultySelect')?.value || 'normal')
+      : (document.getElementById('lobbyBotDifficultySelect')?.value || document.getElementById('homeBotDifficultySelect')?.value || 'normal');
+    const maxPlayers = isHomeContext
+      ? (parseInt(document.getElementById('homeMaxPlayersSelect')?.value, 10) || 4)
+      : (parseInt(document.getElementById('lobbyMaxPlayersSelect')?.value, 10) || 4);
 
     const doLaunch = () => {
       const prof = this.progressionManager?.getProfile();
@@ -1176,12 +1212,10 @@ export class App {
         });
       }
 
-      const botDifficulty = document.getElementById('homeBotDifficultySelect')?.value || document.getElementById('lobbyBotDifficultySelect')?.value || 'normal';
-
       const onLobbyState = (state) => {
         if (state.roomId === soloRoomId) {
           this.networkClient.off('lobbyState', onLobbyState);
-          this.networkClient.startMatch({ fillBots: true, botDifficulty });
+          this.networkClient.startMatch({ fillBots: fillWithBots, botDifficulty });
         }
       };
       this.networkClient.on('lobbyState', onLobbyState);
@@ -1190,10 +1224,10 @@ export class App {
         roomId: soloRoomId,
         playerName,
         mapName: targetMap.name || 'Solo Training Arena',
-        maxPlayers: 4,
+        maxPlayers,
         map: targetMap,
-        autoFillBots: true,
-        fillWithBots: true,
+        autoFillBots: fillWithBots,
+        fillWithBots,
         botDifficulty,
         gameMode,
         targetKills,

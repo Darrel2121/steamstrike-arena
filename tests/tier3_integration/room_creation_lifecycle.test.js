@@ -399,6 +399,49 @@ export const tests = [
         globalThis.WebSocket = origWebSocket;
       }
     }
+  },
+
+  {
+    id: 'T3.RC9',
+    name: 'Room Creation Preserves fillWithBots & botDifficulty Without Double Configuration and Spawns Bots on Match Start',
+    fn: async () => {
+      const server = new GameServer({ tickRate: 20, maxPlayersPerRoom: 4 });
+      const pair = new MockWebSocketPair();
+      server.handleConnection(pair.serverSide, { id: 'host_bots_1', playerName: 'BotCommander' });
+
+      const waitCreate = pair.clientSide.waitFor(PROTOCOL_MSG_TYPES.S2C_LOBBY_STATE);
+      pair.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_LOBBY_CREATE, {
+        roomId: 'Sector_Bot_Arena',
+        playerName: 'BotCommander',
+        maxPlayers: 4,
+        fillWithBots: true,
+        botDifficulty: 'hard',
+        gameMode: 'ffa',
+        targetKills: 15
+      }));
+
+      const lobbyState = await waitCreate;
+      assert.strictEqual(lobbyState.payload.fillWithBots, true, 'Created room must preserve fillWithBots=true in initial S2C_LOBBY_STATE');
+      assert.strictEqual(lobbyState.payload.botDifficulty, 'hard', 'Created room must preserve botDifficulty=hard in initial S2C_LOBBY_STATE');
+      assert.strictEqual(lobbyState.payload.maxPlayers, 4, 'Created room must preserve maxPlayers=4');
+
+      // Start match immediately without sending a second C2S_GAME_MODE_CHANGE
+      pair.clientSide.send(serializePacket(PROTOCOL_MSG_TYPES.C2S_MATCH_START, {
+        roomId: 'Sector_Bot_Arena',
+        fillWithBots: true,
+        botDifficulty: 'hard'
+      }));
+
+      await new Promise(r => setTimeout(r, 15));
+      const room = server.rooms.get('Sector_Bot_Arena');
+      assert.ok(room, 'Room must exist');
+      assert.strictEqual(room.state, 'IN_PROGRESS', 'Room must transition to IN_PROGRESS');
+      assert.strictEqual(room.bots.size, 3, 'Room must auto-fill 3 bots for a 4-player chamber with 1 human host');
+      for (const bot of room.bots.values()) {
+        assert.strictEqual(bot.difficulty, 'hard', 'Spawned bots must use configured difficulty');
+      }
+      room.stopLoop();
+    }
   }
 ];
 
