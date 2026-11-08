@@ -5,8 +5,33 @@
  */
 
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createDefaultProfile } from '../../shared/ProgressionSchema.js';
 import { profileStore } from '../db/ProfileStore.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DEFAULT_SECRET_FILE = path.resolve(__dirname, '../../data/auth_secret.key');
+
+function loadOrCreatePersistentSecret() {
+  try {
+    const dir = path.dirname(DEFAULT_SECRET_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    if (fs.existsSync(DEFAULT_SECRET_FILE)) {
+      const existing = fs.readFileSync(DEFAULT_SECRET_FILE, 'utf8').trim();
+      if (existing.length >= 32) return existing;
+    }
+    const generated = crypto.randomBytes(32).toString('hex');
+    fs.writeFileSync(DEFAULT_SECRET_FILE, generated, 'utf8');
+    return generated;
+  } catch (_) {
+    return crypto.randomBytes(32).toString('hex');
+  }
+}
 
 const STEAMPUNK_PREFIXES = [
   'Brass', 'Steam', 'Clockwork', 'Copper', 'Iron', 'Pneumatic', 'Boiler',
@@ -29,10 +54,11 @@ export class AuthService {
    * @param {number} [options.tokenTtlMs]
    */
   constructor(options = {}) {
-    this.secret = options.secret || process.env.AUTH_SECRET || crypto.randomBytes(32).toString('hex');
+    this.secret = options.secret || process.env.AUTH_SECRET || loadOrCreatePersistentSecret();
     this.profileStore = options.profileStore || profileStore;
     this.googleClientId = options.googleClientId || process.env.GOOGLE_CLIENT_ID || '1051560828434-1ahgmrf87g5ebvpjaoit688sq000jreo.apps.googleusercontent.com';
     this.tokenTtlMs = options.tokenTtlMs || 30 * 24 * 60 * 60 * 1000; // 30 days default
+    this.allowMockTokens = options.allowMockTokens ?? null;
   }
 
   /**
@@ -137,8 +163,14 @@ export class AuthService {
   async verifyGoogleIdToken(idToken) {
     if (!idToken || typeof idToken !== 'string') throw new Error('Missing ID token');
 
-    // Dual-mode mock token handler for headless tests and offline sandboxes
+    // Dual-mode mock token handler strictly restricted to automated tests / sandbox stores
     if (idToken.startsWith('mock_google_') || idToken.startsWith('mock_jwt_')) {
+      const mockAllowed = this.allowMockTokens !== null
+        ? Boolean(this.allowMockTokens)
+        : (process.env.NODE_ENV === 'test' || Boolean(this.profileStore?.memoryOnly) || Boolean(process.env.ALLOW_DEV_AUTH_BYPASS));
+      if (!mockAllowed) {
+        throw new Error('Mock Google tokens are forbidden in production environment');
+      }
       const prefix = idToken.startsWith('mock_google_') ? 'mock_google_' : 'mock_jwt_';
       const parts = idToken.slice(prefix.length);
       try {
@@ -164,6 +196,9 @@ export class AuthService {
     const res = await fetch(url);
     if (!res.ok) throw new Error('Invalid Google token signature');
     const data = await res.json();
+    if (this.googleClientId && data.aud && data.aud !== this.googleClientId) {
+      throw new Error('Google token audience mismatch');
+    }
     return {
       googleId: data.sub,
       email: data.email,

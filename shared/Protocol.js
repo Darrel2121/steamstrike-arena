@@ -43,6 +43,19 @@ export function serializePacket(type, payload = {}) {
   });
 }
 
+function sanitizePayload(type, rawPayload) {
+  if (rawPayload === null || rawPayload === undefined) return {};
+  if (typeof rawPayload !== 'object') return {};
+
+  if (type === PROTOCOL_MSG_TYPES.C2S_PLAYER_INPUT && !Array.isArray(rawPayload)) {
+    if (rawPayload.moveX !== undefined && !Number.isFinite(rawPayload.moveX)) rawPayload.moveX = 0;
+    if (rawPayload.moveY !== undefined && !Number.isFinite(rawPayload.moveY)) rawPayload.moveY = 0;
+    if (rawPayload.aimAngle !== undefined && !Number.isFinite(rawPayload.aimAngle)) delete rawPayload.aimAngle;
+    if (rawPayload.dt !== undefined && (!Number.isFinite(rawPayload.dt) || rawPayload.dt <= 0)) delete rawPayload.dt;
+  }
+  return rawPayload;
+}
+
 /**
  * Safely parses raw incoming packet data into a typed message object.
  * @param {string|Buffer|Object} raw - Serialized JSON string, Buffer, or object
@@ -55,7 +68,7 @@ export function deserializePacket(raw) {
     if (raw.type && typeof raw.type === 'string') {
       return {
         type: raw.type,
-        payload: raw.payload ?? {}
+        payload: sanitizePayload(raw.type, raw.payload)
       };
     }
   }
@@ -68,7 +81,7 @@ export function deserializePacket(raw) {
     }
     return {
       type: parsed.type,
-      payload: parsed.payload ?? {}
+      payload: sanitizePayload(parsed.type, parsed.payload)
     };
   } catch (_) {
     return null;

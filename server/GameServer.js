@@ -13,6 +13,7 @@ export class GameServer {
    */
   constructor(options = {}) {
     this.options = options;
+    this.maxRooms = options.maxRooms || 100;
     this.rooms = new Map();
     this.teardownTimers = new Map();
 
@@ -159,6 +160,18 @@ export class GameServer {
           }
 
           if (!room) {
+            if (this.rooms.size >= this.maxRooms) {
+              for (const [, r] of this.rooms) cleanupEmptyRoom(r, 0);
+            }
+            if (this.rooms.size >= this.maxRooms) {
+              if (socket.readyState === 1) {
+                socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_ERROR, {
+                  code: 'SERVER_FULL',
+                  message: 'Досягнуто ліміт активних парових кімнат на сервері'
+                }));
+              }
+              return;
+            }
             room = this.createRoom(roomId, { autoTick: true, password: payload?.password || null });
           }
 
@@ -212,20 +225,15 @@ export class GameServer {
             cleanupEmptyRoom(currentRoom);
           }
 
-          const playerProfile = payload?.profile || socket.profile || meta.profile || null;
-          const equippedWeapon = payload?.equippedWeapon || playerProfile?.equippedWeapon || 'revolver';
-          const equippedClass = payload?.equippedClass || playerProfile?.equippedClass || 'vanguard';
+          const authProfile = meta.profile || socket.meta?.profile || null;
+          const equippedWeapon = payload?.equippedWeapon || authProfile?.equippedWeapon || 'revolver';
+          const equippedClass = payload?.equippedClass || authProfile?.equippedClass || 'vanguard';
           if (!socket.profile) {
-            socket.profile = playerProfile ? { ...playerProfile } : { id: clientId, isGuest: true };
+            socket.profile = authProfile ? { ...authProfile } : { id: clientId, isGuest: true };
           }
           socket.profile.equippedWeapon = equippedWeapon;
           socket.profile.equippedClass = equippedClass;
-          if (payload?.profile?.weapons) {
-            socket.profile.weapons = payload.profile.weapons;
-          }
-          if (payload?.profile?.characterStats) {
-            socket.profile.characterStats = payload.profile.characterStats;
-          }
+          if (payload?.profile?.emblem) socket.profile.emblem = payload.profile.emblem;
 
           currentRoom = room;
           room.addPlayer(clientId, playerName, socket, socket.profile);
@@ -314,6 +322,18 @@ export class GameServer {
               room.setPassword(payload.password);
             }
           } else {
+            if (this.rooms.size >= this.maxRooms) {
+              for (const [, r] of this.rooms) cleanupEmptyRoom(r, 0);
+            }
+            if (this.rooms.size >= this.maxRooms) {
+              if (socket.readyState === 1) {
+                socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_ERROR, {
+                  code: 'SERVER_FULL',
+                  message: 'Досягнуто ліміт активних парових кімнат на сервері'
+                }));
+              }
+              return;
+            }
             room = this.createRoom(roomId, {
               map: payload?.map,
               mapName: payload?.mapName,
@@ -332,20 +352,15 @@ export class GameServer {
             cleanupEmptyRoom(currentRoom);
           }
 
-          const playerProfile = payload?.profile || socket.profile || meta.profile || null;
-          const equippedWeapon = payload?.equippedWeapon || playerProfile?.equippedWeapon || 'revolver';
-          const equippedClass = payload?.equippedClass || playerProfile?.equippedClass || 'vanguard';
+          const authProfile = meta.profile || socket.meta?.profile || null;
+          const equippedWeapon = payload?.equippedWeapon || authProfile?.equippedWeapon || 'revolver';
+          const equippedClass = payload?.equippedClass || authProfile?.equippedClass || 'vanguard';
           if (!socket.profile) {
-            socket.profile = playerProfile ? { ...playerProfile } : { id: clientId, isGuest: true };
+            socket.profile = authProfile ? { ...authProfile } : { id: clientId, isGuest: true };
           }
           socket.profile.equippedWeapon = equippedWeapon;
           socket.profile.equippedClass = equippedClass;
-          if (payload?.profile?.weapons) {
-            socket.profile.weapons = payload.profile.weapons;
-          }
-          if (payload?.profile?.characterStats) {
-            socket.profile.characterStats = payload.profile.characterStats;
-          }
+          if (payload?.profile?.emblem) socket.profile.emblem = payload.profile.emblem;
 
           currentRoom = room;
           const playerName = payload?.playerName || `Host_${clientId.slice(-4)}`;
@@ -355,17 +370,18 @@ export class GameServer {
 
         case PROTOCOL_MSG_TYPES.C2S_LOADOUT_UPDATE: {
           if (payload) {
-            if (!socket.profile) socket.profile = {};
+            const authProfile = meta.profile || socket.meta?.profile || null;
+            if (!socket.profile) {
+              socket.profile = authProfile ? { ...authProfile } : { id: clientId, isGuest: true };
+            }
             if (payload.weaponId) socket.profile.equippedWeapon = payload.weaponId;
             if (payload.classId) socket.profile.equippedClass = payload.classId;
-            if (payload.profile) {
-              socket.profile = { ...socket.profile, ...payload.profile };
-            }
+            if (payload.profile?.emblem) socket.profile.emblem = payload.profile.emblem;
             if (currentRoom) {
               currentRoom.updatePlayerLoadout(clientId, {
                 weaponId: payload.weaponId,
                 classId: payload.classId,
-                profile: socket.profile
+                profile: authProfile || socket.profile
               });
             }
           }
@@ -408,6 +424,17 @@ export class GameServer {
 
         case PROTOCOL_MSG_TYPES.C2S_MATCH_START: {
           if (currentRoom) {
+            currentRoom.cleanupDisconnected(0);
+            const player = currentRoom.players.get(clientId);
+            if (!player || !player.isHost) {
+              if (socket.readyState === 1) {
+                socket.send(serializePacket(PROTOCOL_MSG_TYPES.S2C_ERROR, {
+                  code: 'NOT_HOST',
+                  message: 'Тільки хост парової кімнати може розпочати бій'
+                }));
+              }
+              return;
+            }
             currentRoom.startMatch({
               fillBots: payload?.fillBots !== undefined ? payload.fillBots : (payload?.fillWithBots !== undefined ? payload.fillWithBots : currentRoom.autoFillBots),
               botDifficulty: payload?.botDifficulty || currentRoom.botDifficulty

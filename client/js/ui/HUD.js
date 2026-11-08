@@ -272,18 +272,25 @@ export class HUD {
     this.updateMobileTouchUI(player);
 
     // 1. Bottom-Left Stack: Alchemical Health Vial + Steam Pressure Gauge (side-by-side, elevated)
-    this.renderHealthVial(ctx, 24, height - 250, hp, maxHp);
+    const compactOffset = height < 500 ? Math.max(0.65, height / 500) : 1.0;
+    const vialY = height - Math.round(250 * compactOffset);
+    const badgeY = height - Math.round(275 * compactOffset);
+    const gaugeY = height - Math.round(208 * compactOffset);
+    const miniMapSize = height < 500 ? Math.round(108 * compactOffset) : 130;
+    const miniMapY = height - Math.round(148 * compactOffset);
+
+    this.renderHealthVial(ctx, 24, vialY, hp, maxHp);
 
     // Optional Team Badge elevated above health vial
     if (player.team) {
-      this.renderTeamBadge(ctx, 24, height - 275, player.team);
+      this.renderTeamBadge(ctx, 24, badgeY, player.team);
     }
 
     // 2. Brass Steam Pressure Gauge (Dynamic Manometer placed directly beside Health Vial)
-    this.renderSteamGauge(ctx, 122, height - 208, stamina, PLAYER_STAMINA_MAX, Boolean(player.isSprinting), 34);
+    this.renderSteamGauge(ctx, 122, gaugeY, stamina, PLAYER_STAMINA_MAX, Boolean(player.isSprinting), 34);
 
     // 2.2 Bottom-Left: Steampunk Tactical Radar Mini-map (below the Health & Steam gauges)
-    this.renderMiniMap(ctx, 24, height - 148, 130, player, matchContext);
+    this.renderMiniMap(ctx, 24, miniMapY, miniMapSize, player, matchContext);
 
     // Detect if touch controls are actively being used (skip canvas dial & cylinder to prevent overlap with DOM buttons)
     const isTouchActive = typeof document !== 'undefined' &&

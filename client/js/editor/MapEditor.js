@@ -77,13 +77,17 @@ export class MapEditor {
       this.canvas.height = 800;
     }
 
-    window.addEventListener('resize', () => {
-      if (parent) {
-        this.canvas.width = parent.clientWidth;
-        this.canvas.height = parent.clientHeight;
-        this.render();
-      }
-    });
+    if (!this._resizeBound) {
+      this._resizeBound = () => {
+        const currentParent = this.canvas.parentElement;
+        if (currentParent) {
+          this.canvas.width = currentParent.clientWidth || 800;
+          this.canvas.height = currentParent.clientHeight || 800;
+          this.render();
+        }
+      };
+      window.addEventListener('resize', this._resizeBound);
+    }
   }
 
   attachEventListeners() {
@@ -94,6 +98,71 @@ export class MapEditor {
     window.addEventListener('mousemove', (e) => this.onMouseMove(e));
     window.addEventListener('mouseup', (e) => this.onMouseUp(e));
     this.canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+
+    // Mobile & tablet touch drawing, 2-finger pan, and pinch-to-zoom
+    this._touchPinchDist = null;
+    this.canvas.addEventListener('touchstart', (e) => {
+      if (!e.touches || e.touches.length === 0) return;
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        this.isPainting = true;
+        this.isPanning = false;
+        this.lastMouseX = t.clientX;
+        this.lastMouseY = t.clientY;
+        const { worldX, worldY } = this.screenToWorld(t.clientX, t.clientY);
+        const { col, row } = this.worldToGrid(worldX, worldY);
+        this.applyTool(col, row);
+      } else if (e.touches.length >= 2) {
+        this.isPainting = false;
+        this.isPanning = true;
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        this.lastMouseX = (t1.clientX + t2.clientX) / 2;
+        this.lastMouseY = (t1.clientY + t2.clientY) / 2;
+        this._touchPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      }
+    }, { passive: false });
+
+    this.canvas.addEventListener('touchmove', (e) => {
+      if (!e.touches || e.touches.length === 0) return;
+      e.preventDefault();
+      if (e.touches.length === 1 && this.isPainting && !this.isPanning) {
+        const t = e.touches[0];
+        const { worldX, worldY } = this.screenToWorld(t.clientX, t.clientY);
+        const { col, row } = this.worldToGrid(worldX, worldY);
+        this.hoverCol = col;
+        this.hoverRow = row;
+        this.toolbar?.updateCursor(col, row, worldX, worldY);
+        this.applyTool(col, row);
+        this.render();
+      } else if (e.touches.length >= 2) {
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const midX = (t1.clientX + t2.clientX) / 2;
+        const midY = (t1.clientY + t2.clientY) / 2;
+        this.panX += (midX - this.lastMouseX);
+        this.panY += (midY - this.lastMouseY);
+        this.lastMouseX = midX;
+        this.lastMouseY = midY;
+
+        const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        if (this._touchPinchDist && this._touchPinchDist > 10) {
+          const scaleDelta = (dist - this._touchPinchDist) * 0.005;
+          this.adjustZoom(scaleDelta);
+        }
+        this._touchPinchDist = dist;
+        this.render();
+      }
+    }, { passive: false });
+
+    const endTouch = () => {
+      this.isPainting = false;
+      this.isPanning = false;
+      this._touchPinchDist = null;
+    };
+    this.canvas.addEventListener('touchend', endTouch);
+    this.canvas.addEventListener('touchcancel', endTouch);
   }
 
   screenToWorld(screenX, screenY) {

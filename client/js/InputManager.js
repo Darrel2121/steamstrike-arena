@@ -236,13 +236,17 @@ export class InputManager {
     window.addEventListener('touchend', this.boundTouchEnd, { passive: false });
     window.addEventListener('touchcancel', this.boundTouchEnd, { passive: false });
 
-    // Also attach to targetElement if provided (e.g. for headless mock test environments)
+    // Attach contextmenu listener on targetElement; only attach touch listeners on targetElement
+    // when it is a standalone headless mock not inside window.document (prevents DOM bubbling double-trigger)
     if (this.targetElement && this.targetElement !== window && this.targetElement.addEventListener) {
-      this.targetElement.addEventListener('touchstart', this.boundTouchStart, { passive: false });
-      this.targetElement.addEventListener('touchmove', this.boundTouchMove, { passive: false });
-      this.targetElement.addEventListener('touchend', this.boundTouchEnd, { passive: false });
-      this.targetElement.addEventListener('touchcancel', this.boundTouchEnd, { passive: false });
       this.targetElement.addEventListener('contextmenu', this.boundContextMenu);
+      const isInDocument = typeof document !== 'undefined' && typeof document.contains === 'function' && document.contains(this.targetElement);
+      if (!isInDocument) {
+        this.targetElement.addEventListener('touchstart', this.boundTouchStart, { passive: false });
+        this.targetElement.addEventListener('touchmove', this.boundTouchMove, { passive: false });
+        this.targetElement.addEventListener('touchend', this.boundTouchEnd, { passive: false });
+        this.targetElement.addEventListener('touchcancel', this.boundTouchEnd, { passive: false });
+      }
     }
   }
 

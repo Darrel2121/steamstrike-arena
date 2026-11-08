@@ -5,6 +5,7 @@
 
 class AdminDashboard {
   constructor() {
+    this.adminToken = sessionStorage.getItem('steamstrike_admin_token') || '';
     this.adminKey = sessionStorage.getItem('steamstrike_admin_key') || '';
     this.apiBase = '';
     this.currentTab = 'stats';
@@ -210,8 +211,12 @@ class AdminDashboard {
       }
 
       // Success
-      this.adminKey = key;
-      sessionStorage.setItem('steamstrike_admin_key', key);
+      this.adminToken = data.adminToken || '';
+      this.adminKey = data.adminToken || key;
+      if (data.adminToken) {
+        sessionStorage.setItem('steamstrike_admin_token', data.adminToken);
+      }
+      sessionStorage.setItem('steamstrike_admin_key', this.adminKey);
 
       if (this.dom.authOverlay) this.dom.authOverlay.style.display = 'none';
       if (this.dom.mainDashboard) this.dom.mainDashboard.style.display = 'block';
@@ -230,9 +235,20 @@ class AdminDashboard {
   }
 
   logout() {
+    sessionStorage.removeItem('steamstrike_admin_token');
     sessionStorage.removeItem('steamstrike_admin_key');
+    this.adminToken = '';
     this.adminKey = '';
     window.location.reload();
+  }
+
+  escapeHtml(val) {
+    return String(val ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   switchTab(tabName) {
@@ -252,10 +268,14 @@ class AdminDashboard {
   }
 
   getHeaders() {
-    return {
+    const headers = {
       'Content-Type': 'application/json',
       'x-admin-key': this.adminKey
     };
+    if (this.adminToken) {
+      headers['Authorization'] = `Bearer ${this.adminToken}`;
+    }
+    return headers;
   }
 
   showToast(message, type = 'info') {
@@ -560,32 +580,39 @@ class AdminDashboard {
     }
 
     this.dom.bugsListContainer.innerHTML = filtered.map(b => {
-      const dateStr = b.createdAt ? new Date(b.createdAt).toLocaleString() : 'Невідома дата';
+      const dateStr = b.createdAt ? this.escapeHtml(new Date(b.createdAt).toLocaleString()) : 'Невідома дата';
       const client = b.clientInfo || {};
+      const safeStatus = this.escapeHtml(b.status || 'new');
+      const safeId = this.escapeHtml(b.id);
+      const safeCategory = this.escapeHtml(b.category);
+      const safeContact = this.escapeHtml(b.contact || 'Анонімний інженер');
+      const safeDesc = this.escapeHtml(b.description);
+      const safeIp = this.escapeHtml(client.ip || 'н/д');
+      const safeUa = client.userAgent ? this.escapeHtml(client.userAgent.slice(0, 70) + '...') : 'н/д';
       return `
-        <div class="bug-card status-${b.status || 'new'}">
+        <div class="bug-card status-${safeStatus}">
           <div class="bug-header">
             <div>
-              <span class="tab-pill" style="background: #34495e; margin-right: 6px;">${b.category}</span>
-              <strong style="color: #ffcf48;">${b.contact || 'Анонімний інженер'}</strong>
+              <span class="tab-pill" style="background: #34495e; margin-right: 6px;">${safeCategory}</span>
+              <strong style="color: #ffcf48;">${safeContact}</strong>
               <span class="bug-meta">(${dateStr})</span>
             </div>
 
             <div style="display: flex; gap: 8px; align-items: center;">
-              <select class="steampunk-select bug-status-select" data-id="${b.id}" style="font-size: 11px; padding: 3px 6px;">
+              <select class="steampunk-select bug-status-select" data-id="${safeId}" style="font-size: 11px; padding: 3px 6px;">
                 <option value="new" ${b.status === 'new' ? 'selected' : ''}>🔴 Новий</option>
                 <option value="in_progress" ${b.status === 'in_progress' ? 'selected' : ''}>🟡 В роботі</option>
                 <option value="resolved" ${b.status === 'resolved' ? 'selected' : ''}>🟢 Вирішено</option>
                 <option value="rejected" ${b.status === 'rejected' ? 'selected' : ''}>⚪ Відхилено</option>
               </select>
-              <button class="btn-steampunk btn-iron btn-delete-bug" data-id="${b.id}" title="Видалити звіт" style="padding: 2px 8px; color: #ff6b6b;">🗑</button>
+              <button class="btn-steampunk btn-iron btn-delete-bug" data-id="${safeId}" title="Видалити звіт" style="padding: 2px 8px; color: #ff6b6b;">🗑</button>
             </div>
           </div>
 
-          <div class="bug-desc">${b.description}</div>
+          <div class="bug-desc">${safeDesc}</div>
 
           <div class="bug-client-info">
-            IP: ${client.ip || 'н/д'} | Браузер: ${client.userAgent ? client.userAgent.slice(0, 70) + '...' : 'н/д'}
+            IP: ${safeIp} | Браузер: ${safeUa}
           </div>
         </div>
       `;

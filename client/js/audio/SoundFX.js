@@ -139,6 +139,35 @@ export class SoundFX {
       return Math.tanh(s * 1.8) * 0.90 * Math.exp(-t * 5.5);
     }));
 
+    // 4b. Tesla Rifle (Тесла-карабін "Зевс" — high-voltage electric arc crackle)
+    this.audioBuffers.set('shot_tesla_rifle', this.createAudioBuffer(0.38, (t, w, p, br) => {
+      const zap = Math.sin(2 * Math.PI * (920 + Math.sin(t * 280) * 340) * t) * Math.exp(-t * 16) * 0.85;
+      const spark = Math.exp(-t * 95) * w * 2.8;
+      const hum = Math.sin(2 * Math.PI * 120 * t) * Math.exp(-t * 12) * 0.6;
+      return Math.tanh((zap + spark + hum) * 1.8) * 0.92 * Math.exp(-t * 4.5);
+    }));
+
+    // 4c. Steam Mortar (Паровий гранатомет "Молох" — deep pneumatic thump)
+    this.audioBuffers.set('shot_steam_mortar', this.createAudioBuffer(0.62, (t, w, p, br) => {
+      const thump = Math.sin(2 * Math.PI * (140 * Math.exp(-t * 8)) * t) * Math.exp(-t * 7) * 1.6;
+      const steamBlast = Math.exp(-t * 14) * p * 3.0 + Math.exp(-t * 9) * br * 12.0;
+      return Math.tanh((thump + steamBlast) * 1.6) * 0.98 * Math.exp(-t * 3.0);
+    }));
+
+    // 4d. Aether Flamethrower (Вогнемет "Дракон" — pressurized alchemical jet whoosh)
+    this.audioBuffers.set('shot_aether_flamethrower', this.createAudioBuffer(0.24, (t, w, p, br) => {
+      const jet = Math.exp(-t * 18) * p * 2.8 + Math.exp(-t * 24) * br * 5.5;
+      const hiss = Math.exp(-t * 45) * w * 1.4;
+      return Math.tanh((jet + hiss) * 1.5) * 0.78 * Math.exp(-t * 6.0);
+    }));
+
+    // 4e. Gatling Cannon (Картечниця Гатлінга — heavy rotary brass bark)
+    this.audioBuffers.set('shot_gatling_cannon', this.createAudioBuffer(0.22, (t, w, p, br) => {
+      const bark = Math.exp(-t * 135) * w * 2.9 + Math.exp(-t * 28) * br * 9.0;
+      const clank = Math.sin(2 * Math.PI * 620 * t) * Math.exp(-t * 50) * 0.55;
+      return Math.tanh((bark + clank) * 2.0) * 0.92 * Math.exp(-t * 6.5);
+    }));
+
     // 5. Reload (4-Phase Tactile Steampunk Mechanical Ratchet & Cylinder Lock)
     this.audioBuffers.set('reload', this.createAudioBuffer(0.60, (t, w, p, br) => {
       // Phase 1: Cylinder latch lever release & swing-out (0.00 - 0.14s)
@@ -389,9 +418,21 @@ export class SoundFX {
     } else if (weaponId === 'needle_gun') {
       key = 'shot_needle_gun';
       baseVol = 0.90;
-    } else if (weaponId === 'carbine') {
+    } else if (weaponId === 'steam_carbine' || weaponId === 'carbine') {
       key = 'shot_carbine';
       baseVol = 0.88;
+    } else if (weaponId === 'tesla_rifle') {
+      key = 'shot_tesla_rifle';
+      baseVol = 0.94;
+    } else if (weaponId === 'steam_mortar') {
+      key = 'shot_steam_mortar';
+      baseVol = 1.0;
+    } else if (weaponId === 'aether_flamethrower') {
+      key = 'shot_aether_flamethrower';
+      baseVol = 0.78;
+    } else if (weaponId === 'gatling_cannon') {
+      key = 'shot_gatling_cannon';
+      baseVol = 0.92;
     }
 
     this.playBuffer(key, worldX, worldY, baseVol, 0.05);

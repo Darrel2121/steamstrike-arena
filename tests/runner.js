@@ -7,6 +7,10 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'test';
+}
+
 // ANSI escape codes for colorized output
 const COLORS = {
   reset: '\x1b[0m',

@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atomicWriteJson } from './atomicWriteFile.js';
 import {
   getDefaultGameSettings,
   sanitizeGameSettings,
@@ -26,6 +27,7 @@ export class GameConfigStore {
     this.currentSettings = getDefaultGameSettings();
     this.adminPassword = process.env.ADMIN_PASSWORD || 'M7qDhW5Grm';
     this.changeListeners = new Set();
+    this.writeQueue = Promise.resolve();
     this.isLoaded = false;
     this.loadFromDisk();
   }
@@ -55,18 +57,18 @@ export class GameConfigStore {
   }
 
   /**
-   * Persists current settings to disk safely
+   * Persists current settings to disk asynchronously and atomically without blocking the Event Loop
    */
   saveToDisk() {
-    try {
-      if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
+    const snapshot = { ...this.currentSettings };
+    this.writeQueue = this.writeQueue.catch(() => {}).then(async () => {
+      try {
+        await atomicWriteJson(CONFIG_FILE, snapshot);
+      } catch (err) {
+        console.error('[GameConfigStore] Error saving settings to disk:', err.message);
       }
-      const data = JSON.stringify(this.currentSettings, null, 2);
-      fs.writeFileSync(CONFIG_FILE, data, 'utf-8');
-    } catch (err) {
-      console.error('[GameConfigStore] Error saving settings to disk:', err);
-    }
+    });
+    return this.writeQueue;
   }
 
   /**

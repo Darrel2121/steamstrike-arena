@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atomicWriteJson } from './atomicWriteFile.js';
 import {
   MAX_UPGRADE_TIER,
   CHARACTER_UPGRADE_COSTS,
@@ -37,6 +38,7 @@ export class ProfileStore {
     this.cache = new Map(); // profileId -> profile object
     this.googleIndex = new Map(); // googleId -> profileId
     this.writeQueues = new Map(); // profileId -> Promise chain
+    this.globalFlushQueue = Promise.resolve();
     this.isLoaded = false;
 
     if (!this.memoryOnly) {
@@ -96,59 +98,38 @@ export class ProfileStore {
       return await taskFn();
     });
 
-    this.writeQueues.set(queueKey, next.catch(() => {}));
+    const queueEntry = next.catch(() => {}).finally(() => {
+      if (this.writeQueues.get(queueKey) === queueEntry) {
+        this.writeQueues.delete(queueKey);
+      }
+    });
+    this.writeQueues.set(queueKey, queueEntry);
     return await next;
   }
 
   /**
-   * Atomically writes data to disk using temporary file + rename.
-   * Windows-resilient with exponential backoff and copy+unlink fallback.
+   * Atomically writes data to disk using shared atomicWriteJson helper.
    * @param {string} targetPath
    * @param {Object} data
    */
   async atomicWriteFile(targetPath, data) {
     if (this.memoryOnly || !targetPath) return;
-
-    const dir = path.dirname(targetPath);
-    await fs.promises.mkdir(dir, { recursive: true });
-
-    const tmpPath = `${targetPath}.${Date.now()}.${Math.random().toString(36).slice(2, 6)}.tmp`;
-    const payload = JSON.stringify(data, null, 2);
-
-    await fs.promises.writeFile(tmpPath, payload, 'utf8');
-
-    let attempts = 0;
-    while (attempts < 5) {
-      try {
-        await fs.promises.rename(tmpPath, targetPath);
-        return;
-      } catch (err) {
-        attempts++;
-        if (attempts >= 5) {
-          try {
-            await fs.promises.copyFile(tmpPath, targetPath);
-            await fs.promises.unlink(tmpPath).catch(() => {});
-            return;
-          } catch (copyErr) {
-            await fs.promises.unlink(tmpPath).catch(() => {});
-            throw err;
-          }
-        }
-        await new Promise(res => setTimeout(res, attempts * 15));
-      }
-    }
+    await atomicWriteJson(targetPath, data);
   }
 
   /**
-   * Flushes in-memory cache to disk atomically.
+   * Flushes in-memory cache to disk atomically through a serialized global mutex queue.
    */
   async flush() {
     if (this.memoryOnly) return;
-    const dump = {};
-    for (const [id, profile] of this.cache.entries()) {
-      dump[id] = profile;
-    }
-    await this.atomicWriteFile(this.filePath, dump);
+    this.globalFlushQueue = this.globalFlushQueue.catch(() => {}).then(async () => {
+      const dump = {};
+      for (const [id, profile] of this.cache.entries()) {
+        dump[id] = profile;
+      }
+      await this.atomicWriteFile(this.filePath, dump);
+    });
+    return this.globalFlushQueue;
   }
 
   /**

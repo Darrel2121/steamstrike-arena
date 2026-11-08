@@ -17,6 +17,7 @@ import { banStore } from './db/BanStore.js';
 import { newsStore } from './db/NewsStore.js';
 import { communityMapStore } from './db/CommunityMapStore.js';
 import { GAME_SETTING_CATEGORIES, GAME_SETTINGS_SCHEMA, GAME_SETTING_PRESETS } from '../shared/GameSettings.js';
+import { createDefaultProfile } from '../shared/ProgressionSchema.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -124,7 +125,14 @@ export function startServer(port = process.env.PORT || 3000) {
     }
 
     const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-    let pathname = decodeURIComponent(parsedUrl.pathname);
+    let pathname;
+    try {
+      pathname = decodeURIComponent(parsedUrl.pathname);
+    } catch (_) {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('400 Bad Request');
+      return;
+    }
 
     // REST API Routing
     if (pathname.startsWith('/api/')) {
@@ -173,45 +181,39 @@ export function startServer(port = process.env.PORT || 3000) {
           return sendJson(200, { success: true, ...result });
         }
 
-        // POST /api/profile/sync (Sync & upsert client profile with server store)
+        // POST /api/profile/sync (Sync non-privileged identity/loadout with server store; never allows unauthenticated takeover or currency/XP inflation)
         if (pathname === '/api/profile/sync' && req.method === 'POST') {
           const body = await parseJsonBody(req);
           const rawProfile = body.profile;
           if (!rawProfile || !rawProfile.id) {
             return sendJson(400, { success: false, error: 'Missing profile payload' });
           }
-          let existing = await profileStore.getProfile(rawProfile.id);
+          const cleanId = sanitizeText(rawProfile.id, 64);
+          let existing = await profileStore.getProfile(cleanId);
           if (existing) {
-            existing.username = rawProfile.username || existing.username;
-            existing.level = Math.max(existing.level || 1, rawProfile.level || 1);
-            existing.xp = Math.max(existing.xp || 0, rawProfile.xp || 0);
-            if (rawProfile.emblem) existing.emblem = rawProfile.emblem;
-            if (rawProfile.equippedClass) existing.equippedClass = rawProfile.equippedClass;
-            if (rawProfile.equippedWeapon) existing.equippedWeapon = rawProfile.equippedWeapon;
-            if (rawProfile.isGuest !== undefined) existing.isGuest = Boolean(rawProfile.isGuest);
-            if (rawProfile.email) existing.email = rawProfile.email;
-            if (rawProfile.googleId) existing.googleId = rawProfile.googleId;
-            if (rawProfile.currency) {
-              existing.currency = {
-                scrap: Math.max(existing.currency?.scrap || 0, rawProfile.currency?.scrap || 0),
-                cores: Math.max(existing.currency?.cores || 0, rawProfile.currency?.cores || 0)
-              };
+            if (!existing.isGuest && userPayload?.accountId !== existing.id) {
+              return sendJson(401, { success: false, error: 'Unauthorized: registered profile requires valid session token' });
             }
-            if (rawProfile.careerStats) {
-              existing.careerStats = {
-                matchesPlayed: Math.max(existing.careerStats?.matchesPlayed || 0, rawProfile.careerStats?.matchesPlayed || 0),
-                wins: Math.max(existing.careerStats?.wins || 0, rawProfile.careerStats?.wins || 0),
-                kills: Math.max(existing.careerStats?.kills || 0, rawProfile.careerStats?.kills || 0),
-                damageDealt: Math.max(existing.careerStats?.damageDealt || 0, rawProfile.careerStats?.damageDealt || 0)
-              };
+            if (rawProfile.username) existing.username = sanitizeText(rawProfile.username, 32) || existing.username;
+            if (rawProfile.emblem) existing.emblem = sanitizeText(rawProfile.emblem, 32) || existing.emblem;
+            if (rawProfile.equippedClass) existing.equippedClass = sanitizeText(rawProfile.equippedClass, 32) || existing.equippedClass;
+            if (rawProfile.equippedWeapon && existing.weapons?.[rawProfile.equippedWeapon]?.unlocked) {
+              existing.equippedWeapon = rawProfile.equippedWeapon;
             }
             existing.updatedAt = Date.now();
             await profileStore.save(existing);
             const token = authService.generateToken({ accountId: existing.id, isGuest: Boolean(existing.isGuest) });
             return sendJson(200, { success: true, profile: existing, token });
           } else {
-            const created = await profileStore.save(rawProfile);
-            const token = authService.generateToken({ accountId: created.id, isGuest: Boolean(created.isGuest) });
+            const safeDefault = createDefaultProfile({
+              id: cleanId,
+              username: sanitizeText(rawProfile.username, 32) || 'Механік',
+              isGuest: true
+            });
+            if (rawProfile.emblem) safeDefault.emblem = sanitizeText(rawProfile.emblem, 32) || safeDefault.emblem;
+            if (rawProfile.equippedClass) safeDefault.equippedClass = sanitizeText(rawProfile.equippedClass, 32) || safeDefault.equippedClass;
+            const created = await profileStore.save(safeDefault);
+            const token = authService.generateToken({ accountId: created.id, isGuest: true });
             return sendJson(200, { success: true, profile: created, token });
           }
         }
@@ -369,9 +371,17 @@ export function startServer(port = process.env.PORT || 3000) {
           });
         }
 
-        // POST /api/match/reward
+        // POST /api/match/reward (Restricted to authorized admin / internal calls; online match rewards are granted authoritatively by Room.js)
         if (pathname === '/api/match/reward' && req.method === 'POST') {
           const body = await parseJsonBody(req);
+          const adminKeyHeader = req.headers['x-admin-key'];
+          const authHeader = req.headers['authorization'];
+          const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+          const isAuthorizedAdmin = (adminKeyHeader && gameConfigStore.verifyAdminPassword(adminKeyHeader)) ||
+            (bearerToken && (gameConfigStore.verifyAdminPassword(bearerToken) || authService.verifyToken(bearerToken)?.isAdmin));
+          if (!isAuthorizedAdmin) {
+            return sendJson(403, { success: false, error: 'Forbidden: match rewards are granted authoritatively by the battle server' });
+          }
           const accountId = userPayload?.accountId || body.profileId || body.playerId;
           if (!accountId) return sendJson(400, { success: false, error: 'Missing profile ID' });
           const result = await profileStore.recordMatchResult(accountId, body);
@@ -387,8 +397,8 @@ export function startServer(port = process.env.PORT || 3000) {
           }
           const clientInfo = {
             ...body.clientInfo,
-            ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown',
-            userAgent: req.headers['user-agent'] || 'unknown',
+            ip: sanitizeText(req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown', 64),
+            userAgent: sanitizeText(req.headers['user-agent'] || 'unknown', 256),
             userId: userPayload?.accountId || null
           };
           const report = await bugReportStore.addReport({
@@ -454,12 +464,16 @@ export function startServer(port = process.env.PORT || 3000) {
 
         const checkAdminAuth = (body = null) => {
           const adminKeyHeader = req.headers['x-admin-key'];
-          if (adminKeyHeader && gameConfigStore.verifyAdminPassword(adminKeyHeader)) return true;
+          if (adminKeyHeader) {
+            if (gameConfigStore.verifyAdminPassword(adminKeyHeader)) return true;
+            const headerPayload = authService.verifyToken(adminKeyHeader);
+            if (headerPayload?.isAdmin) return true;
+          }
           
           const authHeader = req.headers['authorization'];
           if (authHeader?.startsWith('Bearer ')) {
             const token = authHeader.slice(7);
-            if (token === 'admin_authorized_token' || gameConfigStore.verifyAdminPassword(token)) return true;
+            if (gameConfigStore.verifyAdminPassword(token)) return true;
             const payload = authService.verifyToken(token);
             if (payload?.isAdmin) return true;
           }
@@ -487,9 +501,11 @@ export function startServer(port = process.env.PORT || 3000) {
           }
 
           clearAdminFailure(clientIp);
+          const signedAdminToken = authService.generateToken({ isAdmin: true, role: 'admin' });
           return sendJson(200, {
             success: true,
-            adminToken: 'admin_authorized_token',
+            adminToken: signedAdminToken,
+            token: signedAdminToken,
             message: 'Успішна авторизація адміністратора Steamstrike',
             ...gameConfigStore.getFullAdminPayload()
           });
@@ -965,18 +981,42 @@ export function startServer(port = process.env.PORT || 3000) {
       pathname = '/admin.html';
     }
 
+    // Explicitly block access to internal server/data/config directories or dotfiles
+    if (
+      pathname.includes('..') ||
+      pathname.startsWith('/server/') ||
+      pathname === '/server' ||
+      pathname.startsWith('/data/') ||
+      pathname === '/data' ||
+      pathname.startsWith('/scripts/') ||
+      pathname.startsWith('/tests/') ||
+      pathname.startsWith('/.') ||
+      pathname === '/package.json' ||
+      pathname === '/package-lock.json'
+    ) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('403 Forbidden');
+      return;
+    }
+
     // Determine target local filesystem path
     let filePath;
     if (pathname.startsWith('/shared/')) {
       filePath = path.join(SHARED_DIR, pathname.slice(8));
+    } else if (pathname === '/robots.txt' || pathname === '/sitemap.xml') {
+      const rootCandidate = path.join(ROOT_DIR, pathname.slice(1));
+      filePath = fs.existsSync(rootCandidate) ? rootCandidate : path.join(CLIENT_DIR, pathname);
     } else {
       filePath = path.join(CLIENT_DIR, pathname);
     }
 
-    // Prevent directory traversal outside ROOT_DIR
+    // Strictly prevent directory traversal outside CLIENT_DIR and SHARED_DIR (plus explicit root SEO files)
     const safePath = path.resolve(filePath);
-    if (!safePath.startsWith(ROOT_DIR)) {
-      res.writeHead(403, { 'Content-Type': 'text/plain' });
+    const inClient = safePath === CLIENT_DIR || safePath.startsWith(CLIENT_DIR + path.sep);
+    const inShared = safePath === SHARED_DIR || safePath.startsWith(SHARED_DIR + path.sep);
+    const isRootSeoFile = safePath === path.join(ROOT_DIR, 'robots.txt') || safePath === path.join(ROOT_DIR, 'sitemap.xml');
+    if (!inClient && !inShared && !isRootSeoFile) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('403 Forbidden');
       return;
     }
@@ -997,9 +1037,30 @@ export function startServer(port = process.env.PORT || 3000) {
     });
   });
 
-  const wss = new WebSocketServer({ server });
+  const wss = new WebSocketServer({ server, maxPayload: 64 * 1024 });
+
+  // Active server-side WebSocket heartbeat (30s interval) to prune half-open/dead connections
+  const wsHeartbeatTimer = setInterval(() => {
+    for (const ws of wss.clients) {
+      if (ws.isAlive === false) {
+        try { ws.terminate(); } catch (_) {}
+        continue;
+      }
+      ws.isAlive = false;
+      try { ws.ping(); } catch (_) {}
+    }
+  }, 30000);
+  if (typeof wsHeartbeatTimer.unref === 'function') wsHeartbeatTimer.unref();
+  server.on('close', () => clearInterval(wsHeartbeatTimer));
 
   wss.on('connection', async (socket, req) => {
+    socket.isAlive = true;
+    socket.on('pong', () => {
+      socket.isAlive = true;
+    });
+    socket.on('message', () => {
+      socket.isAlive = true;
+    });
     let profile = null;
     let token = null;
 

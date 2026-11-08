@@ -42,6 +42,13 @@
   user-select: none;
 }
 
+input,
+textarea,
+[contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 body {
   background-color: var(--color-ambient-void);
   color: var(--color-text-brass);

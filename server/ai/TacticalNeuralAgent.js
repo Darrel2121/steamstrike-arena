@@ -14,10 +14,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { isPointVisible } from '../../shared/RaycastMath.js';
 import { TILE_TYPES } from '../../shared/MapSchema.js';
+import { atomicWriteJson } from '../db/atomicWriteFile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const WEIGHTS_FILE = path.join(__dirname, 'neural_bot_weights.json');
+const LEGACY_WEIGHTS_FILE = path.join(__dirname, 'neural_bot_weights.json');
+const WEIGHTS_FILE = path.resolve(__dirname, '../../data/neural_bot_weights.json');
 
 // Action enumerations
 export const TACTICAL_ACTIONS = {
@@ -120,8 +122,11 @@ export class TacticalNeuralAgent {
    */
   loadWeights() {
     try {
-      if (fs.existsSync(this.weightsFile)) {
-        const raw = fs.readFileSync(this.weightsFile, 'utf8');
+      const sourceFile = fs.existsSync(this.weightsFile)
+        ? this.weightsFile
+        : (fs.existsSync(LEGACY_WEIGHTS_FILE) ? LEGACY_WEIGHTS_FILE : null);
+      if (sourceFile) {
+        const raw = fs.readFileSync(sourceFile, 'utf8');
         const data = JSON.parse(raw);
         if (data.W1 && data.W2 && data.W3) {
           // Check if weights are not degenerate (e.g. check not all 0 or heavily skewed ambush bias)
@@ -150,7 +155,7 @@ export class TacticalNeuralAgent {
   }
 
   /**
-   * Persists weights and cumulative learning progress to JSON storage.
+   * Persists weights and cumulative learning progress to JSON storage atomically.
    */
   saveWeights() {
     try {
@@ -167,7 +172,7 @@ export class TacticalNeuralAgent {
         actionDistribution: this.actionDistribution,
         savedAt: Date.now()
       };
-      fs.writeFile(this.weightsFile, JSON.stringify(data, null, 2), 'utf8', () => {});
+      atomicWriteJson(this.weightsFile, data).catch(() => {});
     } catch (_) {}
   }
 

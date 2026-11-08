@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atomicWriteJson } from './atomicWriteFile.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -138,13 +139,7 @@ export class BanStore {
   scheduleSave() {
     this.writeQueue = this.writeQueue.then(async () => {
       try {
-        if (!fs.existsSync(this.dataDir)) {
-          await fs.promises.mkdir(this.dataDir, { recursive: true });
-        }
-        const tempPath = `${this.filePath}.${Date.now()}_${Math.random().toString(36).substr(2, 5)}.tmp`;
-        const serialized = JSON.stringify(this.bans, null, 2);
-        await fs.promises.writeFile(tempPath, serialized, 'utf8');
-        await fs.promises.rename(tempPath, this.filePath);
+        await atomicWriteJson(this.filePath, this.bans);
       } catch (err) {
         console.error('[BanStore] Error saving bans to disk:', err.message);
       }

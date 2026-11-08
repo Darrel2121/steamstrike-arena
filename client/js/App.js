@@ -220,6 +220,23 @@ export class App {
     this.networkClient.on('damage', (payload) => {
       this.handleDamage(payload);
     });
+
+    this.networkClient.on('close', () => {
+      if (this.currentView === 'game' && !this.soloServer && !this.isMatchOver) {
+        if (this.gameRenderer) {
+          this.gameRenderer.addNotification('⚠ Зв\'язок із сервером перервано. Перепідключення...', {
+            type: 'warn',
+            color: '#ff9f1c',
+            duration: 4.0
+          });
+        }
+        setTimeout(() => {
+          if (!this.networkClient.isConnected) {
+            this.networkClient.connect(null, this.progressionManager?.getToken());
+          }
+        }, 1200);
+      }
+    });
   }
 
   initMapEditor() {
@@ -409,6 +426,8 @@ export class App {
         this.btnHamburgerToggle?.setAttribute('aria-expanded', 'false');
       }
     };
+    this.openMobileNav = openMobileDrawer;
+    this.closeMobileNav = closeMobileDrawer;
 
     const addTap = (el, handler) => {
       if (!el) return;

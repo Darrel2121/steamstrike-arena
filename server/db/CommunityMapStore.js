@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { atomicWriteJson } from './atomicWriteFile.js';
 import { validateMap } from '../../shared/MapSchema.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -182,13 +183,7 @@ export class CommunityMapStore {
   scheduleSave() {
     this.writeQueue = this.writeQueue.then(async () => {
       try {
-        if (!fs.existsSync(this.dataDir)) {
-          await fs.promises.mkdir(this.dataDir, { recursive: true });
-        }
-        const tempPath = `${this.filePath}.${Date.now()}_${Math.random().toString(36).substr(2, 5)}.tmp`;
-        const serialized = JSON.stringify(this.maps, null, 2);
-        await fs.promises.writeFile(tempPath, serialized, 'utf8');
-        await fs.promises.rename(tempPath, this.filePath);
+        await atomicWriteJson(this.filePath, this.maps);
       } catch (err) {
         console.error('[CommunityMapStore] Error persisting maps to disk:', err.message);
       }

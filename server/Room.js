@@ -1249,7 +1249,8 @@ export class Room {
       }
     }
 
-    const dtMs = typeof input.dt === 'number' && input.dt > 0 ? input.dt : (1000 / this.tickRate);
+    const rawDt = typeof input.dt === 'number' && Number.isFinite(input.dt) && input.dt > 0 ? input.dt : (1000 / this.tickRate);
+    const dtMs = Math.min(rawDt, 100);
     const dtSec = dtMs / 1000;
 
     let moveX = typeof input.moveX === 'number' ? input.moveX : 0;
@@ -1453,11 +1454,11 @@ export class Room {
       return;
     }
 
-    // Advance player states and observe human combat maneuvers for neural AI imitation
+    // Advance player states and observe human combat maneuvers for neural AI imitation (throttled to 5 Hz)
     for (const player of this.players.values()) {
       player.update(dtSec, player.isSprinting);
-      if (player.isAlive && !player.isBot && typeof tacticalNeuralAgent?.observePlayer === 'function') {
-        tacticalNeuralAgent.observePlayer(player, this, dtSec);
+      if (player.isAlive && !player.isBot && (this.tickNumber % 6 === 0) && typeof tacticalNeuralAgent?.observePlayer === 'function') {
+        tacticalNeuralAgent.observePlayer(player, this, dtSec * 6);
       }
     }
 
@@ -1504,11 +1505,17 @@ export class Room {
       }
     }
 
-    // Feed sound events to living bots
-    if (this.soundEvents.length > 0) {
+    // Feed sound events to living bots (deduplicated per sourceId+type to prevent sensory flood)
+    if (this.soundEvents.length > 0 && this.bots.size > 0) {
+      const uniqueSoundsMap = new Map();
+      for (const sound of this.soundEvents) {
+        const key = `${sound.sourceId || 'env'}_${sound.type || 'generic'}`;
+        uniqueSoundsMap.set(key, sound);
+      }
+      const uniqueSounds = Array.from(uniqueSoundsMap.values());
       for (const bot of this.bots.values()) {
         if (!bot.isAlive) continue;
-        for (const sound of this.soundEvents) {
+        for (const sound of uniqueSounds) {
           if (sound.sourceId === bot.id) continue;
           const dx = sound.x - bot.x;
           const dy = sound.y - bot.y;
