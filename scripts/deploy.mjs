@@ -49,6 +49,18 @@ async function runDeployAttempt(attempt = 1) {
     console.log('\n--- Uploading node_modules/ws directory ---');
     await client.uploadFromDir('node_modules/ws', 'node_modules/ws');
 
+    // 3. Touch tmp/restart.txt so Phusion Passenger reloads the Node.js server process
+    console.log('\n--- Triggering Phusion Passenger restart (tmp/restart.txt) ---');
+    const localRestartDir = path.join(process.cwd(), 'tmp');
+    if (!fs.existsSync(localRestartDir)) {
+      fs.mkdirSync(localRestartDir, { recursive: true });
+    }
+    const localRestartFile = path.join(localRestartDir, 'restart.txt');
+    fs.writeFileSync(localRestartFile, new Date().toISOString(), 'utf8');
+    await client.ensureDir('tmp');
+    await client.uploadFrom(localRestartFile, 'restart.txt');
+    await client.cd('/public_html');
+
     console.log('\n✔ DEPLOYMENT COMPLETED SUCCESSFULLY!');
     return true;
   } catch (err) {
